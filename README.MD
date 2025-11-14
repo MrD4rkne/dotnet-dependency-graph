@@ -6,5 +6,5 @@ Have you ever got lost in your app's dependency tree?
 
 That's were this app comes to ease your pain.
 
-It generates interactive tree of your dotnet project dependencies, allowing you to merge multiple project / solutions.
+It generates interactive trees of your dotnet project dependencies, allowing you to merge multiple project / solutions.
 
