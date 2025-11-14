@@ -1,16 +1,31 @@
 use eframe::{run_native, App, CreationContext};
 use egui::{Context, PopupAnchor};
 use egui_graphs::{
-    default_edge_transform, default_node_transform, to_graph_custom, DefaultEdgeShape, Graph,
-    GraphView, SettingsInteraction, SettingsNavigation, DefaultNodeShape
+    DefaultEdgeShape, Graph,
+    GraphView, SettingsInteraction, SettingsNavigation, DefaultNodeShape,
+    default_edge_transform, default_node_transform, to_graph_custom
 };
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use petgraph::{
-    stable_graph::{DefaultIx, StableGraph},
+    stable_graph::{DefaultIx, StableGraph, NodeIndex},
     Directed,
 };
 
 mod dependency;
+
+struct DependencyNode {
+    dep: Dependency,
+    ix: Option<NodeIndex>,
+}
+
+impl DependencyNode{
+    fn new(dep: Dependency) -> Self{
+        Self { dep, ix: None }
+    }
+}
 
 use crate::dependency::Dependency;
 
@@ -18,26 +33,24 @@ const GLYPH_CLOCKWISE: &str = "↻";
 const GLYPH_ANTICLOCKWISE: &str = "↺";
 
 pub struct AnimatedNodesApp {
-    g: Graph<node::NodeData, (), Directed, DefaultIx, DefaultNodeShape>,
+    g: Graph<Rc<RefCell<DependencyNode>>, (), Directed, DefaultIx, DefaultNodeShape>,
+    deps: Vec<Rc<RefCell<DependencyNode>>>
 }
 
 impl AnimatedNodesApp {
-    fn new(_: &CreationContext<'_>) -> Self {
-        let g = generate_graph();
+    fn new(_: &CreationContext<'_>, deps: Vec<Dependency>) -> Self {
+        let mut deps: Vec<Rc<RefCell<DependencyNode>>> = deps.into_iter()
+        .map(|x| Rc::new(RefCell::new(DependencyNode::new(x))))
+        .collect();
+
+        let g = generate_graph(&mut deps);
         Self {
             g: to_graph_custom(
                 &g,
-                |n| {
-                    if n.payload().clockwise {
-                        default_node_transform(n);
-                        n.set_label(GLYPH_CLOCKWISE.to_string());
-                    } else {
-                        default_node_transform(n);
-                        n.set_label(GLYPH_ANTICLOCKWISE.to_string());
-                    }
-                },
+                default_node_transform,
                 default_edge_transform,
             ),
+            deps
         }
     }
 }
@@ -70,28 +83,28 @@ impl App for AnimatedNodesApp {
     }
 }
 
-fn generate_graph() -> StableGraph<node::NodeData, ()> {
+fn generate_graph(deps: &mut Vec<Rc<RefCell<DependencyNode>>>) -> StableGraph<Rc<RefCell<DependencyNode>>, ()> {
     let mut g = StableGraph::new();
 
-    let a = g.add_node(node::NodeData { clockwise: true });
-    let b = g.add_node(node::NodeData { clockwise: false });
-    let c = g.add_node(node::NodeData { clockwise: false });
-
-    g.add_edge(a, b, ());
-    g.add_edge(b, c, ());
-    g.add_edge(c, a, ());
+    for dep in deps{
+        let ix = g.add_node(Rc::clone(dep));
+        dep.borrow_mut().ix = Some(ix);
+    }
 
     g
 }
 
 fn main() {
-    let a = Dependency::new("xd".to_string());
+    let mut deps = Vec::new();
+    deps.push(Dependency::new("a".to_string()));
+    deps.push(Dependency::new("b".to_string()));
+    deps.push(Dependency::new("c".to_string()));
 
     let native_options = eframe::NativeOptions::default();
     run_native(
         "animated",
         native_options,
-        Box::new(|cc| Ok(Box::new(AnimatedNodesApp::new(cc)))),
+        Box::new(move |cc| Ok(Box::new(AnimatedNodesApp::new(cc, deps)))),
     )
     .unwrap();
 }
