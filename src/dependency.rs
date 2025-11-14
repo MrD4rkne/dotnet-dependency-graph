@@ -1,7 +1,8 @@
 pub struct Dependency{
-        name: String,
+        pub name: String,
     }
 
+    
     impl Dependency{
         pub fn new(name: String) -> Dependency {
             Dependency{

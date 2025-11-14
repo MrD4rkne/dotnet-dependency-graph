@@ -1,5 +1,5 @@
 use eframe::{run_native, App, CreationContext};
-use egui::{Context, PopupAnchor};
+use egui::{Context};
 use egui_graphs::{
     DefaultEdgeShape, Graph,
     GraphView, SettingsInteraction, SettingsNavigation, DefaultNodeShape,
@@ -19,18 +19,16 @@ mod dependency;
 struct DependencyNode {
     dep: Dependency,
     ix: Option<NodeIndex>,
+    checked: bool,
 }
 
 impl DependencyNode{
     fn new(dep: Dependency) -> Self{
-        Self { dep, ix: None }
+        Self { dep, ix: None, checked: false, }
     }
 }
 
 use crate::dependency::Dependency;
-
-const GLYPH_CLOCKWISE: &str = "↻";
-const GLYPH_ANTICLOCKWISE: &str = "↺";
 
 pub struct AnimatedNodesApp {
     g: Graph<Rc<RefCell<DependencyNode>>, (), Directed, DefaultIx, DefaultNodeShape>,
@@ -74,10 +72,10 @@ impl App for AnimatedNodesApp {
             );
         });
 
-        egui::SidePanel::right("right_panel").show(ctx, |ui| {
-            ui.label("Select a node to change its label");
-            if ui.button("reset").clicked() {
-                ui.label("clicked");
+        egui::SidePanel::left("deps_panel").show(ctx, |ui| {
+            ui.heading("Dependencies");
+            for dep in &self.deps {
+                ui.label(&dep.borrow().dep.name);
             }
         });
     }
@@ -107,11 +105,4 @@ fn main() {
         Box::new(move |cc| Ok(Box::new(AnimatedNodesApp::new(cc, deps)))),
     )
     .unwrap();
-}
-
-mod node {
-    #[derive(Clone, Debug)]
-    pub struct NodeData {
-        pub clockwise: bool,
-    }
 }
