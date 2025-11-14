@@ -8,5 +8,6 @@ on:
 
 jobs:
     build_and_test:
+        uses: ./.github/workflows/build-and-test.yaml
         with:
             project-path: "."
