@@ -71,11 +71,29 @@ impl App for AnimatedNodesApp {
                     ),
             );
         });
-
         egui::SidePanel::left("deps_panel").show(ctx, |ui| {
             ui.heading("Dependencies");
             for dep in &self.deps {
-                ui.label(&dep.borrow().dep.name);
+                let dep = Rc::clone(dep);
+                ui.label(dep.borrow().dep.name.clone());
+
+                let mut checked = dep.borrow().checked;
+                if ui.checkbox(&mut checked, "Add to graph").changed(){
+                    dep.borrow_mut().checked = checked;
+                    if checked {
+                        let ix = self.g.add_node(Rc::clone(&dep));
+                        dep.borrow_mut().ix = Some(ix);
+                        dbg!("Added");
+                    }
+                    else{
+                        let mut dep = dep.borrow_mut();
+                        if let Some(ix) = dep.ix {
+                            let _ = self.g.remove_node(ix);
+                            dep.ix = None;
+                            dbg!("Removed");
+                        }
+                    }
+                }
             }
         });
     }
@@ -87,6 +105,7 @@ fn generate_graph(deps: &mut Vec<Rc<RefCell<DependencyNode>>>) -> StableGraph<Rc
     for dep in deps{
         let ix = g.add_node(Rc::clone(dep));
         dep.borrow_mut().ix = Some(ix);
+        dep.borrow_mut().checked = true;
     }
 
     g
