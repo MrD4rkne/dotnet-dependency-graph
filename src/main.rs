@@ -6,6 +6,8 @@ use egui_graphs::{
     default_edge_transform, default_node_transform, to_graph_custom
 };
 
+use std::collections::HashMap;
+
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -102,10 +104,22 @@ impl App for AnimatedNodesApp {
 fn generate_graph(deps: &mut Vec<Rc<RefCell<DependencyNode>>>) -> StableGraph<Rc<RefCell<DependencyNode>>, ()> {
     let mut g = StableGraph::new();
 
-    for dep in deps{
+    let mut map: HashMap<String, NodeIndex> = HashMap::new();
+
+    for dep in deps.iter(){
         let ix = g.add_node(Rc::clone(dep));
-        dep.borrow_mut().ix = Some(ix);
+        dep.borrow_mut().ix = Some(ix.clone());
         dep.borrow_mut().checked = true;
+
+        map.insert(dep.borrow().dep.name.clone(), ix);
+    }
+
+    for dep in deps{
+        let src = dep.borrow().ix.expect("ALl nodes should have been added");
+        for target in &dep.borrow().dep.deps {
+            let target = map.get(target).expect("ALl nodes should have been added");
+            g.add_edge(src.clone(), target.clone(), ());
+        }
     }
 
     g
@@ -116,6 +130,9 @@ fn main() {
     deps.push(Dependency::new("a".to_string()));
     deps.push(Dependency::new("b".to_string()));
     deps.push(Dependency::new("c".to_string()));
+
+    deps[0].deps.push("b".to_string());
+    deps[2].deps.push("b".to_string());
 
     let native_options = eframe::NativeOptions::default();
     run_native(
