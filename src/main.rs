@@ -47,7 +47,13 @@ impl AnimatedNodesApp {
         Self {
             g: to_graph_custom(
                 &g,
-                default_node_transform,
+                |n| {
+                    default_node_transform(n);
+
+                    let name = n.payload().borrow().dep.name.clone();
+                    n.set_label(name);
+
+                },
                 default_edge_transform,
             ),
             deps
