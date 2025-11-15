@@ -107,6 +107,9 @@ impl App for AnimatedNodesApp {
                         let ix = self.g.add_node(Rc::clone(&rc));
                         rc.borrow_mut().ix = Some(ix);
                         rc.borrow_mut().checked = true;
+                        // Set the label to the dependency name
+                        let name = rc.borrow().dep.name.clone();
+                        self.g.node_mut(ix).unwrap().set_label(name);
                         self.deps.insert(self.new_name.clone(), rc);
                         self.new_name.clear();
                         ctx.request_repaint();
@@ -130,6 +133,9 @@ impl App for AnimatedNodesApp {
                             if checked {
                                 let ix = self.g.add_node(Rc::clone(&dep));
                                 dep.borrow_mut().ix = Some(ix);
+                                // Set the label to the dependency name
+                                let name = dep.borrow().dep.name.clone();
+                                self.g.node_mut(ix).unwrap().set_label(name);
                                 dbg!("Added");
                             }
                             else{
@@ -168,6 +174,10 @@ impl App for AnimatedNodesApp {
                                 } else {
                                     if let Some(rc) = self.deps.remove(&target_key) {
                                         rc.borrow_mut().dep.name = new_name.clone();
+                                        // Update the label in the graph if the node is displayed
+                                        if let Some(ix) = rc.borrow().ix {
+                                            self.g.node_mut(ix).unwrap().set_label(new_name.clone());
+                                        }
                                         self.deps.insert(new_name.clone(), rc);
                                     }
                                 }
