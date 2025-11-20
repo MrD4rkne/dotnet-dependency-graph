@@ -6,4 +6,3 @@ edition = "2024"
 [dependencies]
 eframe = "0.33.2"
 egui = "0.33.2"
-petgraph = "0.8.3"
