@@ -95,6 +95,7 @@ pub struct FrameworkReference {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LibraryDependency {
     pub target: Option<String>,
     pub version: Option<String>,
