@@ -1,1 +1,5 @@
 /target
+
+# Dotnet build artifacts
+**/obj
+**/bin
