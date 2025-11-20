@@ -93,13 +93,12 @@ pub struct FrameworkReference {
     pub private_assets: Option<String>,
 }
 
-/// Convenience parser that deserializes a JSON string into `DependencyGraphSpec`.
-pub fn parse_dependency_graph_spec(s: &str) -> serde_json::Result<DependencyGraphSpec> {
-    serde_json::from_str(s)
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LibraryDependency {
     pub target: Option<String>,
     pub version: Option<String>,
+}
+
+pub fn parse_dependency_graph_spec(s: &str) -> serde_json::Result<DependencyGraphSpec> {
+    serde_json::from_str(s)
 }
