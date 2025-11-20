@@ -79,7 +79,6 @@ pub struct TargetFrameworkInformation {
     pub runtime_identifier_graph_path: Option<String>,
     pub asset_target_fallback: Option<bool>,
     pub warn: Option<bool>,
-    
 }
 
 #[derive(Debug, Serialize, Deserialize)]
