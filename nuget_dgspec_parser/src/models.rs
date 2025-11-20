@@ -82,6 +82,7 @@ pub struct TargetFrameworkInformation {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DownloadDependency {
     pub name: Option<String>,
     pub version: Option<String>,
