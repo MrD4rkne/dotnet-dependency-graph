@@ -52,8 +52,7 @@ fn clean_dotnet_sln(sln_path: &std::path::Path) -> std::io::Result<()> {
         .status()?;
     match status.success() {
         true => Ok(()),
-        false => Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
+        false => Err(std::io::Error::other(
             format!("Dotnet clean failed with exit status: {}", status),
         )),
     }
@@ -66,9 +65,8 @@ fn restore_dotnet_sln(sln_path: &std::path::Path) -> std::io::Result<()> {
         .status()?;
     match status.success() {
         true => Ok(()),
-        false => Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("Dotnet clean failed with exit status: {}", status),
+        false => Err(std::io::Error::other(
+            format!("Dotnet restore failed with exit status: {}", status),
         )),
     }
 }
