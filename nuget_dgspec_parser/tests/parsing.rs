@@ -52,9 +52,10 @@ fn clean_dotnet_sln(sln_path: &std::path::Path) -> std::io::Result<()> {
         .status()?;
     match status.success() {
         true => Ok(()),
-        false => Err(std::io::Error::other(
-            format!("Dotnet clean failed with exit status: {}", status),
-        )),
+        false => Err(std::io::Error::other(format!(
+            "Dotnet clean failed with exit status: {}",
+            status
+        ))),
     }
 }
 
@@ -65,9 +66,10 @@ fn restore_dotnet_sln(sln_path: &std::path::Path) -> std::io::Result<()> {
         .status()?;
     match status.success() {
         true => Ok(()),
-        false => Err(std::io::Error::other(
-            format!("Dotnet restore failed with exit status: {}", status),
-        )),
+        false => Err(std::io::Error::other(format!(
+            "Dotnet restore failed with exit status: {}",
+            status
+        ))),
     }
 }
 
@@ -108,7 +110,8 @@ fn add_dgspecs_from_dir(dir: &std::path::Path, out: &mut Vec<PathBuf>) -> std::i
         if path_to_file.is_dir() {
             add_dgspecs_from_dir(&path_to_file, out)?;
         } else if let Some(name) = path_to_file.file_name().and_then(|s| s.to_str())
-        && name.ends_with(".nuget.dgspec.json") {
+            && name.ends_with(".nuget.dgspec.json")
+        {
             out.push(path_to_file);
         }
     }
