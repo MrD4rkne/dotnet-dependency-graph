@@ -77,16 +77,14 @@ fn restore_dotnet_sln(sln_path: &std::path::Path) -> std::io::Result<()> {
 fn remove_nulls(v: &mut Value) {
     match v {
         Value::Object(map) => {
-            let keys: Vec<String> = map.keys().cloned().collect();
-            for k in keys {
-                if let Some(child) = map.get_mut(&k) {
-                    if *child == Value::Null {
-                        map.remove(&k);
-                    } else {
-                        remove_nulls(child);
-                    }
+            map.retain(|_, child| {
+                if *child == Value::Null {
+                    false
+                } else {
+                    remove_nulls(child);
+                    true
                 }
-            }
+            });
         }
         Value::Array(arr) => {
             for item in arr.iter_mut() {
