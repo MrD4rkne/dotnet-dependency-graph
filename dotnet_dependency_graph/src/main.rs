@@ -1,7 +1,9 @@
 use eframe::{App, run_native};
 use egui::Context;
 use egui_file_dialog::FileDialog;
+use nuget_dgspec_parser::graph::DependencyGraph;
 use std::path::PathBuf;
+mod graph;
 
 struct File {
     path: PathBuf,
@@ -16,6 +18,7 @@ impl File {
 struct DependencyApp {
     file_dialog: FileDialog,
     current_dgspec_file: Option<File>,
+    graph: Option<DependencyGraph>,
 }
 
 impl DependencyApp {
@@ -23,6 +26,7 @@ impl DependencyApp {
         Self {
             file_dialog: FileDialog::new(),
             current_dgspec_file: None,
+            graph: None,
         }
     }
 }
@@ -51,6 +55,9 @@ impl App for DependencyApp {
         self.file_dialog.update(ctx);
         if let Some(path) = self.file_dialog.take_picked() {
             self.current_dgspec_file = Some(File::new(path.to_path_buf()));
+
+            self.graph = graph::load_dgspec_from_file(path.to_path_buf()).ok();
+            dbg!(&self.graph);
         }
     }
 }

@@ -1,101 +1,199 @@
 use petgraph::stable_graph::{NodeIndex, StableDiGraph};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
-use std::slice::Iter;
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum DependencyId {
+    ProjectId(String),
+    PackageId(String, Option<String>),
+}
+
+pub trait DependencyWithId {
+    fn id(&self) -> DependencyId;
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct PackageId {
+pub struct ProjectInfo {
+    pub path: String,
+}
+
+impl ProjectInfo {
+    fn new(path: String) -> Self {
+        Self { path }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PackageInfo {
     pub name: String,
     pub version: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum DependencyInfo {
-    Project { path: String },
-    Package(PackageId),
+impl PackageInfo {
+    fn new(name: String, version: Option<String>) -> Self {
+        Self { name, version }
+    }
 }
 
-#[derive(Debug, Clone)]
-pub enum DependencyKind {
-    Direct,
-    Transitive,
-    ProjectReference,
-    FrameworkReference,
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum DependencyInfo {
+    Project(ProjectInfo),
+    Package(PackageInfo),
+}
+
+impl DependencyWithId for DependencyInfo {
+    fn id(&self) -> DependencyId {
+        match self {
+            DependencyInfo::Project(info) => DependencyId::ProjectId(info.path.clone()),
+            DependencyInfo::Package(info) => {
+                DependencyId::PackageId(info.name.clone(), info.version.clone())
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Framework {
+    name: String,
+}
+
+impl Framework {
+    pub fn new(name: String) -> Self {
+        Self { name }
+    }
+
+    pub fn get_name(&self) -> &String {
+        &self.name
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct DepEdge {
-    pub kind: DependencyKind,
-    pub version_req: Option<String>,
-    pub target_framework: Option<String>,
-    pub runtime: bool,
+    id: DependencyId,
+    target_framework: Framework,
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-struct DependencyId {
-    id: usize,
-}
-
-impl DependencyId {
-    fn new(id: usize) -> Self {
-        Self { id }
-    }
-}
-
-#[derive(Debug)]
-struct IncrementingIdFactory {
-    next_id: usize,
-}
-
-impl IncrementingIdFactory {
-    fn new() -> Self {
-        Self { next_id: 0 }
+impl DepEdge {
+    fn new(id: DependencyId, target_framework: Framework) -> Self {
+        Self {
+            id,
+            target_framework,
+        }
     }
 
-    fn get_new_id(&mut self) -> DependencyId {
-        let id = self.next_id.clone();
-        self.next_id += 1;
-        DependencyId::new(id)
+    pub fn get_id(&self) -> &DependencyId {
+        &self.id
+    }
+
+    pub fn get_framework(&self) -> &Framework {
+        &self.target_framework
     }
 }
 
 #[derive(Debug)]
 pub struct DependencyGraph {
-    graph: StableDiGraph<DependencyInfo, DepEdge>,
-
-    node_by_id: HashMap<DependencyId, DependencyInfo>,
-    index: HashMap<DependencyInfo, DependencyId>,
-    adjacency: HashMap<DependencyId, Vec<(DependencyId, DepEdge)>>,
-
-    id_factory: IncrementingIdFactory,
+    graph: StableDiGraph<DependencyId, DepEdge>,
+    info: HashMap<DependencyId, DependencyInfo>,
+    ix_by_id: HashMap<DependencyId, NodeIndex>,
+    frameworks: HashSet<Framework>,
 }
+
+impl Default for DependencyGraph {
+    fn default() -> Self {
+        Self {
+            graph: StableDiGraph::<DependencyId, DepEdge>::new(),
+            info: HashMap::new(),
+            ix_by_id: HashMap::new(),
+            frameworks: HashSet::new(),
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct DependencyNotFound;
 
 impl DependencyGraph {
     pub fn new() -> Self {
-        Self {
-            graph: StableDiGraph::<DependencyInfo, DepEdge>::new(),
-            index: HashMap::new(),
-            node_by_id: HashMap::new(),
-            adjacency: HashMap::new(),
-            id_factory: IncrementingIdFactory::new(),
+        Self::default()
+    }
+
+    pub fn add_project(&mut self, path: String) -> DependencyId {
+        let project = DependencyInfo::Project(ProjectInfo::new(path));
+        self.add_dependency(project)
+    }
+
+    pub fn add_package(&mut self, name: String, version: Option<String>) -> DependencyId {
+        let lib = DependencyInfo::Package(PackageInfo::new(name, version));
+        self.add_dependency(lib)
+    }
+
+    /// Ensures a dependency is in the graph. Returns id to it.
+    fn add_dependency(&mut self, dependency: DependencyInfo) -> DependencyId {
+        let dependency = self.info.entry(dependency.id()).or_insert_with(|| {
+            self.ix_by_id
+                .insert(dependency.id(), self.graph.add_node(dependency.id()));
+            dependency
+        });
+        dependency.id()
+    }
+
+    pub fn get(&self, id: &DependencyId) -> Option<&DependencyInfo> {
+        self.info.get(id)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&DependencyId, &DependencyInfo)> {
+        self.info.iter()
+    }
+
+    /// Get direct dependencies of the dependency.
+    ///
+    /// **Panics** if dependency with the provided id was not from this graph.
+    pub fn get_direct_dependencies(&self, id: &DependencyId) -> impl Iterator<Item = &DepEdge> {
+        if let Some(index) = self.ix_by_id.get(id) {
+            self.graph
+                .edges_directed(*index, petgraph::Direction::Outgoing)
+                .map(|edge| edge.weight())
+        } else {
+            panic!("The dependency is not available in the graph");
         }
     }
 
-    pub fn get_direct_deps(
+    /// Get direct reverse dependencies of the dependency.
+    ///
+    /// **Panics** if dependency with the provided id was not from this graph.
+    pub fn get_direct_reverse_dependencies(
         &self,
-        key: &DependencyInfo,
-    ) -> Option<Iter<'_, (DependencyId, DepEdge)>> {
-        self.index
-            .get(key)
-            .and_then(|dep_id| self.adjacency.get(dep_id).map(|vec| vec.iter()))
+        id: &DependencyId,
+    ) -> impl Iterator<Item = &DepEdge> {
+        if let Some(index) = self.ix_by_id.get(id) {
+            self.graph
+                .edges_directed(*index, petgraph::Direction::Incoming)
+                .map(|edge| edge.weight())
+        } else {
+            panic!("The dependency is not available in the graph");
+        }
     }
 
-    fn add_dependency(&mut self, dependency: DependencyInfo) -> DependencyId {
-        let id = self
-            .index
-            .entry(dependency.clone())
-            .or_insert(self.id_factory.get_new_id());
-        self.node_by_id.insert(id.clone(), dependency);
-        id.clone()
+    pub fn add_relation(
+        &mut self,
+        from: DependencyId,
+        to: DependencyId,
+        framework: Framework,
+    ) -> Result<(), DependencyNotFound> {
+        let source = self.ix_by_id.get(&from);
+        let dependency = self.ix_by_id.get(&to);
+
+        if let Some(source) = source
+            && let Some(target) = dependency
+        {
+            _ = self.frameworks.insert(framework.clone());
+
+            let edge = DepEdge::new(to, framework);
+            _ = self.graph.add_edge(*source, *target, edge);
+
+            return Ok(());
+        }
+
+        Err(DependencyNotFound)
     }
 }

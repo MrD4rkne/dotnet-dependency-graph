@@ -786,6 +786,7 @@ dependencies = [
  "eframe",
  "egui",
  "egui-file-dialog",
+ "nuget_dgspec_parser",
 ]
 
 [[package]]

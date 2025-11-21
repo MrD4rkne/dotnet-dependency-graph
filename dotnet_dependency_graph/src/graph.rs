@@ -1,111 +1,70 @@
-use std::collections::{HashMap, HashSet};
+use nuget_dgspec_parser::graph::{DependencyGraph, DependencyId, Framework};
+use nuget_dgspec_parser::models::{DependencyGraphSpec, LibraryDependency, ProjectReference};
+use std::collections::HashMap;
+use std::fs;
+use std::path::PathBuf;
 
-#[derive(Hash, PartialEq, Eq, Clone, Debug)]
-pub struct Id {
-    name: String,
+pub fn load_dgspec_from_file(path: PathBuf) -> std::io::Result<DependencyGraph> {
+    let contents = fs::read_to_string(path)?;
+    let dgspec = nuget_dgspec_parser::models::parse_dependency_graph_spec(&contents)
+        .map_err(|_| std::io::Error::other("Couldn't parse file's content"))?;
+    Ok(create_dependency_graph(dgspec))
 }
 
-#[derive(Debug)]
-pub struct Project {
-    pub id: Id,
-    pub name: String,
-    pub frameworks: HashMap<Framework, FrameworkEntry>,
-    pub reverse_dependencies: HashSet<(Framework, Id)>,
-}
+fn create_dependency_graph(spec: DependencyGraphSpec) -> DependencyGraph {
+    let mut graph = DependencyGraph::new();
 
-#[derive(Hash, PartialEq, Eq, Clone, Debug)]
-pub struct Framework {
-    pub id: String,
-}
-
-#[derive(PartialEq, Eq, Debug)]
-pub struct FrameworkEntry {
-    pub dependencies: HashSet<Id>,
-}
-
-impl Id {
-    fn new(name: String) -> Self {
-        Self { name }
-    }
-}
-
-impl Project {
-    pub fn new(name: String) -> Self {
-        Self {
-            id: Id::new(name.clone()),
-            name,
-            frameworks: HashMap::new(),
-            reverse_dependencies: HashSet::new(),
+    for (project, spec) in spec.projects {
+        let project_id = graph.add_project(project);
+        if let Some(frameworks) = spec.frameworks {
+            for (framework, framework_entry) in frameworks {
+                let framework = Framework::new(framework);
+                if let Some(libs) = framework_entry.dependencies {
+                    add_libs(&mut graph, project_id.clone(), framework, libs);
+                }
+            }
         }
-    }
-}
 
-impl Framework {
-    pub fn new(id: String) -> Self {
-        Self { id }
-    }
-}
-
-impl FrameworkEntry {
-    fn new() -> Self {
-        Self {
-            dependencies: HashSet::new(),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct ProjectTree {
-    projects: HashMap<Id, Project>,
-    frameworks: HashSet<Framework>,
-}
-
-impl ProjectTree {
-    pub fn new() -> Self {
-        Self {
-            projects: HashMap::new(),
-            frameworks: HashSet::new(),
+        if let Some(frameworks) = spec.restore.and_then(|x| x.frameworks) {
+            for (framework, framework_entry) in frameworks {
+                let framework = Framework::new(framework);
+                add_projs(
+                    &mut graph,
+                    project_id.clone(),
+                    framework,
+                    framework_entry.project_references,
+                );
+            }
         }
     }
 
-    pub fn link_projects(&mut self, project: &Id, dependency: &Id, framework: &Framework) {
-        let src = self
-            .projects
-            .get_mut(project)
-            .expect("Project is not defined inside the tree");
-        src.frameworks
-            .entry(framework.clone())
-            .or_insert(FrameworkEntry::new())
-            .dependencies
-            .insert(dependency.clone());
+    graph
+}
 
-        let dep = self
-            .projects
-            .get_mut(dependency)
-            .expect("Dependency is not defined inside the tree");
-        dep.reverse_dependencies
-            .insert((framework.clone(), project.clone()));
-
-        self.frameworks.insert(framework.clone());
+fn add_libs(
+    graph: &mut DependencyGraph,
+    project_id: DependencyId,
+    framework: Framework,
+    libs: HashMap<String, LibraryDependency>,
+) {
+    for (dep, info) in libs {
+        let dep_id = graph.add_package(dep, info.version);
+        graph
+            .add_relation(project_id.clone(), dep_id, framework.clone())
+            .expect("Both dependencies should be in the graph");
     }
+}
 
-    pub fn get(&self, project: &Id) -> Option<&Project> {
-        self.projects.get(project)
-    }
-
-    pub fn insert(&mut self, name: String) -> Id {
-        let new_project = Project::new(name);
-        let id = new_project.id.clone();
-
-        self.projects.entry(id.clone()).or_insert(new_project);
-        id
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = (&Id, &Project)> {
-        self.projects.iter()
-    }
-
-    pub fn frameworks_iter(&self) -> impl Iterator<Item = &Framework> {
-        self.frameworks.iter()
+fn add_projs(
+    graph: &mut DependencyGraph,
+    project_id: DependencyId,
+    framework: Framework,
+    projs: HashMap<String, ProjectReference>,
+) {
+    for (dep, _) in projs {
+        let dep_id = graph.add_project(dep);
+        graph
+            .add_relation(project_id.clone(), dep_id, framework.clone())
+            .expect("Both dependencies should be in the graph");
     }
 }
