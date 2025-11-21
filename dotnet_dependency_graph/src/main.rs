@@ -3,7 +3,7 @@ use egui::Context;
 use egui_file_dialog::FileDialog;
 use nuget_dgspec_parser::graph::DependencyGraph;
 use std::path::PathBuf;
-mod graph;
+mod parse;
 
 struct File {
     path: PathBuf,
@@ -56,7 +56,7 @@ impl App for DependencyApp {
         if let Some(path) = self.file_dialog.take_picked() {
             self.current_dgspec_file = Some(File::new(path.to_path_buf()));
 
-            self.graph = graph::load_dgspec_from_file(path.to_path_buf()).ok();
+            self.graph = parse::load_dgspec_from_file(path.to_path_buf()).ok();
             dbg!(&self.graph);
         }
     }
