@@ -3,7 +3,9 @@ use egui::Context;
 use egui_file_dialog::FileDialog;
 use nuget_dgspec_parser::graph::DependencyGraph;
 use std::path::PathBuf;
+mod algo;
 mod parse;
+mod visualize;
 
 struct File {
     path: PathBuf,
@@ -56,8 +58,29 @@ impl App for DependencyApp {
         if let Some(path) = self.file_dialog.take_picked() {
             self.current_dgspec_file = Some(File::new(path.to_path_buf()));
 
-            self.graph = parse::load_dgspec_from_file(path.to_path_buf()).ok();
-            dbg!(&self.graph);
+            let graph = parse::load_dgspec_from_file(path.to_path_buf()).expect("e");
+            dbg!(&graph);
+
+            let toposort = graph.toposort().expect("Now there are no cycles");
+            dbg!("Sorted:");
+            for id in toposort {
+                let lib = graph.get(id).expect("Wrum");
+                dbg!(&lib);
+            }
+
+            self.graph = Some(graph);
+        }
+
+        let mut drag_updates: Vec<(Id, Vec2)> = Vec::new();
+
+        for (id, node) in &self.nodes {
+            let rect = self.draw_node(ui, node, &painter, &transform, self.zoom);
+
+            // Handle node dragging
+            let node_response = ui.interact(rect, ui.id().with(id), Sense::drag());
+            if node_response.dragged() {
+                drag_updates.push((id.clone(), node_response.drag_delta() / self.zoom));
+            }
         }
     }
 }

@@ -787,6 +787,8 @@ dependencies = [
  "egui",
  "egui-file-dialog",
  "nuget_dgspec_parser",
+ "petgraph",
+ "rust-sugiyama",
 ]
 
 [[package]]
@@ -2491,6 +2493,16 @@ name = "renderdoc-sys"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19b30a45b0cd0bcca8037f3d0dc3421eaf95327a17cad11964fb8179b4fc4832"
+
+[[package]]
+name = "rust-sugiyama"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a81a3e22e7b3e9218ae4d1a3640a7e7ad142e120acd03e5e66d231d5861598b1"
+dependencies = [
+ "log",
+ "petgraph",
+]
 
 [[package]]
 name = "rustc-hash"

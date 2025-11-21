@@ -1,4 +1,5 @@
 use petgraph::stable_graph::{NodeIndex, StableDiGraph};
+use petgraph::visit::{EdgeRef, IntoEdgeReferences};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
@@ -112,6 +113,9 @@ impl Default for DependencyGraph {
 #[derive(Debug, Default)]
 pub struct DependencyNotFound;
 
+#[derive(Debug, Default)]
+pub struct DependencyCycle;
+
 impl DependencyGraph {
     pub fn new() -> Self {
         Self::default()
@@ -195,5 +199,20 @@ impl DependencyGraph {
         }
 
         Err(DependencyNotFound)
+    }
+
+    pub fn toposort(&self) -> Result<Vec<&DependencyId>, DependencyCycle> {
+        let sorted = petgraph::algo::toposort(&self.graph, None);
+        sorted
+            .map(|idxs| {
+                idxs.into_iter()
+                    .map(|id| {
+                        self.graph
+                            .node_weight(id)
+                            .expect("Index from toposort should be valid")
+                    })
+                    .collect()
+            })
+            .map_err(|_| DependencyCycle)
     }
 }

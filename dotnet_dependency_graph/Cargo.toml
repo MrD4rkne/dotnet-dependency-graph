@@ -8,3 +8,5 @@ eframe = "0.33.2"
 egui = "0.33.2"
 egui-file-dialog = "0.12.0"
 nuget_dgspec_parser = { path = "../nuget_dgspec_parser" }
+rust-sugiyama = "0.4"
+petgraph = "0.8.3"
