@@ -19,8 +19,7 @@ pub struct GraphWidget<'a> {
     graph: &'a DependencyGraph,
     pan_offset: &'a mut Vec2,
     zoom: &'a mut f32,
-    node_positions: &'a mut HashMap<DependencyId, (f32, f32)>,
-    dragging_node: &'a mut Option<DependencyId>,
+    node_interaction_state: NodeInteractionState<'a>,
     selected_framework: &'a Option<Framework>,
 }
 
@@ -37,8 +36,10 @@ impl<'a> GraphWidget<'a> {
             graph,
             pan_offset,
             zoom,
-            node_positions,
-            dragging_node,
+            node_interaction_state: NodeInteractionState {
+                node_positions,
+                dragging_node,
+            },
             selected_framework,
         }
     }
@@ -47,7 +48,7 @@ impl<'a> GraphWidget<'a> {
         if let Some(framework) = self.selected_framework {
             draw_all_edges(
                 self.graph,
-                self.node_positions,
+                &self.node_interaction_state.node_positions,
                 *self.zoom,
                 *self.pan_offset,
                 painter,
@@ -65,24 +66,31 @@ impl<'a> GraphWidget<'a> {
             graph: self.graph,
         };
 
-        let mut state = NodeInteractionState {
-            dragging_node: self.dragging_node,
-            node_positions: self.node_positions,
-        };
-
-        let positions: Vec<_> = state
+        let positions: Vec<_> = self
+            .node_interaction_state
             .node_positions
             .iter()
             .map(|(id, &pos)| (id.clone(), pos))
             .collect();
 
         for (id, pos) in positions {
-            draw_single_node(&id, pos, &ctx, ui, painter, &mut state);
+            draw_single_node(
+                &id,
+                pos,
+                &ctx,
+                ui,
+                painter,
+                &mut self.node_interaction_state,
+            );
         }
     }
 
     fn handle_interactions(&mut self, response: &Response, ui: &Ui) {
-        handle_panning(response, self.pan_offset, self.dragging_node);
+        handle_panning(
+            response,
+            self.pan_offset,
+            self.node_interaction_state.dragging_node,
+        );
         handle_zoom(response, ui, self.zoom);
     }
 }
