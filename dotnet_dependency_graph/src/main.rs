@@ -66,6 +66,23 @@ impl App for DependencyApp {
                     }
                 });
             });
+
+            if let Some(file) = &mut self.current_dgspec_file {
+                ui.horizontal(|ui| {
+                    ui.label("Framework:");
+                    for fw in file.graph.iter_frameworks() {
+                        if ui
+                            .selectable_label(
+                                file.selected_framework.as_ref() == Some(fw),
+                                fw.get_name(),
+                            )
+                            .clicked()
+                        {
+                            file.selected_framework = Some(fw.clone())
+                        }
+                    }
+                });
+            }
         });
 
         self.file_dialog.update(ctx);
@@ -81,24 +98,6 @@ impl App for DependencyApp {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             if let Some(file) = &mut self.current_dgspec_file {
-                // Framework selector at top
-                egui::TopBottomPanel::top("framework_selector").show(ctx, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label("Framework:");
-                        for fw in file.graph.iter_frameworks() {
-                            if ui
-                                .selectable_label(
-                                    file.selected_framework.as_ref() == Some(fw),
-                                    fw.get_name(),
-                                )
-                                .clicked()
-                            {
-                                file.selected_framework = Some(fw.clone())
-                            }
-                        }
-                    });
-                });
-
                 ui.label(format!(
                     "File: {}",
                     file.path.file_name().unwrap_or_default().to_string_lossy()
