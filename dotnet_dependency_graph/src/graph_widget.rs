@@ -1,4 +1,3 @@
-use eframe::Frame;
 use egui::{Color32, Painter, Pos2, Rect, Response, Sense, Stroke, Ui, Vec2, Widget};
 use nuget_dgspec_parser::graph::{DependencyGraph, DependencyId, Framework};
 use std::collections::HashMap;
