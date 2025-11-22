@@ -1,7 +1,8 @@
 use eframe::{App, run_native};
 use egui::Context;
 use egui_file_dialog::FileDialog;
-use nuget_dgspec_parser::graph::DependencyGraph;
+use nuget_dgspec_parser::graph::{DependencyGraph, DependencyId};
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 mod graph_widget;
@@ -27,6 +28,8 @@ struct DependencyApp {
     layouts: Option<LayoutData>,
     pan_offset: egui::Vec2,
     zoom: f32,
+    node_positions: Option<HashMap<DependencyId, (f64, f64)>>,
+    dragging_node: Option<DependencyId>,
 }
 
 impl DependencyApp {
@@ -38,6 +41,8 @@ impl DependencyApp {
             layouts: None,
             pan_offset: egui::Vec2::ZERO,
             zoom: 1.0,
+            node_positions: None,
+            dragging_node: None,
         }
     }
 }
@@ -90,6 +95,8 @@ impl App for DependencyApp {
                     layouts,
                     &mut self.pan_offset,
                     &mut self.zoom,
+                    &mut self.node_positions,
+                    &mut self.dragging_node,
                 ));
 
                 // Show controls
@@ -98,7 +105,9 @@ impl App for DependencyApp {
                         "Zoom: {:.1}x | Pan: ({:.0}, {:.0})",
                         self.zoom, self.pan_offset.x, self.pan_offset.y
                     ));
-                    ui.label("Mouse wheel to zoom | Drag background to pan");
+                    ui.label(
+                        "Mouse wheel to zoom | Drag background to pan | Drag nodes to move them",
+                    );
                 });
             }
         });
