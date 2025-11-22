@@ -49,7 +49,7 @@ impl<'a> GraphWidget<'a> {
                         .get(id)
                         .expect("Dep from layout should be in the graph"),
                 );
-                visualize::draw_node(ui, text, screen_pos, painter, *self.zoom);
+                visualize::draw_node(ui, &text, screen_pos, painter, *self.zoom);
             }
         }
     }
@@ -82,7 +82,7 @@ impl<'a> Widget for GraphWidget<'a> {
     }
 }
 
-fn get_node_text(dep: &nuget_dgspec_parser::graph::DependencyInfo) -> &str {
+fn get_node_text(dep: &nuget_dgspec_parser::graph::DependencyInfo) -> String {
     use nuget_dgspec_parser::graph::DependencyInfo;
 
     match dep {
@@ -91,10 +91,12 @@ fn get_node_text(dep: &nuget_dgspec_parser::graph::DependencyInfo) -> &str {
             if let Some(file_name) = std::path::Path::new(&proj.path).file_stem()
                 && let Some(name_str) = file_name.to_str()
             {
-                return name_str;
+                return name_str.to_string();
             }
-            &proj.path
+            proj.path.clone()
         }
-        DependencyInfo::Package(pck) => &pck.name,
+        DependencyInfo::Package(pck) => {
+            format!("{}@{}", pck.name, pck.version.clone().unwrap_or_default())
+        }
     }
 }

@@ -85,7 +85,7 @@ pub fn draw_node(
 
     // Show tooltip on hover with full name if truncated
     if text_truncated {
-        let response = ui.interact(rect, ui.id().with("tooltip"), Sense::hover());
+        let response = ui.interact(rect, ui.id().with(text).with("tooltip"), Sense::hover());
         response.on_hover_text(text);
     }
 
