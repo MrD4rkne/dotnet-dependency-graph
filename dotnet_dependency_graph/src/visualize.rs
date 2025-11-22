@@ -1,5 +1,4 @@
-use eframe::{App, CreationContext, run_native};
-use egui::{Color32, Context, FontId, Pos2, Rect, Sense, Stroke, Vec2};
+use egui::{Color32, FontId, Pos2, Rect, Sense, Stroke, Vec2};
 
 fn draw_node(
     ui: &mut egui::Ui,
