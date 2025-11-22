@@ -1,9 +1,9 @@
 use eframe::{App, run_native};
-use egui::Context;
+use egui::{Context, Painter, Pos2, Sense, Ui};
 use egui_file_dialog::FileDialog;
-use nuget_dgspec_parser::graph::DependencyGraph;
+use nuget_dgspec_parser::graph::{DependencyGraph, DependencyId, DependencyInfo};
+use std::collections::HashMap;
 use std::path::PathBuf;
-mod algo;
 mod parse;
 mod visualize;
 
@@ -21,6 +21,7 @@ struct DependencyApp {
     file_dialog: FileDialog,
     current_dgspec_file: Option<File>,
     graph: Option<DependencyGraph>,
+    pos: Option<Vec<(HashMap<DependencyId, (f64, f64)>, f64, f64)>>,
 }
 
 impl DependencyApp {
@@ -29,6 +30,7 @@ impl DependencyApp {
             file_dialog: FileDialog::new(),
             current_dgspec_file: None,
             graph: None,
+            pos: None,
         }
     }
 }
@@ -61,28 +63,51 @@ impl App for DependencyApp {
             let graph = parse::load_dgspec_from_file(path.to_path_buf()).expect("e");
             dbg!(&graph);
 
-            let toposort = graph.toposort().expect("Now there are no cycles");
-            dbg!("Sorted:");
-            for id in toposort {
-                let lib = graph.get(id).expect("Wrum");
-                dbg!(&lib);
-            }
-
+            self.pos = Some(calculate_layout(&graph));
             self.graph = Some(graph);
         }
 
-        let mut drag_updates: Vec<(Id, Vec2)> = Vec::new();
-
-        for (id, node) in &self.nodes {
-            let rect = self.draw_node(ui, node, &painter, &transform, self.zoom);
-
-            // Handle node dragging
-            let node_response = ui.interact(rect, ui.id().with(id), Sense::drag());
-            if node_response.dragged() {
-                drag_updates.push((id.clone(), node_response.drag_delta() / self.zoom));
+        egui::CentralPanel::default().show(ctx, |ui| {
+            let (response, mut painter) =
+                ui.allocate_painter(ui.available_size(), Sense::click_and_drag());
+            if let Some(graph) = &self.graph
+                && let Some(layouts) = &self.pos
+            {
+                draw_graph(&graph, &layouts, ui, &mut painter);
             }
+        });
+    }
+}
+
+fn draw_graph(
+    graph: &DependencyGraph,
+    layouts: &Vec<(HashMap<DependencyId, (f64, f64)>, f64, f64)>,
+    ui: &mut Ui,
+    painter: &mut Painter,
+) {
+    for (layout, zoom, size) in layouts {
+        for (id, (x, y)) in layout {
+            // TODO: handle cast?
+            let pos = Pos2::new(*x as f32, *y as f32);
+            let text = get_displayed_text(
+                graph
+                    .get(&id)
+                    .expect("Dep from layout should be in the graph"),
+            );
+            let rect = visualize::draw_node(ui, text, pos, &painter, *zoom as f32);
         }
     }
+}
+
+fn get_displayed_text(dep: &DependencyInfo) -> &str {
+    match dep {
+        DependencyInfo::Project(proj) => &proj.path,
+        DependencyInfo::Package(pck) => &pck.name,
+    }
+}
+
+fn calculate_layout(graph: &DependencyGraph) -> Vec<(HashMap<DependencyId, (f64, f64)>, f64, f64)> {
+    graph.layout(&visualize::calculate_size)
 }
 
 fn main() -> Result<(), eframe::Error> {

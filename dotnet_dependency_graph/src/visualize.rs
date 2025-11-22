@@ -1,15 +1,18 @@
 use egui::{Color32, FontId, Pos2, Rect, Sense, Stroke, Vec2};
+use nuget_dgspec_parser::graph::{DependencyId, DependencyInfo};
 
-fn draw_node(
+pub fn calculate_size(_: &DependencyId, _: &DependencyInfo) -> (f64, f64) {
+    // TODO: fill placeholder
+    (60.0f64, 24.0f64)
+}
+
+pub fn draw_node(
     ui: &mut egui::Ui,
     text: &str,
     position: Pos2,
     painter: &egui::Painter,
-    transform: impl Fn(Pos2) -> Pos2,
     zoom: f32,
 ) -> Rect {
-    let pos = transform(position);
-
     // Scale width and height with zoom
     let base_width = 200.0;
     let base_height = 60.0;
@@ -17,7 +20,7 @@ fn draw_node(
     let height = base_height * zoom;
     let max_text_width = width - 16.0 * zoom; // Scale padding too
 
-    let rect = Rect::from_center_size(pos, Vec2::new(width, height));
+    let rect = Rect::from_center_size(position, Vec2::new(width, height));
 
     // Draw rectangle background
     painter.rect_filled(rect, 4.0 * zoom, Color32::from_rgb(70, 130, 180));

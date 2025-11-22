@@ -12,18 +12,20 @@ use rust_sugiyama::from_graph;
 ///
 /// This uses a simple constant vertex size; you can provide a closure to compute node sizes
 /// from node data if you need label-aware sizing.
-pub fn layout_sugiyama<V, E>(
+pub fn layout_sugiyama<V: std::cmp::Eq + std::hash::Hash + Clone, E>(
     g: &StableDiGraph<V, E>,
-) -> Vec<(HashMap<NodeIndex, (f64, f64)>, f64, f64)> {
-    let vertex_size = |_idx: NodeIndex, _v: &V| -> (f64, f64) { (60.0f64, 24.0f64) };
+    vertex_size: &impl Fn(NodeIndex, &V) -> (f64, f64),
+) -> Vec<(HashMap<V, (f64, f64)>, f64, f64)> {
     let layouts = from_graph(g, &vertex_size, &Config::default());
-
     layouts
         .into_iter()
         .map(|(vec_layout, width, height)| {
             let mut map = HashMap::with_capacity(vec_layout.len());
             for (idx, (x, y)) in vec_layout {
-                map.insert(idx, (x, y));
+                let weight = g
+                    .node_weight(idx)
+                    .expect("All nodes from calculated layout should be in original graph.");
+                map.insert(weight.clone(), (x, y));
             }
             (map, width, height)
         })

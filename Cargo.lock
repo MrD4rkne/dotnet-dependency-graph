@@ -787,8 +787,6 @@ dependencies = [
  "egui",
  "egui-file-dialog",
  "nuget_dgspec_parser",
- "petgraph",
- "rust-sugiyama",
 ]
 
 [[package]]
@@ -1840,6 +1838,7 @@ name = "nuget_dgspec_parser"
 version = "0.1.0"
 dependencies = [
  "petgraph",
+ "rust-sugiyama",
  "serde",
  "serde_json",
 ]

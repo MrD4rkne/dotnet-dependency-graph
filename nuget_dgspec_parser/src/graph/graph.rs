@@ -1,5 +1,4 @@
 use petgraph::stable_graph::{NodeIndex, StableDiGraph};
-use petgraph::visit::{EdgeRef, IntoEdgeReferences};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
@@ -201,18 +200,14 @@ impl DependencyGraph {
         Err(DependencyNotFound)
     }
 
-    pub fn toposort(&self) -> Result<Vec<&DependencyId>, DependencyCycle> {
-        let sorted = petgraph::algo::toposort(&self.graph, None);
-        sorted
-            .map(|idxs| {
-                idxs.into_iter()
-                    .map(|id| {
-                        self.graph
-                            .node_weight(id)
-                            .expect("Index from toposort should be valid")
-                    })
-                    .collect()
-            })
-            .map_err(|_| DependencyCycle)
+    pub fn layout(
+        &self,
+        vertex_size: &impl Fn(&DependencyId, &DependencyInfo) -> (f64, f64),
+    ) -> Vec<(HashMap<DependencyId, (f64, f64)>, f64, f64)> {
+        let vertex_size = |_: NodeIndex, id: &DependencyId| -> (f64, f64) {
+            let dep = self.get(id).expect("Node from graph should be in info");
+            vertex_size(id, dep)
+        };
+        super::algo::layout_sugiyama(&self.graph, &vertex_size)
     }
 }
