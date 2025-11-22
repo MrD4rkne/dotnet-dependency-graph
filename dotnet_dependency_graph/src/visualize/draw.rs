@@ -108,9 +108,13 @@ pub fn join_layouts(layouts: Vec<Layout<DependencyId>>) -> HashMap<DependencyId,
         offset_x = max_x + constants::LAYOUT_SPACING;
     }
 
-    // TODO: handle f64->f32
+    // In this context, layout coordinates are expected to be within reasonable bounds for UI rendering.
     result
         .into_iter()
-        .map(|(key, (x, y))| (key, (x as f32, y as f32)))
+        .map(|(key, (x, y))| {
+            let x_clamped = x.clamp(f32::MIN as f64, f32::MAX as f64) as f32;
+            let y_clamped = y.clamp(f32::MIN as f64, f32::MAX as f64) as f32;
+            (key, (x_clamped, y_clamped))
+        })
         .collect()
 }
