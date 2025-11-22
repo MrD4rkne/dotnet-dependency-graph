@@ -1,7 +1,7 @@
 use eframe::{App, run_native};
 use egui::Context;
 use egui_file_dialog::FileDialog;
-use nuget_dgspec_parser::graph::{DependencyGraph, DependencyId, Layout};
+use nuget_dgspec_parser::graph::{DependencyGraph, DependencyId, Framework, Layout};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -15,6 +15,7 @@ struct File {
     path: PathBuf,
     graph: DependencyGraph,
     node_positions: HashMap<DependencyId, (f32, f32)>,
+    selected_framework: Option<Framework>,
 }
 
 impl File {
@@ -27,6 +28,7 @@ impl File {
             path,
             graph,
             node_positions,
+            selected_framework: None,
         }
     }
 }
@@ -79,6 +81,24 @@ impl App for DependencyApp {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             if let Some(file) = &mut self.current_dgspec_file {
+                // Framework selector at top
+                egui::TopBottomPanel::top("framework_selector").show(ctx, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label("Framework:");
+                        for fw in file.graph.iter_frameworks() {
+                            if ui
+                                .selectable_label(
+                                    file.selected_framework.as_ref() == Some(fw),
+                                    fw.get_name(),
+                                )
+                                .clicked()
+                            {
+                                file.selected_framework = Some(fw.clone())
+                            }
+                        }
+                    });
+                });
+
                 ui.label(format!(
                     "File: {}",
                     file.path.file_name().unwrap_or_default().to_string_lossy()
@@ -90,6 +110,7 @@ impl App for DependencyApp {
                     &mut self.zoom,
                     &mut file.node_positions,
                     &mut self.dragging_node,
+                    &file.selected_framework,
                 ));
 
                 // Show controls

@@ -151,7 +151,7 @@ impl DependencyGraph {
     /// Get direct dependencies of the dependency.
     ///
     /// **Panics** if dependency with the provided id was not from this graph.
-    pub fn get_direct_dependencies(&self, id: &DependencyId) -> impl Iterator<Item = &DepEdge> {
+    fn get_direct_dependencies(&self, id: &DependencyId) -> impl Iterator<Item = &DepEdge> {
         if let Some(index) = self.ix_by_id.get(id) {
             self.graph
                 .edges_directed(*index, petgraph::Direction::Outgoing)
@@ -159,6 +159,15 @@ impl DependencyGraph {
         } else {
             panic!("The dependency is not available in the graph");
         }
+    }
+
+    pub fn get_direct_dependencies_in_framework(
+        &self,
+        id: &DependencyId,
+        framework: Framework,
+    ) -> impl Iterator<Item = &DepEdge> {
+        self.get_direct_dependencies(id)
+            .filter(move |edge| *edge.get_framework() == framework)
     }
 
     /// Get direct reverse dependencies of the dependency.
@@ -198,6 +207,10 @@ impl DependencyGraph {
         }
 
         Err(DependencyNotFound)
+    }
+
+    pub fn iter_frameworks(&self) -> impl Iterator<Item = &Framework> {
+        self.frameworks.iter()
     }
 
     pub fn layout(

@@ -1,5 +1,6 @@
+use eframe::Frame;
 use egui::{Color32, Painter, Pos2, Rect, Response, Sense, Stroke, Ui, Vec2, Widget};
-use nuget_dgspec_parser::graph::{DependencyGraph, DependencyId};
+use nuget_dgspec_parser::graph::{DependencyGraph, DependencyId, Framework};
 use std::collections::HashMap;
 
 use crate::visualize;
@@ -10,6 +11,7 @@ pub struct GraphWidget<'a> {
     zoom: &'a mut f32,
     node_positions: &'a mut HashMap<DependencyId, (f32, f32)>,
     dragging_node: &'a mut Option<DependencyId>,
+    selected_framework: &'a Option<Framework>,
 }
 
 impl<'a> GraphWidget<'a> {
@@ -19,6 +21,7 @@ impl<'a> GraphWidget<'a> {
         zoom: &'a mut f32,
         node_positions: &'a mut HashMap<DependencyId, (f32, f32)>,
         dragging_node: &'a mut Option<DependencyId>,
+        selected_framework: &'a Option<Framework>,
     ) -> Self {
         Self {
             graph,
@@ -26,6 +29,7 @@ impl<'a> GraphWidget<'a> {
             zoom,
             node_positions,
             dragging_node,
+            selected_framework,
         }
     }
 
@@ -34,9 +38,15 @@ impl<'a> GraphWidget<'a> {
         self.node_positions
     }
 
-    fn draw_edges(&self, painter: &Painter, response: &Response) {
-        let positions = self.get_positions();
+    fn try_draw_edges(&self, painter: &Painter, response: &Response) {
+        match self.selected_framework {
+            Some(framework) => self.draw_edges(painter, response, framework),
+            None => (),
+        }
+    }
 
+    fn draw_edges(&self, painter: &Painter, response: &Response, framework: &Framework) {
+        let positions = self.get_positions();
         let transform = |pos: Pos2| -> Pos2 {
             let centered = pos.to_vec2() * *self.zoom + *self.pan_offset;
             response.rect.min + centered
@@ -49,7 +59,10 @@ impl<'a> GraphWidget<'a> {
                 let src_screen = transform(src_pos);
 
                 // Get all dependencies of this node
-                for edge in self.graph.get_direct_dependencies(src_id) {
+                for edge in self
+                    .graph
+                    .get_direct_dependencies_in_framework(src_id, framework.clone())
+                {
                     let dst_id = edge.get_id();
                     if let Some((dst_x, dst_y)) = positions.get(dst_id) {
                         let dst_pos = Pos2::new(*dst_x, *dst_y);
@@ -133,7 +146,7 @@ impl<'a> Widget for GraphWidget<'a> {
         self.handle_interactions(&response, ui);
 
         // Draw edges first (behind nodes)
-        self.draw_edges(&painter, &response);
+        self.try_draw_edges(&painter, &response);
 
         // Draw nodes on top
         self.draw_nodes(ui, &painter, &response);
