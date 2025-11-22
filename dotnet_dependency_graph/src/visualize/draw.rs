@@ -2,8 +2,8 @@ use egui::{FontId, Pos2, Rect, Sense, Stroke, Vec2};
 use nuget_dgspec_parser::graph::{DependencyId, DependencyInfo, Layout};
 use std::collections::HashMap;
 
+use super::Zoomed;
 use super::constants;
-use super::zoomed::Zoomed;
 
 pub fn calculate_size(_id: &DependencyId, dep: &DependencyInfo) -> (f64, f64) {
     let text = match dep {
