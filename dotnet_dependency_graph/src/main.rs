@@ -37,6 +37,7 @@ struct DependencyApp {
     pan_offset: egui::Vec2,
     zoom: f32,
     dragging_node: Option<DependencyId>,
+    error_text: Option<String>,
 }
 
 impl DependencyApp {
@@ -47,6 +48,7 @@ impl DependencyApp {
             pan_offset: egui::Vec2::ZERO,
             zoom: 1.0,
             dragging_node: None,
+            error_text: None,
         }
     }
 }
@@ -70,12 +72,7 @@ impl App for DependencyApp {
             match new_file {
                 Ok(loaded_file) => self.current_dgspec_file = Some(loaded_file),
                 Err(e) => {
-                    egui::Window::new("Error").show(ctx, |ui| {
-                        ui.label(format!("Failed to load file: {}", e));
-                        if ui.button("OK").clicked() {
-                            // Close the popup (handled by egui)
-                        }
-                    });
+                    self.error_text = Some(format!("Failed to load dgspec file: {}", e));
                 }
             }
         }
@@ -109,6 +106,16 @@ impl App for DependencyApp {
                 ui.label("Choose a .dgspec file to visualize dependencies.");
             }
         });
+
+        if let Some(error_message) = self.error_text.clone() {
+            egui::Window::new("Error").show(ctx, |ui| {
+                ui.label(&error_message);
+
+                if ui.button("Ok").clicked() {
+                    self.error_text = None;
+                }
+            });
+        }
     }
 }
 
