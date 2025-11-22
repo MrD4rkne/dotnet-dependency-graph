@@ -284,6 +284,167 @@ fn test_relations_with_different_frameworks() {
 }
 
 #[test]
+fn test_edge_from_and_to_are_correct() {
+    let mut graph = DependencyGraph::new();
+
+    let proj1 = graph.add_project("/path/to/proj1.csproj".to_string());
+    let proj2 = graph.add_project("/path/to/proj2.csproj".to_string());
+
+    let framework = Framework::new("net8.0".to_string());
+
+    graph
+        .add_relation(proj1.clone(), proj2.clone(), framework.clone())
+        .unwrap();
+
+    // Get the edge from proj1 to proj2
+    let deps: Vec<_> = graph
+        .get_direct_dependencies_in_framework(&proj1, framework)
+        .collect();
+
+    assert_eq!(deps.len(), 1);
+    let edge = deps[0];
+
+    // Verify from and to are correct
+    assert_eq!(edge.get_from(), &proj1);
+    assert_eq!(edge.get_to(), &proj2);
+    assert_eq!(edge.get_id(), &proj2); // get_id() returns the target (to)
+}
+
+#[test]
+fn test_edge_from_to_with_project_and_package() {
+    let mut graph = DependencyGraph::new();
+
+    let proj = graph.add_project("/path/to/proj.csproj".to_string());
+    let pkg = graph.add_package("Newtonsoft.Json".to_string(), Some("13.0.1".to_string()));
+
+    let framework = Framework::new("net8.0".to_string());
+
+    graph
+        .add_relation(proj.clone(), pkg.clone(), framework.clone())
+        .unwrap();
+
+    let deps: Vec<_> = graph
+        .get_direct_dependencies_in_framework(&proj, framework)
+        .collect();
+
+    assert_eq!(deps.len(), 1);
+    let edge = deps[0];
+
+    // Verify the edge correctly represents proj -> pkg
+    assert_eq!(edge.get_from(), &proj);
+    assert_eq!(edge.get_to(), &pkg);
+}
+
+#[test]
+fn test_multiple_edges_from_same_source() {
+    let mut graph = DependencyGraph::new();
+
+    let proj = graph.add_project("/path/to/proj.csproj".to_string());
+    let pkg1 = graph.add_package("Package1".to_string(), None);
+    let pkg2 = graph.add_package("Package2".to_string(), None);
+    let pkg3 = graph.add_package("Package3".to_string(), None);
+
+    let framework = Framework::new("net8.0".to_string());
+
+    graph
+        .add_relation(proj.clone(), pkg1.clone(), framework.clone())
+        .unwrap();
+    graph
+        .add_relation(proj.clone(), pkg2.clone(), framework.clone())
+        .unwrap();
+    graph
+        .add_relation(proj.clone(), pkg3.clone(), framework.clone())
+        .unwrap();
+
+    let deps: Vec<_> = graph
+        .get_direct_dependencies_in_framework(&proj, framework)
+        .collect();
+
+    assert_eq!(deps.len(), 3);
+
+    // All edges should have the same source (from)
+    for edge in &deps {
+        assert_eq!(edge.get_from(), &proj);
+    }
+
+    // Collect all target IDs
+    let target_ids: Vec<&DependencyId> = deps.iter().map(|e| e.get_to()).collect();
+    assert!(target_ids.contains(&&pkg1));
+    assert!(target_ids.contains(&&pkg2));
+    assert!(target_ids.contains(&&pkg3));
+}
+
+#[test]
+fn test_reverse_dependencies_edge_from_to() {
+    let mut graph = DependencyGraph::new();
+
+    let proj1 = graph.add_project("/path/to/proj1.csproj".to_string());
+    let proj2 = graph.add_project("/path/to/proj2.csproj".to_string());
+    let pkg = graph.add_package("SharedPackage".to_string(), None);
+
+    let framework = Framework::new("net8.0".to_string());
+
+    // Both projects depend on the package
+    graph
+        .add_relation(proj1.clone(), pkg.clone(), framework.clone())
+        .unwrap();
+    graph
+        .add_relation(proj2.clone(), pkg.clone(), framework.clone())
+        .unwrap();
+
+    // Get reverse dependencies of the package
+    let reverse_deps: Vec<_> = graph.get_direct_reverse_dependencies(&pkg).collect();
+
+    assert_eq!(reverse_deps.len(), 2);
+
+    // For reverse dependencies (incoming edges), the edges still have:
+    // - from: the source that depends on pkg (proj1 or proj2)
+    // - to: pkg
+    for edge in &reverse_deps {
+        assert_eq!(edge.get_to(), &pkg);
+    }
+
+    let source_ids: Vec<&DependencyId> = reverse_deps.iter().map(|e| e.get_from()).collect();
+    assert!(source_ids.contains(&&proj1));
+    assert!(source_ids.contains(&&proj2));
+}
+
+#[test]
+fn test_chain_of_dependencies_edge_consistency() {
+    let mut graph = DependencyGraph::new();
+
+    let app = graph.add_project("/path/to/app.csproj".to_string());
+    let lib = graph.add_project("/path/to/lib.csproj".to_string());
+    let pkg = graph.add_package("CorePackage".to_string(), Some("1.0.0".to_string()));
+
+    let framework = Framework::new("net8.0".to_string());
+
+    // Create a chain: app -> lib -> pkg
+    graph
+        .add_relation(app.clone(), lib.clone(), framework.clone())
+        .unwrap();
+    graph
+        .add_relation(lib.clone(), pkg.clone(), framework.clone())
+        .unwrap();
+
+    // Check app -> lib edge
+    let app_deps: Vec<_> = graph
+        .get_direct_dependencies_in_framework(&app, framework.clone())
+        .collect();
+    assert_eq!(app_deps.len(), 1);
+    assert_eq!(app_deps[0].get_from(), &app);
+    assert_eq!(app_deps[0].get_to(), &lib);
+
+    // Check lib -> pkg edge
+    let lib_deps: Vec<_> = graph
+        .get_direct_dependencies_in_framework(&lib, framework)
+        .collect();
+    assert_eq!(lib_deps.len(), 1);
+    assert_eq!(lib_deps[0].get_from(), &lib);
+    assert_eq!(lib_deps[0].get_to(), &pkg);
+}
+
+#[test]
 fn test_get_reverse_dependencies() {
     let mut graph = DependencyGraph::new();
 
