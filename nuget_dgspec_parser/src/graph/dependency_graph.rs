@@ -69,20 +69,22 @@ impl Framework {
 
 #[derive(Debug, Clone)]
 pub struct DepEdge {
-    id: DependencyId,
+    from: DependencyId,
+    to: DependencyId,
     target_framework: Framework,
 }
 
 impl DepEdge {
-    fn new(id: DependencyId, target_framework: Framework) -> Self {
+    fn new(from: DependencyId, to: DependencyId, target_framework: Framework) -> Self {
         Self {
-            id,
+            from,
+            to,
             target_framework,
         }
     }
 
     pub fn get_id(&self) -> &DependencyId {
-        &self.id
+        &self.to
     }
 
     pub fn get_framework(&self) -> &Framework {
@@ -200,7 +202,7 @@ impl DependencyGraph {
         {
             _ = self.frameworks.insert(framework.clone());
 
-            let edge = DepEdge::new(to, framework);
+            let edge = DepEdge::new(from, to, framework);
             _ = self.graph.add_edge(*source, *target, edge);
 
             return Ok(());
