@@ -1,5 +1,6 @@
 use egui::{Color32, FontId, Pos2, Rect, Sense, Stroke, Vec2};
-use nuget_dgspec_parser::graph::{DependencyId, DependencyInfo};
+use nuget_dgspec_parser::graph::{DependencyId, DependencyInfo, Layout};
+use std::collections::HashMap;
 
 pub fn calculate_size(_id: &DependencyId, dep: &DependencyInfo) -> (f64, f64) {
     let text = match dep {
@@ -90,4 +91,24 @@ pub fn draw_node(
     }
 
     rect
+}
+
+pub fn join_layouts(layouts: Vec<Layout<DependencyId>>) -> HashMap<DependencyId, (f32, f32)> {
+    let mut result = HashMap::new();
+    let mut offset_x = 0.0;
+    for layout in layouts {
+        let mut max_x: f64 = 0.0;
+        for (id, (x, y)) in layout.positions {
+            let new_x = x + offset_x;
+            result.insert(id, (new_x, y));
+            max_x = max_x.max(new_x);
+        }
+        offset_x = max_x + 50.0; // padding
+    }
+
+    // TODO: handle f64->f32
+    result
+        .into_iter()
+        .map(|(key, (x, y))| (key, (x as f32, y as f32)))
+        .collect()
 }

@@ -203,7 +203,7 @@ impl DependencyGraph {
     pub fn layout(
         &self,
         vertex_size: &impl Fn(&DependencyId, &DependencyInfo) -> (f64, f64),
-    ) -> Vec<(HashMap<DependencyId, (f64, f64)>, f64, f64)> {
+    ) -> Vec<super::algo::Layout<DependencyId>> {
         let vertex_size = |_: NodeIndex, id: &DependencyId| -> (f64, f64) {
             let dep = self.get(id).expect("Node from graph should be in info");
             vertex_size(id, dep)

@@ -1,7 +1,7 @@
 use eframe::{App, run_native};
 use egui::Context;
 use egui_file_dialog::FileDialog;
-use nuget_dgspec_parser::graph::{DependencyGraph, DependencyId};
+use nuget_dgspec_parser::graph::{DependencyGraph, DependencyId, Layout};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -9,26 +9,33 @@ mod graph_widget;
 mod parse;
 mod visualize;
 
-use graph_widget::{GraphWidget, LayoutData};
+use graph_widget::GraphWidget;
 
 struct File {
     path: PathBuf,
+    graph: DependencyGraph,
+    node_positions: HashMap<DependencyId, (f32, f32)>,
 }
 
 impl File {
-    fn new(path: PathBuf) -> Self {
-        Self { path }
+    fn new(
+        path: PathBuf,
+        graph: DependencyGraph,
+        node_positions: HashMap<DependencyId, (f32, f32)>,
+    ) -> Self {
+        Self {
+            path,
+            graph,
+            node_positions,
+        }
     }
 }
 
 struct DependencyApp {
     file_dialog: FileDialog,
     current_dgspec_file: Option<File>,
-    graph: Option<DependencyGraph>,
-    layouts: Option<LayoutData>,
     pan_offset: egui::Vec2,
     zoom: f32,
-    node_positions: Option<HashMap<DependencyId, (f64, f64)>>,
     dragging_node: Option<DependencyId>,
 }
 
@@ -37,11 +44,8 @@ impl DependencyApp {
         Self {
             file_dialog: FileDialog::new(),
             current_dgspec_file: None,
-            graph: None,
-            layouts: None,
             pan_offset: egui::Vec2::ZERO,
             zoom: 1.0,
-            node_positions: None,
             dragging_node: None,
         }
     }
@@ -62,40 +66,32 @@ impl App for DependencyApp {
 
         self.file_dialog.update(ctx);
         if let Some(path) = self.file_dialog.take_picked() {
-            self.current_dgspec_file = Some(File::new(path.to_path_buf()));
-
-            let graph = parse::load_dgspec_from_file(path.to_path_buf())
-                .expect("Failed to load dgspec file");
-
-            let layouts = calculate_layout(&graph);
-            println!(
-                "Loaded dependency graph with {} nodes",
-                graph.iter().count()
-            );
-
-            self.layouts = Some(layouts);
-            self.graph = Some(graph);
+            let new_file = load_file(path);
+            match new_file {
+                Ok(loaded_file) => self.current_dgspec_file = Some(loaded_file),
+                Err(e) => {
+                    egui::Window::new("Error").show(ctx, |ui| {
+                        ui.label(format!("Failed to load file: {}", e));
+                        if ui.button("OK").clicked() {
+                            // Close the popup (handled by egui)
+                        }
+                    });
+                }
+            }
         }
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            if let Some(file) = &self.current_dgspec_file {
+            if let Some(file) = &mut self.current_dgspec_file {
                 ui.label(format!(
                     "File: {}",
                     file.path.file_name().unwrap_or_default().to_string_lossy()
                 ));
-            } else {
-                ui.label("Choose a .dgspec file to visualize dependencies.");
-            }
 
-            if let Some(graph) = &self.graph
-                && let Some(layouts) = &self.layouts
-            {
                 ui.add(GraphWidget::new(
-                    graph,
-                    layouts,
+                    &file.graph,
                     &mut self.pan_offset,
                     &mut self.zoom,
-                    &mut self.node_positions,
+                    &mut file.node_positions,
                     &mut self.dragging_node,
                 ));
 
@@ -109,12 +105,21 @@ impl App for DependencyApp {
                         "Mouse wheel to zoom | Drag background to pan | Drag nodes to move them",
                     );
                 });
+            } else {
+                ui.label("Choose a .dgspec file to visualize dependencies.");
             }
         });
     }
 }
 
-fn calculate_layout(graph: &DependencyGraph) -> LayoutData {
+fn load_file(path: PathBuf) -> std::io::Result<File> {
+    let graph = parse::load_dgspec_from_file(path.to_path_buf())?;
+    let layouts = calculate_layout(&graph);
+    let node_positions = visualize::join_layouts(layouts);
+    Ok(File::new(path, graph, node_positions))
+}
+
+fn calculate_layout(graph: &DependencyGraph) -> Vec<Layout<DependencyId>> {
     graph.layout(&visualize::calculate_size)
 }
 

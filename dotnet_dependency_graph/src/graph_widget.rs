@@ -1,32 +1,27 @@
-use egui::{Color32, Painter, Pos2, Response, Sense, Stroke, Ui, Vec2, Widget};
+use egui::{Color32, Painter, Pos2, Rect, Response, Sense, Stroke, Ui, Vec2, Widget};
 use nuget_dgspec_parser::graph::{DependencyGraph, DependencyId};
 use std::collections::HashMap;
 
 use crate::visualize;
 
-pub type LayoutData = Vec<(HashMap<DependencyId, (f64, f64)>, f64, f64)>;
-
 pub struct GraphWidget<'a> {
     graph: &'a DependencyGraph,
-    layouts: &'a LayoutData,
     pan_offset: &'a mut Vec2,
     zoom: &'a mut f32,
-    node_positions: &'a mut Option<HashMap<DependencyId, (f64, f64)>>,
+    node_positions: &'a mut HashMap<DependencyId, (f32, f32)>,
     dragging_node: &'a mut Option<DependencyId>,
 }
 
 impl<'a> GraphWidget<'a> {
     pub fn new(
         graph: &'a DependencyGraph,
-        layouts: &'a LayoutData,
         pan_offset: &'a mut Vec2,
         zoom: &'a mut f32,
-        node_positions: &'a mut Option<HashMap<DependencyId, (f64, f64)>>,
+        node_positions: &'a mut HashMap<DependencyId, (f32, f32)>,
         dragging_node: &'a mut Option<DependencyId>,
     ) -> Self {
         Self {
             graph,
-            layouts,
             pan_offset,
             zoom,
             node_positions,
@@ -34,15 +29,9 @@ impl<'a> GraphWidget<'a> {
         }
     }
 
-    fn get_positions(&self) -> &HashMap<DependencyId, (f64, f64)> {
-        // Use custom positions if available, otherwise use layout positions
-        if let Some(positions) = self.node_positions.as_ref() {
-            positions
-        } else if let Some((layout, _zoom, _size)) = self.layouts.first() {
-            layout
-        } else {
-            panic!("No layout data available");
-        }
+    /// Get positions of the nodes, as they can be set from layout data or from drag able node_positions.
+    fn get_positions(&self) -> &HashMap<DependencyId, (f32, f32)> {
+        self.node_positions
     }
 
     fn draw_edges(&self, painter: &Painter, response: &Response) {
@@ -55,15 +44,15 @@ impl<'a> GraphWidget<'a> {
 
         // Draw edges (arrows) between dependencies
         for (src_id, _) in self.graph.iter() {
-            if let Some((src_x, src_y)) = positions.get(&src_id) {
-                let src_pos = Pos2::new(*src_x as f32, *src_y as f32);
+            if let Some((src_x, src_y)) = positions.get(src_id) {
+                let src_pos = Pos2::new(*src_x, *src_y);
                 let src_screen = transform(src_pos);
 
                 // Get all dependencies of this node
-                for edge in self.graph.get_direct_dependencies(&src_id) {
+                for edge in self.graph.get_direct_dependencies(src_id) {
                     let dst_id = edge.get_id();
                     if let Some((dst_x, dst_y)) = positions.get(dst_id) {
-                        let dst_pos = Pos2::new(*dst_x as f32, *dst_y as f32);
+                        let dst_pos = Pos2::new(*dst_x, *dst_y);
                         let dst_screen = transform(dst_pos);
 
                         // Draw line
@@ -93,51 +82,30 @@ impl<'a> GraphWidget<'a> {
     }
 
     fn draw_nodes(&mut self, ui: &mut Ui, painter: &Painter, response: &Response) {
-        let positions = self.get_positions().clone();
-
-        let transform = |pos: Pos2| -> Pos2 {
-            let centered = pos.to_vec2() * *self.zoom + *self.pan_offset;
-            response.rect.min + centered
-        };
-
-        for (id, (x, y)) in &positions {
-            let pos = Pos2::new(*x as f32, *y as f32);
-            let screen_pos = transform(pos);
+        let positions: Vec<_> = self
+            .node_positions
+            .iter()
+            .map(|(id, &pos)| (id.clone(), pos))
+            .collect();
+        for (id, (x, y)) in positions {
+            let pos = Pos2::new(x, y);
+            let screen_pos = response.rect.min + pos.to_vec2() * *self.zoom + *self.pan_offset;
 
             let text = get_node_text(
                 self.graph
-                    .get(id)
+                    .get(&id)
                     .expect("Dep from layout should be in the graph"),
             );
             let rect = visualize::draw_node(ui, &text, screen_pos, painter, *self.zoom);
 
-            // Handle node dragging
-            let node_response = ui.interact(rect, ui.id().with(id), Sense::drag());
-
-            if node_response.drag_started() {
-                *self.dragging_node = Some(id.clone());
-            }
-
-            if node_response.dragged() && self.dragging_node.as_ref() == Some(id) {
-                let delta = node_response.drag_delta() / *self.zoom;
-
-                // Initialize custom positions if not already done
-                if self.node_positions.is_none() {
-                    *self.node_positions = Some(positions.clone());
-                }
-
-                // Update position
-                if let Some(positions) = self.node_positions.as_mut() {
-                    if let Some((x, y)) = positions.get_mut(id) {
-                        *x += delta.x as f64;
-                        *y += delta.y as f64;
-                    }
-                }
-            }
-
-            if node_response.drag_stopped() {
-                *self.dragging_node = None;
-            }
+            handle_dragging(
+                &id,
+                rect,
+                ui,
+                self.dragging_node,
+                self.node_positions,
+                *self.zoom,
+            );
         }
     }
 
@@ -190,5 +158,31 @@ fn get_node_text(dep: &nuget_dgspec_parser::graph::DependencyInfo) -> String {
         DependencyInfo::Package(pck) => {
             format!("{}@{}", pck.name, pck.version.clone().unwrap_or_default())
         }
+    }
+}
+
+fn handle_dragging(
+    id: &DependencyId,
+    rect: Rect,
+    ui: &mut Ui,
+    dragged_node: &mut Option<DependencyId>,
+    node_positions: &mut HashMap<DependencyId, (f32, f32)>,
+    zoom: f32,
+) {
+    let node_response = ui.interact(rect, ui.id().with(id), Sense::drag());
+    if node_response.drag_started() {
+        *dragged_node = Some(id.clone());
+    }
+
+    if node_response.dragged() && dragged_node.as_ref() == Some(id) {
+        let delta = node_response.drag_delta() / zoom;
+        if let Some((x, y)) = node_positions.get_mut(id) {
+            *x += delta.x;
+            *y += delta.y;
+        }
+    }
+
+    if node_response.drag_stopped() {
+        *dragged_node = None;
     }
 }
