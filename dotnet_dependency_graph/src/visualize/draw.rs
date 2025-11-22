@@ -43,36 +43,36 @@ pub fn draw_node(
 
     let max_text_width = width - padding;
 
-    let rect = Rect::from_center_size(position, Vec2::new(width.to_f32(), height.to_f32()));
+    let rect = Rect::from_center_size(position, Vec2::new(width.to_value(), height.to_value()));
 
     // Draw rectangle background
     painter.rect_filled(
         rect,
-        corner_radius.to_f32(),
+        corner_radius.to_value(),
         constants::NODE_BACKGROUND_COLOR,
     );
 
     // Draw rectangle border
     painter.rect_stroke(
         rect,
-        corner_radius.to_f32(),
-        Stroke::new(border_width.to_f32(), constants::NODE_BORDER_COLOR),
+        corner_radius.to_value(),
+        Stroke::new(border_width.to_value(), constants::NODE_BORDER_COLOR),
         egui::epaint::StrokeKind::Middle,
     );
 
     // Draw text with truncation - scale font with zoom
-    let font = FontId::proportional(font_size.to_f32());
+    let font = FontId::proportional(font_size.to_value());
     let full_galley = painter.layout_no_wrap(text.to_string(), font.clone(), constants::TEXT_COLOR);
 
     // Check if text needs truncation
-    let (display_text, text_truncated) = if full_galley.size().x > max_text_width.to_f32() {
+    let (display_text, text_truncated) = if full_galley.size().x > max_text_width.to_value() {
         // Truncate and add ellipsis
         let mut truncated = text.to_string();
         while !truncated.is_empty() {
             let test_text = format!("{}...", truncated);
             let test_galley =
                 painter.layout_no_wrap(test_text.clone(), font.clone(), constants::TEXT_COLOR);
-            if test_galley.size().x <= max_text_width.to_f32() {
+            if test_galley.size().x <= max_text_width.to_value() {
                 break;
             }
             truncated.pop();
