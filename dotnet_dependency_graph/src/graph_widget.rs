@@ -4,6 +4,17 @@ use std::collections::HashMap;
 
 use crate::visualize;
 
+// Constants
+const EDGE_STROKE_WIDTH: f32 = 2.0;
+const EDGE_COLOR: Color32 = Color32::from_rgb(100, 100, 100);
+const ARROW_SIZE: f32 = 10.0;
+const ARROW_TIP_OFFSET: f32 = 30.0;
+const ARROW_HEAD_WIDTH_FACTOR: f32 = 0.5;
+const ZOOM_MIN: f32 = 0.1;
+const ZOOM_MAX: f32 = 3.0;
+const ZOOM_SENSITIVITY: f32 = 0.001;
+const SCROLL_THRESHOLD: f32 = 0.1;
+
 pub struct GraphWidget<'a> {
     graph: &'a DependencyGraph,
     pan_offset: &'a mut Vec2,
@@ -38,9 +49,8 @@ impl<'a> GraphWidget<'a> {
     }
 
     fn try_draw_edges(&self, painter: &Painter, response: &Response) {
-        match self.selected_framework {
-            Some(framework) => self.draw_edges(painter, response, framework),
-            None => (),
+        if let Some(framework) = self.selected_framework {
+            self.draw_edges(painter, response, framework);
         }
     }
 
@@ -70,22 +80,29 @@ impl<'a> GraphWidget<'a> {
                         // Draw line
                         painter.line_segment(
                             [src_screen, dst_screen],
-                            Stroke::new(2.0, Color32::from_rgb(100, 100, 100)),
+                            Stroke::new(EDGE_STROKE_WIDTH, EDGE_COLOR),
                         );
 
                         // Draw arrow head
                         let dir = (dst_screen - src_screen).normalized();
-                        let arrow_size = 10.0;
                         let perp = Vec2::new(-dir.y, dir.x);
-                        let tip = dst_screen - dir * 30.0; // Offset from node edge
+                        let tip = dst_screen - dir * ARROW_TIP_OFFSET; // Offset from node edge
 
                         painter.line_segment(
-                            [tip, tip - dir * arrow_size + perp * arrow_size * 0.5],
-                            Stroke::new(2.0, Color32::from_rgb(100, 100, 100)),
+                            [
+                                tip,
+                                tip - dir * ARROW_SIZE
+                                    + perp * ARROW_SIZE * ARROW_HEAD_WIDTH_FACTOR,
+                            ],
+                            Stroke::new(EDGE_STROKE_WIDTH, EDGE_COLOR),
                         );
                         painter.line_segment(
-                            [tip, tip - dir * arrow_size - perp * arrow_size * 0.5],
-                            Stroke::new(2.0, Color32::from_rgb(100, 100, 100)),
+                            [
+                                tip,
+                                tip - dir * ARROW_SIZE
+                                    - perp * ARROW_SIZE * ARROW_HEAD_WIDTH_FACTOR,
+                            ],
+                            Stroke::new(EDGE_STROKE_WIDTH, EDGE_COLOR),
                         );
                     }
                 }
@@ -130,9 +147,9 @@ impl<'a> GraphWidget<'a> {
         // Handle zoom with mouse wheel
         if response.hovered() {
             let scroll = ui.input(|i| i.smooth_scroll_delta.y);
-            if scroll.abs() > 0.1 {
-                *self.zoom *= 1.0 + scroll * 0.001;
-                *self.zoom = self.zoom.clamp(0.1, 3.0);
+            if scroll.abs() > SCROLL_THRESHOLD {
+                *self.zoom *= 1.0 + scroll * ZOOM_SENSITIVITY;
+                *self.zoom = self.zoom.clamp(ZOOM_MIN, ZOOM_MAX);
             }
         }
     }
