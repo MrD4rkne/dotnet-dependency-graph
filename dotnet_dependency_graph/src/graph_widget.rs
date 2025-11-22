@@ -43,115 +43,47 @@ impl<'a> GraphWidget<'a> {
         }
     }
 
-    /// Get positions of the nodes, as they can be set from layout data or from drag able node_positions.
-    fn get_positions(&self) -> &HashMap<DependencyId, (f32, f32)> {
-        self.node_positions
-    }
-
     fn try_draw_edges(&self, painter: &Painter, response: &Response) {
         if let Some(framework) = self.selected_framework {
-            self.draw_edges(painter, response, framework);
-        }
-    }
-
-    fn draw_edges(&self, painter: &Painter, response: &Response, framework: &Framework) {
-        let positions = self.get_positions();
-        let transform = |pos: Pos2| -> Pos2 {
-            let centered = pos.to_vec2() * *self.zoom + *self.pan_offset;
-            response.rect.min + centered
-        };
-
-        // Draw edges (arrows) between dependencies
-        for (src_id, _) in self.graph.iter() {
-            if let Some((src_x, src_y)) = positions.get(src_id) {
-                let src_pos = Pos2::new(*src_x, *src_y);
-                let src_screen = transform(src_pos);
-
-                // Get all dependencies of this node
-                for edge in self
-                    .graph
-                    .get_direct_dependencies_in_framework(src_id, framework.clone())
-                {
-                    let dst_id = edge.get_id();
-                    if let Some((dst_x, dst_y)) = positions.get(dst_id) {
-                        let dst_pos = Pos2::new(*dst_x, *dst_y);
-                        let dst_screen = transform(dst_pos);
-
-                        // Draw line
-                        painter.line_segment(
-                            [src_screen, dst_screen],
-                            Stroke::new(EDGE_STROKE_WIDTH, EDGE_COLOR),
-                        );
-
-                        // Draw arrow head
-                        let dir = (dst_screen - src_screen).normalized();
-                        let perp = Vec2::new(-dir.y, dir.x);
-                        let tip = dst_screen - dir * ARROW_TIP_OFFSET; // Offset from node edge
-
-                        painter.line_segment(
-                            [
-                                tip,
-                                tip - dir * ARROW_SIZE
-                                    + perp * ARROW_SIZE * ARROW_HEAD_WIDTH_FACTOR,
-                            ],
-                            Stroke::new(EDGE_STROKE_WIDTH, EDGE_COLOR),
-                        );
-                        painter.line_segment(
-                            [
-                                tip,
-                                tip - dir * ARROW_SIZE
-                                    - perp * ARROW_SIZE * ARROW_HEAD_WIDTH_FACTOR,
-                            ],
-                            Stroke::new(EDGE_STROKE_WIDTH, EDGE_COLOR),
-                        );
-                    }
-                }
-            }
+            draw_all_edges(
+                self.graph,
+                self.node_positions,
+                *self.zoom,
+                *self.pan_offset,
+                painter,
+                response,
+                framework,
+            );
         }
     }
 
     fn draw_nodes(&mut self, ui: &mut Ui, painter: &Painter, response: &Response) {
-        let positions: Vec<_> = self
+        let ctx = DrawContext {
+            zoom: *self.zoom,
+            pan_offset: *self.pan_offset,
+            rect_min: response.rect.min,
+            graph: self.graph,
+        };
+
+        let mut state = NodeInteractionState {
+            dragging_node: self.dragging_node,
+            node_positions: self.node_positions,
+        };
+
+        let positions: Vec<_> = state
             .node_positions
             .iter()
             .map(|(id, &pos)| (id.clone(), pos))
             .collect();
-        for (id, (x, y)) in positions {
-            let pos = Pos2::new(x, y);
-            let screen_pos = response.rect.min + pos.to_vec2() * *self.zoom + *self.pan_offset;
 
-            let text = get_node_text(
-                self.graph
-                    .get(&id)
-                    .expect("Dep from layout should be in the graph"),
-            );
-            let rect = visualize::draw_node(ui, &text, screen_pos, painter, *self.zoom);
-
-            handle_dragging(
-                &id,
-                rect,
-                ui,
-                self.dragging_node,
-                self.node_positions,
-                *self.zoom,
-            );
+        for (id, pos) in positions {
+            draw_single_node(&id, pos, &ctx, ui, painter, &mut state);
         }
     }
 
     fn handle_interactions(&mut self, response: &Response, ui: &Ui) {
-        // Handle panning (only when not dragging a node)
-        if response.dragged() && self.dragging_node.is_none() {
-            *self.pan_offset += response.drag_delta();
-        }
-
-        // Handle zoom with mouse wheel
-        if response.hovered() {
-            let scroll = ui.input(|i| i.smooth_scroll_delta.y);
-            if scroll.abs() > SCROLL_THRESHOLD {
-                *self.zoom *= 1.0 + scroll * ZOOM_SENSITIVITY;
-                *self.zoom = self.zoom.clamp(ZOOM_MIN, ZOOM_MAX);
-            }
-        }
+        handle_panning(response, self.pan_offset, self.dragging_node);
+        handle_zoom(response, ui, self.zoom);
     }
 }
 
@@ -190,28 +122,159 @@ fn get_node_text(dep: &nuget_dgspec_parser::graph::DependencyInfo) -> String {
     }
 }
 
-fn handle_dragging(
+/// Transform a graph position to screen coordinates
+fn transform_position(pos: (f32, f32), zoom: f32, pan_offset: Vec2, rect_min: Pos2) -> Pos2 {
+    let zoom_wrapper = visualize::Zoomed::new(1.0, zoom);
+    let pos_vec = Pos2::new(pos.0, pos.1);
+    rect_min + pos_vec.to_vec2() * zoom_wrapper.to_f32() + pan_offset
+}
+
+/// Context for drawing operations to reduce parameter passing
+struct DrawContext<'a> {
+    zoom: f32,
+    pan_offset: Vec2,
+    rect_min: Pos2,
+    graph: &'a DependencyGraph,
+}
+
+impl<'a> DrawContext<'a> {
+    fn transform(&self, pos: (f32, f32)) -> Pos2 {
+        transform_position(pos, self.zoom, self.pan_offset, self.rect_min)
+    }
+}
+
+/// Mutable state for node interactions
+struct NodeInteractionState<'a> {
+    dragging_node: &'a mut Option<DependencyId>,
+    node_positions: &'a mut HashMap<DependencyId, (f32, f32)>,
+}
+
+/// Draw all edges for the given framework
+fn draw_all_edges(
+    graph: &DependencyGraph,
+    positions: &HashMap<DependencyId, (f32, f32)>,
+    zoom: f32,
+    pan_offset: Vec2,
+    painter: &Painter,
+    response: &Response,
+    framework: &Framework,
+) {
+    let ctx = DrawContext {
+        zoom,
+        pan_offset,
+        rect_min: response.rect.min,
+        graph,
+    };
+
+    for (src_id, _) in graph.iter() {
+        if let Some(&src_pos) = positions.get(src_id) {
+            let src_screen = ctx.transform(src_pos);
+
+            for edge in graph.get_direct_dependencies_in_framework(src_id, framework.clone()) {
+                let dst_id = edge.get_id();
+                if let Some(&dst_pos) = positions.get(dst_id) {
+                    let dst_screen = ctx.transform(dst_pos);
+                    draw_edge(painter, src_screen, dst_screen);
+                }
+            }
+        }
+    }
+}
+
+/// Draw a single edge with arrow from source to destination
+fn draw_edge(painter: &Painter, src: Pos2, dst: Pos2) {
+    // Draw line
+    painter.line_segment([src, dst], Stroke::new(EDGE_STROKE_WIDTH, EDGE_COLOR));
+
+    // Draw arrow head
+    let dir = (dst - src).normalized();
+    let perp = Vec2::new(-dir.y, dir.x);
+    let tip = dst - dir * ARROW_TIP_OFFSET;
+
+    // Two sides of the arrow
+    painter.line_segment(
+        [
+            tip,
+            tip - dir * ARROW_SIZE + perp * ARROW_SIZE * ARROW_HEAD_WIDTH_FACTOR,
+        ],
+        Stroke::new(EDGE_STROKE_WIDTH, EDGE_COLOR),
+    );
+    painter.line_segment(
+        [
+            tip,
+            tip - dir * ARROW_SIZE - perp * ARROW_SIZE * ARROW_HEAD_WIDTH_FACTOR,
+        ],
+        Stroke::new(EDGE_STROKE_WIDTH, EDGE_COLOR),
+    );
+}
+
+/// Draw a single node and handle its dragging interaction
+fn draw_single_node(
+    id: &DependencyId,
+    pos: (f32, f32),
+    ctx: &DrawContext,
+    ui: &mut Ui,
+    painter: &Painter,
+    state: &mut NodeInteractionState,
+) {
+    let screen_pos = ctx.transform(pos);
+
+    let text = get_node_text(
+        ctx.graph
+            .get(id)
+            .expect("Dep from layout should be in the graph"),
+    );
+    let rect = visualize::draw_node(ui, &text, screen_pos, painter, ctx.zoom);
+
+    handle_node_drag(id, rect, ui, state, ctx.zoom);
+}
+
+/// Handle dragging interaction for a single node
+fn handle_node_drag(
     id: &DependencyId,
     rect: Rect,
     ui: &mut Ui,
-    dragged_node: &mut Option<DependencyId>,
-    node_positions: &mut HashMap<DependencyId, (f32, f32)>,
+    state: &mut NodeInteractionState,
     zoom: f32,
 ) {
+    let zoom_wrapper = visualize::Zoomed::new(1.0, zoom);
     let node_response = ui.interact(rect, ui.id().with(id), Sense::drag());
+
     if node_response.drag_started() {
-        *dragged_node = Some(id.clone());
+        *state.dragging_node = Some(id.clone());
     }
 
-    if node_response.dragged() && dragged_node.as_ref() == Some(id) {
-        let delta = node_response.drag_delta() / zoom;
-        if let Some((x, y)) = node_positions.get_mut(id) {
+    if node_response.dragged() && state.dragging_node.as_ref() == Some(id) {
+        let delta = node_response.drag_delta() / zoom_wrapper.to_f32();
+        if let Some((x, y)) = state.node_positions.get_mut(id) {
             *x += delta.x;
             *y += delta.y;
         }
     }
 
     if node_response.drag_stopped() {
-        *dragged_node = None;
+        *state.dragging_node = None;
+    }
+}
+
+/// Handle panning of the graph view
+fn handle_panning(
+    response: &Response,
+    pan_offset: &mut Vec2,
+    dragging_node: &Option<DependencyId>,
+) {
+    if response.dragged() && dragging_node.is_none() {
+        *pan_offset += response.drag_delta();
+    }
+}
+
+/// Handle zoom with mouse wheel
+fn handle_zoom(response: &Response, ui: &Ui, zoom: &mut f32) {
+    if response.hovered() {
+        let scroll = ui.input(|i| i.smooth_scroll_delta.y);
+        if scroll.abs() > SCROLL_THRESHOLD {
+            *zoom *= 1.0 + scroll * ZOOM_SENSITIVITY;
+            *zoom = zoom.clamp(ZOOM_MIN, ZOOM_MAX);
+        }
     }
 }
