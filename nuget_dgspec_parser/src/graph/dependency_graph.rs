@@ -62,7 +62,7 @@ impl Framework {
         Self { name }
     }
 
-    pub fn get_name(&self) -> &String {
+    pub fn get_name(&self) -> &str {
         &self.name
     }
 }
@@ -84,6 +84,14 @@ impl DepEdge {
     }
 
     pub fn get_id(&self) -> &DependencyId {
+        &self.to
+    }
+
+    pub fn get_from(&self) -> &DependencyId {
+        &self.from
+    }
+
+    pub fn get_to(&self) -> &DependencyId {
         &self.to
     }
 
