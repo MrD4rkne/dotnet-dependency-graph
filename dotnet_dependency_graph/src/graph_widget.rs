@@ -134,7 +134,7 @@ fn get_node_text(dep: &nuget_dgspec_parser::graph::DependencyInfo) -> String {
 fn transform_position(pos: (f32, f32), zoom: f32, pan_offset: Vec2, rect_min: Pos2) -> Pos2 {
     let zoom_wrapper = visualize::Zoomed::new(1.0, zoom);
     let pos_vec = Pos2::new(pos.0, pos.1);
-    rect_min + pos_vec.to_vec2() * zoom_wrapper.to_value() + pan_offset
+    rect_min + pos_vec.to_vec2() * zoom_wrapper.into_value() + pan_offset
 }
 
 /// Context for drawing operations to reduce parameter passing
@@ -253,7 +253,7 @@ fn handle_node_drag(
     }
 
     if node_response.dragged() && state.dragging_node.as_ref() == Some(id) {
-        let delta = node_response.drag_delta() / zoom_wrapper.to_value();
+        let delta = node_response.drag_delta() / zoom_wrapper.into_value();
         if let Some((x, y)) = state.node_positions.get_mut(id) {
             *x += delta.x;
             *y += delta.y;

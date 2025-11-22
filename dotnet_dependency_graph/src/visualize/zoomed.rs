@@ -15,8 +15,8 @@ impl<T> Zoomed<T> {
         }
     }
 
-    /// Convert back to f32
-    pub fn to_value(self) -> T {
+    /// Convert back to value
+    pub fn into_value(self) -> T {
         self.value
     }
 }
@@ -81,25 +81,25 @@ mod tests {
     #[test]
     fn test_new_with_zoom_factor() {
         let zoomed = Zoomed::new(10.0, 2.0);
-        assert_eq!(zoomed.to_value(), 20.0);
+        assert_eq!(zoomed.into_value(), 20.0);
     }
 
     #[test]
     fn test_new_with_zoom_less_than_one() {
         let zoomed = Zoomed::new(10.0, 0.5);
-        assert_eq!(zoomed.to_value(), 5.0);
+        assert_eq!(zoomed.into_value(), 5.0);
     }
 
     #[test]
     fn test_new_with_no_zoom() {
         let zoomed = Zoomed::new(10.0, 1.0);
-        assert_eq!(zoomed.to_value(), 10.0);
+        assert_eq!(zoomed.into_value(), 10.0);
     }
 
     #[test]
     fn test_new_with_negative_value() {
         let zoomed = Zoomed::new(-10.0, 2.0);
-        assert_eq!(zoomed.to_value(), -20.0);
+        assert_eq!(zoomed.into_value(), -20.0);
     }
 
     #[test]
@@ -107,7 +107,7 @@ mod tests {
         let z1 = Zoomed::new(10.0, 2.0);
         let z2 = Zoomed::new(5.0, 2.0);
         let result = z1 + z2;
-        assert_eq!(result.to_value(), 30.0);
+        assert_eq!(result.into_value(), 30.0);
     }
 
     #[test]
@@ -117,7 +117,7 @@ mod tests {
         let z1 = Zoomed::new(10.0, 2.0);
         let z2 = Zoomed::new(10.0, 1.0);
         let result = z1 + z2;
-        assert_eq!(result.to_value(), 30.0);
+        assert_eq!(result.into_value(), 30.0);
     }
 
     #[test]
@@ -125,7 +125,7 @@ mod tests {
         let z1 = Zoomed::new(10.0, 2.0);
         let z2 = Zoomed::new(3.0, 2.0);
         let result = z1 - z2;
-        assert_eq!(result.to_value(), 14.0);
+        assert_eq!(result.into_value(), 14.0);
     }
 
     #[test]
@@ -133,42 +133,42 @@ mod tests {
         let z1 = Zoomed::new(3.0, 2.0);
         let z2 = Zoomed::new(10.0, 2.0);
         let result = z1 - z2;
-        assert_eq!(result.to_value(), -14.0);
+        assert_eq!(result.into_value(), -14.0);
     }
 
     #[test]
     fn test_mul_scalar() {
         let zoomed = Zoomed::new(10.0, 2.0);
         let result = zoomed * 3.0;
-        assert_eq!(result.to_value(), 60.0);
+        assert_eq!(result.into_value(), 60.0);
     }
 
     #[test]
     fn test_mul_scalar_less_than_one() {
         let zoomed = Zoomed::new(10.0, 2.0);
         let result = zoomed * 0.5;
-        assert_eq!(result.to_value(), 10.0);
+        assert_eq!(result.into_value(), 10.0);
     }
 
     #[test]
     fn test_mul_scalar_negative() {
         let zoomed = Zoomed::new(10.0, 2.0);
         let result = zoomed * -2.0;
-        assert_eq!(result.to_value(), -40.0);
+        assert_eq!(result.into_value(), -40.0);
     }
 
     #[test]
     fn test_div_scalar() {
         let zoomed = Zoomed::new(10.0, 2.0);
         let result = zoomed / 4.0;
-        assert_eq!(result.to_value(), 5.0);
+        assert_eq!(result.into_value(), 5.0);
     }
 
     #[test]
     fn test_div_scalar_less_than_one() {
         let zoomed = Zoomed::new(10.0, 2.0);
         let result = zoomed / 0.5;
-        assert_eq!(result.to_value(), 40.0);
+        assert_eq!(result.into_value(), 40.0);
     }
 
     #[test]
@@ -176,19 +176,19 @@ mod tests {
         let z1 = Zoomed::new(10.0, 2.0);
         let z2 = Zoomed::new(5.0, 2.0);
         let result = (z1 + z2) * 2.0 / 3.0;
-        assert_eq!(result.to_value(), 20.0);
+        assert_eq!(result.into_value(), 20.0);
     }
 
     #[test]
     fn test_zero_values() {
         let zoomed = Zoomed::new(0.0, 2.0);
-        assert_eq!(zoomed.to_value(), 0.0);
+        assert_eq!(zoomed.into_value(), 0.0);
     }
 
     #[test]
     fn test_zero_zoom() {
         let zoomed = Zoomed::new(10.0, 0.0);
-        assert_eq!(zoomed.to_value(), 0.0);
+        assert_eq!(zoomed.into_value(), 0.0);
     }
 
     #[test]
@@ -196,13 +196,13 @@ mod tests {
         let z1 = Zoomed::new(10.0, 2.0);
         #[allow(clippy::clone_on_copy)]
         let z2 = z1.clone();
-        assert_eq!(z1.to_value(), z2.to_value());
+        assert_eq!(z1.into_value(), z2.into_value());
     }
 
     #[test]
     fn test_copy() {
         let z1 = Zoomed::new(10.0, 2.0);
         let z2 = z1;
-        assert_eq!(z1.to_value(), z2.to_value());
+        assert_eq!(z1.into_value(), z2.into_value());
     }
 }
