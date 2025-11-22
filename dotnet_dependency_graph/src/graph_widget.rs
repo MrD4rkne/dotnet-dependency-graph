@@ -48,7 +48,7 @@ impl<'a> GraphWidget<'a> {
         if let Some(framework) = self.selected_framework {
             draw_all_edges(
                 self.graph,
-                &self.node_interaction_state.node_positions,
+                self.node_interaction_state.node_positions,
                 *self.zoom,
                 *self.pan_offset,
                 painter,
