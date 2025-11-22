@@ -1,9 +1,33 @@
 use egui::{Color32, FontId, Pos2, Rect, Sense, Stroke, Vec2};
 use nuget_dgspec_parser::graph::{DependencyId, DependencyInfo};
 
-pub fn calculate_size(_: &DependencyId, _: &DependencyInfo) -> (f64, f64) {
-    // TODO: fill placeholder
-    (60.0f64, 24.0f64)
+pub fn calculate_size(_id: &DependencyId, dep: &DependencyInfo) -> (f64, f64) {
+    let text = match dep {
+        DependencyInfo::Project(proj) => {
+            // Extract just the project name from the full path
+            if let Some(file_name) = std::path::Path::new(&proj.path).file_stem()
+                && let Some(name_str) = file_name.to_str()
+            {
+                name_str
+            } else {
+                &proj.path
+            }
+        }
+        DependencyInfo::Package(pck) => &pck.name,
+    };
+
+    // Base dimensions
+    let base_height = 60.0;
+    let char_width = 8.0; // Approximate character width at font size 16
+    let padding = 32.0; // Left and right padding
+    let min_width = 120.0;
+    let max_width = 300.0;
+
+    // Calculate width based on text length
+    let text_width = (text.len() as f64) * char_width + padding;
+    let width = text_width.max(min_width).min(max_width);
+
+    (width, base_height)
 }
 
 pub fn draw_node(

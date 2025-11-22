@@ -22,6 +22,8 @@ struct DependencyApp {
     current_dgspec_file: Option<File>,
     graph: Option<DependencyGraph>,
     pos: Option<Vec<(HashMap<DependencyId, (f64, f64)>, f64, f64)>>,
+    pan_offset: egui::Vec2,
+    zoom: f32,
 }
 
 impl DependencyApp {
@@ -31,6 +33,8 @@ impl DependencyApp {
             current_dgspec_file: None,
             graph: None,
             pos: None,
+            pan_offset: egui::Vec2::ZERO,
+            zoom: 1.0,
         }
     }
 }
@@ -48,32 +52,71 @@ impl App for DependencyApp {
             });
         });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            if let Some(file) = &self.current_dgspec_file {
-                ui.label(format!("Picked file: {:?}", &file.path));
-            } else {
-                ui.label("Choose the file.");
-            }
-        });
-
         self.file_dialog.update(ctx);
         if let Some(path) = self.file_dialog.take_picked() {
             self.current_dgspec_file = Some(File::new(path.to_path_buf()));
 
-            let graph = parse::load_dgspec_from_file(path.to_path_buf()).expect("e");
-            dbg!(&graph);
+            let graph = parse::load_dgspec_from_file(path.to_path_buf())
+                .expect("Failed to load dgspec file");
 
-            self.pos = Some(calculate_layout(&graph));
+            let layouts = calculate_layout(&graph);
+            println!(
+                "Loaded dependency graph with {} nodes",
+                graph.iter().count()
+            );
+
+            self.pos = Some(layouts);
             self.graph = Some(graph);
         }
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            let (response, mut painter) =
-                ui.allocate_painter(ui.available_size(), Sense::click_and_drag());
+            if let Some(file) = &self.current_dgspec_file {
+                ui.label(format!(
+                    "File: {}",
+                    file.path.file_name().unwrap_or_default().to_string_lossy()
+                ));
+            } else {
+                ui.label("Choose a .dgspec file to visualize dependencies.");
+            }
+
             if let Some(graph) = &self.graph
                 && let Some(layouts) = &self.pos
             {
-                draw_graph(&graph, &layouts, ui, &mut painter);
+                let (response, mut painter) =
+                    ui.allocate_painter(ui.available_size(), Sense::click_and_drag());
+
+                // Handle panning
+                if response.dragged() {
+                    self.pan_offset += response.drag_delta();
+                }
+
+                // Handle zoom with mouse wheel
+                if response.hovered() {
+                    let scroll = ui.input(|i| i.smooth_scroll_delta.y);
+                    if scroll.abs() > 0.1 {
+                        self.zoom *= 1.0 + scroll * 0.001;
+                        self.zoom = self.zoom.clamp(0.1, 3.0);
+                    }
+                }
+
+                draw_graph(
+                    graph,
+                    layouts,
+                    ui,
+                    &mut painter,
+                    self.pan_offset,
+                    self.zoom,
+                    &response,
+                );
+
+                // Show controls
+                ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
+                    ui.label(format!(
+                        "Zoom: {:.1}x | Pan: ({:.0}, {:.0})",
+                        self.zoom, self.pan_offset.x, self.pan_offset.y
+                    ));
+                    ui.label("Mouse wheel to zoom | Drag background to pan");
+                });
             }
         });
     }
@@ -84,24 +127,47 @@ fn draw_graph(
     layouts: &Vec<(HashMap<DependencyId, (f64, f64)>, f64, f64)>,
     ui: &mut Ui,
     painter: &mut Painter,
+    pan_offset: egui::Vec2,
+    zoom: f32,
+    response: &egui::Response,
 ) {
-    for (layout, zoom, size) in layouts {
+    // Only draw the first layout component (avoid duplicates)
+    if let Some((layout, _zoom, _size)) = layouts.first() {
+        if layout.is_empty() {
+            return;
+        }
+
+        let transform = |pos: Pos2| -> Pos2 {
+            let centered = pos.to_vec2() * zoom + pan_offset;
+            response.rect.min + centered
+        };
+
         for (id, (x, y)) in layout {
-            // TODO: handle cast?
+            // Convert layout coordinates to screen coordinates with zoom and pan
             let pos = Pos2::new(*x as f32, *y as f32);
+            let screen_pos = transform(pos);
+
             let text = get_displayed_text(
                 graph
-                    .get(&id)
+                    .get(id)
                     .expect("Dep from layout should be in the graph"),
             );
-            let rect = visualize::draw_node(ui, text, pos, &painter, *zoom as f32);
+            let _rect = visualize::draw_node(ui, text, screen_pos, painter, zoom);
         }
     }
 }
 
 fn get_displayed_text(dep: &DependencyInfo) -> &str {
     match dep {
-        DependencyInfo::Project(proj) => &proj.path,
+        DependencyInfo::Project(proj) => {
+            // Extract just the project name from the full path
+            if let Some(file_name) = std::path::Path::new(&proj.path).file_stem()
+                && let Some(name_str) = file_name.to_str()
+            {
+                return name_str;
+            }
+            &proj.path
+        }
         DependencyInfo::Package(pck) => &pck.name,
     }
 }
