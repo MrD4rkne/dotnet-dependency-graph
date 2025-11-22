@@ -1,4 +1,4 @@
-use egui::{FontId, Pos2, Rect, Sense, Stroke, Vec2};
+use egui::{FontId, Pos2, Rect, Stroke, Vec2};
 use nuget_dgspec_parser::graph::{DependencyId, DependencyInfo, Layout};
 use std::collections::HashMap;
 
@@ -27,12 +27,12 @@ pub fn calculate_size(_id: &DependencyId, dep: &DependencyInfo) -> (f64, f64) {
 }
 
 pub fn draw_node(
-    ui: &mut egui::Ui,
+    _ui: &mut egui::Ui,
     text: &str,
     position: Pos2,
     painter: &egui::Painter,
     zoom: f32,
-) -> Rect {
+) -> (Rect, bool) {
     // Create zoomed values for all properties
     let width = Zoomed::new(constants::NODE_WIDTH, zoom);
     let height = Zoomed::new(constants::NODE_HEIGHT, zoom);
@@ -86,13 +86,7 @@ pub fn draw_node(
     let text_pos = rect.center() - Vec2::new(galley.size().x / 2.0, galley.size().y / 2.0);
     painter.galley(text_pos, galley, constants::TEXT_COLOR);
 
-    // Show tooltip on hover with full name if truncated
-    if text_truncated {
-        let response = ui.interact(rect, ui.id().with(text).with("tooltip"), Sense::hover());
-        response.on_hover_text(text);
-    }
-
-    rect
+    (rect, text_truncated)
 }
 
 pub fn join_layouts(layouts: Vec<Layout<DependencyId>>) -> HashMap<DependencyId, (f32, f32)> {

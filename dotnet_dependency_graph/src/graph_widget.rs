@@ -232,9 +232,9 @@ fn draw_single_node(
             .get(id)
             .expect("Dep from layout should be in the graph"),
     );
-    let rect = visualize::draw_node(ui, &text, screen_pos, painter, ctx.zoom);
+    let (rect, text_truncated) = visualize::draw_node(ui, &text, screen_pos, painter, ctx.zoom);
 
-    handle_node_drag(id, rect, ui, state, ctx.zoom);
+    handle_node_drag(id, rect, ui, state, ctx.zoom, &text, text_truncated);
 }
 
 /// Handle dragging interaction for a single node
@@ -244,6 +244,8 @@ fn handle_node_drag(
     ui: &mut Ui,
     state: &mut NodeInteractionState,
     zoom: f32,
+    text: &str,
+    text_truncated: bool,
 ) {
     let zoom_wrapper = visualize::Zoomed::new(1.0, zoom);
     let node_response = ui.interact(rect, ui.id().with(id), Sense::drag());
@@ -262,6 +264,11 @@ fn handle_node_drag(
 
     if node_response.drag_stopped() {
         *state.dragging_node = None;
+    }
+
+    // Show tooltip on hover with full name if truncated
+    if text_truncated && node_response.hovered() {
+        node_response.on_hover_text(text);
     }
 }
 
