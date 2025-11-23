@@ -153,6 +153,7 @@ impl DependencyGraph {
         self.add_dependency(lib)
     }
 
+    // TODO: return result
     /// Ensures a dependency is in the graph. Returns id to it.
     ///
     /// **Panics** if there is already a dependency with same name but different type.
