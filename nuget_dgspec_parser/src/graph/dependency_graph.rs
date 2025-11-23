@@ -154,6 +154,8 @@ impl DependencyGraph {
     }
 
     /// Ensures a dependency is in the graph. Returns id to it.
+    ///
+    /// **Panics** if there is already a dependency with same name but different type.
     fn add_dependency(&mut self, dependency: DependencyInfo) -> DependencyId {
         let id = dependency.id();
         if self.info.contains_key(&id) {
