@@ -248,7 +248,6 @@ fn get_display_name(dep: &nuget_dgspec_parser::graph::DependencyInfo) -> String 
             proj.path.clone()
         }
         DependencyInfo::Package(pck) => pck.name.clone(),
-        DependencyInfo::Unknown(unknown) => unknown.name.clone(),
     }
 }
 

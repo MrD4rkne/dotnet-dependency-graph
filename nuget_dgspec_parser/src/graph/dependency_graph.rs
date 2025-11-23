@@ -41,7 +41,6 @@ impl PackageInfo {
 pub enum DependencyInfo {
     Project(ProjectInfo),
     Package(PackageInfo),
-    Unknown(UnknownInfo),
 }
 
 impl DependencyWithId for DependencyInfo {
@@ -50,9 +49,6 @@ impl DependencyWithId for DependencyInfo {
             DependencyInfo::Project(info) => DependencyId::ProjectId(info.path.clone()),
             DependencyInfo::Package(info) => {
                 DependencyId::PackageId(info.name.clone(), info.version.clone())
-            }
-            DependencyInfo::Unknown(info) => {
-                DependencyId::UnknownId(info.name.clone(), info.version.clone())
             }
         }
     }
@@ -63,7 +59,6 @@ impl DependencyInfo {
         match self {
             DependencyInfo::Project(info) => &info.path,
             DependencyInfo::Package(info) => &info.name,
-            DependencyInfo::Unknown(info) => &info.name,
         }
     }
 }
@@ -160,30 +155,70 @@ impl DependencyGraph {
 
     /// Ensures a dependency is in the graph. Returns id to it.
     fn add_dependency(&mut self, dependency: DependencyInfo) -> DependencyId {
-        let dependency = self.info.entry(dependency.id()).or_insert_with(|| {
-            let existing_ids = self
-                .id_by_name
-                .entry(dependency.get_name().to_string())
-                .or_default();
-            if let Some(existing_id) = existing_ids.first()
-                && let Some(lib) = self.info.get(&existing_id)
-            {
-                if std::mem::discriminant(&dependency) != std::mem::discriminant(lib) {
-                    panic!(
-                        "Dependency with name {} has different type than existing",
-                        dependency.get_name()
-                    );
-                }
-            }
-            dependency
-        });
-        dependency.id()
+        let id = dependency.id();
+        if self.info.contains_key(&id) {
+            return id;
+        }
+
+        let existing_versions_ids = self
+            .id_by_name
+            .entry(dependency.get_name().to_string())
+            .or_default();
+        if let Some(existing_id) = existing_versions_ids.first()
+            && let Some(lib) = self.info.get(existing_id)
+            && std::mem::discriminant(&dependency) != std::mem::discriminant(lib)
+        {
+            panic!(
+                "Dependency with name {} has different type than existing",
+                dependency.get_name()
+            );
+        }
+
+        existing_versions_ids.push(id.clone());
+        self.info.insert(id.clone(), dependency);
+
+        let node_ix = self.graph.add_node(id.clone());
+        self.ix_by_id.insert(id.clone(), node_ix);
+
+        id
     }
 
-    pub fn get(&self, name: &str, version: Option<String>) -> Option<&DependencyInfo> {
-        self.id_by_name
-            .get(&name)
-            .map(|vec| vec.iter().find(|id| self.info.get(&id).map(|x| x.v)))
+    pub fn get_or_create(
+        &mut self,
+        name: &str,
+        version: Option<String>,
+    ) -> Option<&DependencyInfo> {
+        if let Some(vec) = self.id_by_name.get(name) {
+            if let Some(id) = vec.iter().find(|id| {
+                self.info.get(id).is_some_and(|info| match info {
+                    DependencyInfo::Package(p) => p.version == version,
+                    DependencyInfo::Project(p) => p.version == version,
+                })
+            }) {
+                return self.info.get(id);
+            }
+
+            if let Some(info) = vec.first().and_then(|id| self.get(id)) {
+                match info {
+                    DependencyInfo::Package(_) => {
+                        let id = self.add_dependency(DependencyInfo::Package(PackageInfo::new(
+                            name.to_string(),
+                            version,
+                        )));
+                        return self.info.get(&id);
+                    }
+                    DependencyInfo::Project(_) => {
+                        let id = self.add_dependency(DependencyInfo::Project(ProjectInfo::new(
+                            name.to_string(),
+                            version,
+                        )));
+                        return self.info.get(&id);
+                    }
+                }
+            }
+        }
+
+        None
     }
 
     pub fn get(&self, id: &DependencyId) -> Option<&DependencyInfo> {

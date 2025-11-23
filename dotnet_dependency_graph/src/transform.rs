@@ -14,12 +14,5 @@ pub fn get_display_text(info: &DependencyInfo) -> String {
         DependencyInfo::Package(pck) => {
             format!("{}@{}", pck.name, pck.version.clone().unwrap_or_default())
         }
-        DependencyInfo::Unknown(unknown) => {
-            format!(
-                "{}@{}",
-                unknown.name,
-                unknown.version.clone().unwrap_or_default()
-            )
-        }
     }
 }
