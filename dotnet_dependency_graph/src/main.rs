@@ -2,7 +2,7 @@ use eframe::{App, run_native};
 use egui::Context;
 use egui_file_dialog::FileDialog;
 use nuget_dgspec_parser::graph::{DependencyGraph, DependencyId, Framework, Layout};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 mod graph_widget;
@@ -16,6 +16,7 @@ struct File {
     graph: DependencyGraph,
     node_positions: HashMap<DependencyId, (f32, f32)>,
     selected_framework: Option<Framework>,
+    visible_nodes: HashSet<DependencyId>,
 }
 
 impl File {
@@ -24,11 +25,15 @@ impl File {
         graph: DependencyGraph,
         node_positions: HashMap<DependencyId, (f32, f32)>,
     ) -> Self {
+        // Initialize all nodes as visible
+        let visible_nodes: HashSet<DependencyId> = graph.iter().map(|(id, _)| id.clone()).collect();
+
         Self {
             path,
             graph,
             node_positions,
             selected_framework: None,
+            visible_nodes,
         }
     }
 }
@@ -40,6 +45,7 @@ struct DependencyApp {
     zoom: f32,
     dragging_node: Option<DependencyId>,
     error_text: Option<String>,
+    package_filter: String,
 }
 
 impl DependencyApp {
@@ -51,6 +57,7 @@ impl DependencyApp {
             zoom: 1.0,
             dragging_node: None,
             error_text: None,
+            package_filter: String::new(),
         }
     }
 }
@@ -96,6 +103,68 @@ impl App for DependencyApp {
             }
         }
 
+        if let Some(file) = &mut self.current_dgspec_file {
+            // Side panel with node list
+            egui::SidePanel::left("nodes_panel").show(ctx, |ui| {
+                ui.heading("Packages");
+                ui.separator();
+
+                // Add search/filter box
+                ui.horizontal(|ui| {
+                    ui.label("Filter:");
+                    ui.text_edit_singleline(&mut self.package_filter);
+                });
+
+                ui.separator();
+
+                // Add Select All / Deselect All buttons
+                ui.horizontal(|ui| {
+                    if ui.button("Select All").clicked() {
+                        file.visible_nodes = file.graph.iter().map(|(id, _)| id.clone()).collect();
+                    }
+                    if ui.button("Deselect All").clicked() {
+                        file.visible_nodes.clear();
+                    }
+                });
+
+                ui.separator();
+
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    let mut nodes: Vec<_> = file.graph.iter().collect();
+                    // Sort for consistent ordering
+                    nodes.sort_by(|a, b| get_display_name(a.1).cmp(&get_display_name(b.1)));
+
+                    // Apply filter
+                    let filter_lower = self.package_filter.to_lowercase();
+                    let filtered_nodes: Vec<_> = if filter_lower.is_empty() {
+                        nodes
+                    } else {
+                        nodes
+                            .into_iter()
+                            .filter(|(_, info)| {
+                                get_display_name(info)
+                                    .to_lowercase()
+                                    .contains(&filter_lower)
+                            })
+                            .collect()
+                    };
+
+                    for (id, info) in filtered_nodes {
+                        let mut is_visible = file.visible_nodes.contains(id);
+                        let display_name = get_display_name(info);
+
+                        if ui.checkbox(&mut is_visible, &display_name).changed() {
+                            if is_visible {
+                                file.visible_nodes.insert(id.clone());
+                            } else {
+                                file.visible_nodes.remove(id);
+                            }
+                        }
+                    }
+                });
+            });
+        }
+
         egui::CentralPanel::default().show(ctx, |ui| {
             if let Some(file) = &mut self.current_dgspec_file {
                 ui.label(format!(
@@ -110,6 +179,7 @@ impl App for DependencyApp {
                     &mut file.node_positions,
                     &mut self.dragging_node,
                     &file.selected_framework,
+                    &file.visible_nodes,
                 ));
 
                 // Show controls
@@ -148,6 +218,29 @@ fn load_file(path: PathBuf) -> std::io::Result<File> {
 
 fn calculate_layout(graph: &DependencyGraph) -> Vec<Layout<DependencyId>> {
     graph.layout(&visualize::calculate_size)
+}
+
+fn get_display_name(dep: &nuget_dgspec_parser::graph::DependencyInfo) -> String {
+    use nuget_dgspec_parser::graph::DependencyInfo;
+
+    match dep {
+        DependencyInfo::Project(proj) => {
+            // Extract just the project name from the full path
+            if let Some(file_name) = std::path::Path::new(&proj.path).file_stem()
+                && let Some(name_str) = file_name.to_str()
+            {
+                return name_str.to_string();
+            }
+            proj.path.clone()
+        }
+        DependencyInfo::Package(pck) => {
+            format!(
+                "{}@{}",
+                pck.name,
+                pck.version.clone().unwrap_or_else(|| "?".to_string())
+            )
+        }
+    }
 }
 
 fn main() -> Result<(), eframe::Error> {

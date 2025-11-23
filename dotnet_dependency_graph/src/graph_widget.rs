@@ -1,6 +1,6 @@
 use egui::{Color32, Painter, Pos2, Rect, Response, Sense, Stroke, Ui, Vec2, Widget};
 use nuget_dgspec_parser::graph::{DependencyGraph, DependencyId, Framework};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::visualize;
 
@@ -21,6 +21,7 @@ pub struct GraphWidget<'a> {
     zoom: &'a mut f32,
     node_interaction_state: NodeInteractionState<'a>,
     selected_framework: &'a Option<Framework>,
+    visible_nodes: &'a HashSet<DependencyId>,
 }
 
 impl<'a> GraphWidget<'a> {
@@ -31,6 +32,7 @@ impl<'a> GraphWidget<'a> {
         node_positions: &'a mut HashMap<DependencyId, (f32, f32)>,
         dragging_node: &'a mut Option<DependencyId>,
         selected_framework: &'a Option<Framework>,
+        visible_nodes: &'a HashSet<DependencyId>,
     ) -> Self {
         Self {
             graph,
@@ -41,19 +43,25 @@ impl<'a> GraphWidget<'a> {
                 dragging_node,
             },
             selected_framework,
+            visible_nodes,
         }
     }
 
     fn try_draw_edges(&self, painter: &Painter, response: &Response) {
         if let Some(framework) = self.selected_framework {
+            let ctx = DrawContext {
+                zoom: *self.zoom,
+                pan_offset: *self.pan_offset,
+                rect_min: response.rect.min,
+                graph: self.graph,
+            };
+
             draw_all_edges(
-                self.graph,
+                &ctx,
                 self.node_interaction_state.node_positions,
-                *self.zoom,
-                *self.pan_offset,
                 painter,
-                response,
                 framework,
+                self.visible_nodes,
             );
         }
     }
@@ -70,6 +78,7 @@ impl<'a> GraphWidget<'a> {
             .node_interaction_state
             .node_positions
             .iter()
+            .filter(|(id, _)| self.visible_nodes.contains(id))
             .map(|(id, &pos)| (id.clone(), pos))
             .collect();
 
@@ -159,27 +168,32 @@ struct NodeInteractionState<'a> {
 
 /// Draw all edges for the given framework
 fn draw_all_edges(
-    graph: &DependencyGraph,
+    ctx: &DrawContext,
     positions: &HashMap<DependencyId, (f32, f32)>,
-    zoom: f32,
-    pan_offset: Vec2,
     painter: &Painter,
-    response: &Response,
     framework: &Framework,
+    visible_nodes: &HashSet<DependencyId>,
 ) {
-    let ctx = DrawContext {
-        zoom,
-        pan_offset,
-        rect_min: response.rect.min,
-        graph,
-    };
+    for (src_id, _) in ctx.graph.iter() {
+        // Only draw edges from visible nodes
+        if !visible_nodes.contains(src_id) {
+            continue;
+        }
 
-    for (src_id, _) in graph.iter() {
         if let Some(&src_pos) = positions.get(src_id) {
             let src_screen = ctx.transform(src_pos);
 
-            for edge in graph.get_direct_dependencies_in_framework(src_id, framework.clone()) {
+            for edge in ctx
+                .graph
+                .get_direct_dependencies_in_framework(src_id, framework.clone())
+            {
                 let dst_id = edge.get_id();
+
+                // Only draw edges to visible nodes
+                if !visible_nodes.contains(dst_id) {
+                    continue;
+                }
+
                 if let Some(&dst_pos) = positions.get(dst_id) {
                     let dst_screen = ctx.transform(dst_pos);
                     draw_edge(painter, src_screen, dst_screen);
