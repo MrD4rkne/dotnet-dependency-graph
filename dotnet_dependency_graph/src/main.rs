@@ -7,6 +7,7 @@ use std::path::PathBuf;
 
 mod graph_widget;
 mod parse;
+mod transform;
 mod visualize;
 
 use graph_widget::GraphWidget;
@@ -193,7 +194,9 @@ impl App for DependencyApp {
                     );
                 });
             } else {
-                ui.label("Choose a .dgspec file to visualize dependencies.");
+                ui.label(
+                    "Choose a project.assets.json or .dgspec.json file to visualize dependencies.",
+                );
             }
         });
 
@@ -210,14 +213,25 @@ impl App for DependencyApp {
 }
 
 fn load_file(path: PathBuf) -> std::io::Result<File> {
-    let graph = parse::load_dgspec_from_file(path.to_path_buf())?;
+    // Detect file type and use appropriate parser
+    let graph = if path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .map(|n| n.ends_with("project.assets.json"))
+        .unwrap_or(false)
+    {
+        parse::load_assets_from_file(path.to_path_buf())?
+    } else {
+        // Default to dgspec for backward compatibility
+        parse::load_dgspec_from_file(path.to_path_buf())?
+    };
     let layouts = calculate_layout(&graph);
     let node_positions = visualize::join_layouts(layouts);
     Ok(File::new(path, graph, node_positions))
 }
 
 fn calculate_layout(graph: &DependencyGraph) -> Vec<Layout<DependencyId>> {
-    graph.layout(&visualize::calculate_size)
+    graph.layout(&|id, dep| visualize::calculate_size(id, dep, transform::get_display_text))
 }
 
 fn get_display_name(dep: &nuget_dgspec_parser::graph::DependencyInfo) -> String {
@@ -233,13 +247,8 @@ fn get_display_name(dep: &nuget_dgspec_parser::graph::DependencyInfo) -> String 
             }
             proj.path.clone()
         }
-        DependencyInfo::Package(pck) => {
-            format!(
-                "{}@{}",
-                pck.name,
-                pck.version.clone().unwrap_or_else(|| "?".to_string())
-            )
-        }
+        DependencyInfo::Package(pck) => pck.name.clone(),
+        DependencyInfo::Unknown(unknown) => unknown.name.clone(),
     }
 }
 

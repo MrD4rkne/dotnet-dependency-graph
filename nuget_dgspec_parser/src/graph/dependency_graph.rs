@@ -6,6 +6,7 @@ use std::hash::Hash;
 pub enum DependencyId {
     ProjectId(String),
     PackageId(String, Option<String>),
+    UnknownId(String, Option<String>),
 }
 
 pub trait DependencyWithId {
@@ -15,11 +16,12 @@ pub trait DependencyWithId {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ProjectInfo {
     pub path: String,
+    pub version: Option<String>,
 }
 
 impl ProjectInfo {
-    fn new(path: String) -> Self {
-        Self { path }
+    fn new(path: String, version: Option<String>) -> Self {
+        Self { path, version }
     }
 }
 
@@ -39,6 +41,7 @@ impl PackageInfo {
 pub enum DependencyInfo {
     Project(ProjectInfo),
     Package(PackageInfo),
+    Unknown(UnknownInfo),
 }
 
 impl DependencyWithId for DependencyInfo {
@@ -48,6 +51,19 @@ impl DependencyWithId for DependencyInfo {
             DependencyInfo::Package(info) => {
                 DependencyId::PackageId(info.name.clone(), info.version.clone())
             }
+            DependencyInfo::Unknown(info) => {
+                DependencyId::UnknownId(info.name.clone(), info.version.clone())
+            }
+        }
+    }
+}
+
+impl DependencyInfo {
+    fn get_name(&self) -> &str {
+        match self {
+            DependencyInfo::Project(info) => &info.path,
+            DependencyInfo::Package(info) => &info.name,
+            DependencyInfo::Unknown(info) => &info.name,
         }
     }
 }
@@ -105,6 +121,7 @@ pub struct DependencyGraph {
     graph: StableDiGraph<DependencyId, DepEdge>,
     info: HashMap<DependencyId, DependencyInfo>,
     ix_by_id: HashMap<DependencyId, NodeIndex>,
+    id_by_name: HashMap<String, Vec<DependencyId>>,
     frameworks: HashSet<Framework>,
 }
 
@@ -114,6 +131,7 @@ impl Default for DependencyGraph {
             graph: StableDiGraph::<DependencyId, DepEdge>::new(),
             info: HashMap::new(),
             ix_by_id: HashMap::new(),
+            id_by_name: HashMap::new(),
             frameworks: HashSet::new(),
         }
     }
@@ -130,8 +148,8 @@ impl DependencyGraph {
         Self::default()
     }
 
-    pub fn add_project(&mut self, path: String) -> DependencyId {
-        let project = DependencyInfo::Project(ProjectInfo::new(path));
+    pub fn add_project(&mut self, path: String, version: Option<String>) -> DependencyId {
+        let project = DependencyInfo::Project(ProjectInfo::new(path, version));
         self.add_dependency(project)
     }
 
@@ -143,11 +161,29 @@ impl DependencyGraph {
     /// Ensures a dependency is in the graph. Returns id to it.
     fn add_dependency(&mut self, dependency: DependencyInfo) -> DependencyId {
         let dependency = self.info.entry(dependency.id()).or_insert_with(|| {
-            self.ix_by_id
-                .insert(dependency.id(), self.graph.add_node(dependency.id()));
+            let existing_ids = self
+                .id_by_name
+                .entry(dependency.get_name().to_string())
+                .or_default();
+            if let Some(existing_id) = existing_ids.first()
+                && let Some(lib) = self.info.get(&existing_id)
+            {
+                if std::mem::discriminant(&dependency) != std::mem::discriminant(lib) {
+                    panic!(
+                        "Dependency with name {} has different type than existing",
+                        dependency.get_name()
+                    );
+                }
+            }
             dependency
         });
         dependency.id()
+    }
+
+    pub fn get(&self, name: &str, version: Option<String>) -> Option<&DependencyInfo> {
+        self.id_by_name
+            .get(&name)
+            .map(|vec| vec.iter().find(|id| self.info.get(&id).map(|x| x.v)))
     }
 
     pub fn get(&self, id: &DependencyId) -> Option<&DependencyInfo> {

@@ -5,20 +5,12 @@ use std::collections::HashMap;
 use super::Zoomed;
 use super::constants;
 
-pub fn calculate_size(_id: &DependencyId, dep: &DependencyInfo) -> (f64, f64) {
-    let text = match dep {
-        DependencyInfo::Project(proj) => {
-            // Extract just the project name from the full path
-            if let Some(file_name) = std::path::Path::new(&proj.path).file_stem()
-                && let Some(name_str) = file_name.to_str()
-            {
-                name_str
-            } else {
-                &proj.path
-            }
-        }
-        DependencyInfo::Package(pck) => &pck.name,
-    };
+pub fn calculate_size(
+    _id: &DependencyId,
+    dep: &DependencyInfo,
+    get_node_text: impl FnOnce(&DependencyInfo) -> String,
+) -> (f64, f64) {
+    let text = get_node_text(dep);
 
     // Calculate width based on text length
     let text_width = (text.len() as f64) * constants::CHAR_WIDTH + constants::TEXT_PADDING;

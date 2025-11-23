@@ -1,5 +1,5 @@
 use egui::{Color32, Painter, Pos2, Rect, Response, Sense, Stroke, Ui, Vec2, Widget};
-use nuget_dgspec_parser::graph::{DependencyGraph, DependencyId, Framework};
+use nuget_dgspec_parser::graph::{DependencyGraph, DependencyId, DependencyInfo, Framework};
 use std::collections::{HashMap, HashSet};
 
 use crate::visualize;
@@ -66,7 +66,13 @@ impl<'a> GraphWidget<'a> {
         }
     }
 
-    fn draw_nodes(&mut self, ui: &mut Ui, painter: &Painter, response: &Response) {
+    fn draw_nodes(
+        &mut self,
+        ui: &mut Ui,
+        painter: &Painter,
+        response: &Response,
+        get_node_text: impl Fn(&DependencyInfo) -> String,
+    ) {
         let ctx = DrawContext {
             zoom: *self.zoom,
             pan_offset: *self.pan_offset,
@@ -89,6 +95,7 @@ impl<'a> GraphWidget<'a> {
                 &ctx,
                 ui,
                 painter,
+                &get_node_text,
                 &mut self.node_interaction_state,
             );
         }
@@ -114,32 +121,12 @@ impl<'a> Widget for GraphWidget<'a> {
         self.try_draw_edges(&painter, &response);
 
         // Draw nodes on top
-        self.draw_nodes(ui, &painter, &response);
+        self.draw_nodes(ui, &painter, &response, crate::transform::get_display_text);
 
         response
     }
 }
 
-fn get_node_text(dep: &nuget_dgspec_parser::graph::DependencyInfo) -> String {
-    use nuget_dgspec_parser::graph::DependencyInfo;
-
-    match dep {
-        DependencyInfo::Project(proj) => {
-            // Extract just the project name from the full path
-            if let Some(file_name) = std::path::Path::new(&proj.path).file_stem()
-                && let Some(name_str) = file_name.to_str()
-            {
-                return name_str.to_string();
-            }
-            proj.path.clone()
-        }
-        DependencyInfo::Package(pck) => {
-            format!("{}@{}", pck.name, pck.version.clone().unwrap_or_default())
-        }
-    }
-}
-
-/// Transform a graph position to screen coordinates
 fn transform_position(pos: (f32, f32), zoom: f32, pan_offset: Vec2, rect_min: Pos2) -> Pos2 {
     let zoom_wrapper = visualize::Zoomed::new(1.0, zoom);
     let pos_vec = Pos2::new(pos.0, pos.1);
@@ -237,6 +224,7 @@ fn draw_single_node(
     ctx: &DrawContext,
     ui: &mut Ui,
     painter: &Painter,
+    get_node_text: &impl Fn(&DependencyInfo) -> String,
     state: &mut NodeInteractionState,
 ) {
     let screen_pos = ctx.transform(pos);
