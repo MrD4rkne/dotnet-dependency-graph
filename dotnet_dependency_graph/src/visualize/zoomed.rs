@@ -65,10 +65,12 @@ impl<T> std::ops::Div for Zoomed<T>
 where
     T: std::ops::Div<Output = T>,
 {
-    type Output = T;
+    type Output = Self;
 
-    fn div(self, other: Self) -> T {
-        self.value / other.value
+    fn div(self, other: Self) -> Self {
+        Self {
+            value: self.value / other.value,
+        }
     }
 }
 
