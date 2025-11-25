@@ -169,7 +169,7 @@ fn load_file(path: PathBuf) -> std::io::Result<File> {
     let graph = if path
         .file_name()
         .and_then(|n| n.to_str())
-        .map(|n| n.ends_with("project.assets.json"))
+        .map(|n| n == "project.assets.json")
         .unwrap_or(false)
     {
         parse::load_assets_from_file(path.to_path_buf())?
