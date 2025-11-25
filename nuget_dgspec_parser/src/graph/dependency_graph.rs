@@ -54,6 +54,7 @@ impl DependencyWithId for DependencyInfo {
 }
 
 impl DependencyInfo {
+    /// Get name of the dependency.
     pub fn get_name(&self) -> &str {
         match self {
             DependencyInfo::Project(info) => &info.path,
@@ -61,6 +62,7 @@ impl DependencyInfo {
         }
     }
 
+    /// Get version of the dependency.
     pub fn get_version(&self) -> Option<&String> {
         match self {
             DependencyInfo::Project(info) => info.version.as_ref(),
