@@ -194,7 +194,11 @@ impl DependencyGraph {
         id
     }
 
-    pub fn get_or_create(
+    /// Get the lib with name and version.
+    /// - If there already exists lib with this name and version - return it.
+    /// - If there already exists lib with this name - create new with the same type and provided version and return it.
+    /// - Else - return None
+    pub fn get_or_create_if_exists(
         &mut self,
         name: &str,
         version: Option<String>,

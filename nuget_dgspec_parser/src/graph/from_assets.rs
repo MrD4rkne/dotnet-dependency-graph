@@ -92,7 +92,9 @@ fn parse_project_file_dependency_groups(
         })
         .for_each(|(framework, dep)| {
             let (name, version) = parse_dep_requirement(dep);
-            let dep_id = graph.get_or_create(&name, version).map(|x| x.id());
+            let dep_id = graph
+                .get_or_create_if_exists(&name, version)
+                .map(|x| x.id());
             if let Some(dep_id) = dep_id {
                 _ = graph.add_relation(proj_id.clone(), dep_id, Framework::new(framework));
             }
@@ -131,7 +133,7 @@ fn parse_library_entry(
         .into_iter()
         .for_each(|(dep_name, dep_version)| {
             let dep_id = graph
-                .get_or_create(&dep_name, Some(dep_version))
+                .get_or_create_if_exists(&dep_name, Some(dep_version))
                 .map(|x| x.id());
             if let Some(dep_id) = dep_id {
                 _ = graph.add_relation(id.clone(), dep_id, target_framework.clone());
