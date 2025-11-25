@@ -22,7 +22,8 @@ pub fn calculate_size(
 
     // Calculate height based on number of lines
     let line_count = lines.len().max(1);
-    let height = constants::NODE_HEIGHT as f64 * (line_count as f64 / 2.0).max(1.0);
+    // Height scales linearly with the number of lines
+    let height = constants::NODE_HEIGHT as f64 * line_count as f64;
 
     (width, height)
 }
