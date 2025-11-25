@@ -101,7 +101,6 @@ fn parse_project_file_dependency_groups(
 
 fn parse_dep_requirement(req: String) -> (String, Option<String>) {
     let parts: Vec<&str> = req.split_whitespace().collect();
-    dbg!(&parts);
     if parts.len() == 1 {
         (parts[0].to_string(), None)
     } else if parts.len() == 3 && parts[1] == ">=" {
