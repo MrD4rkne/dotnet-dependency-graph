@@ -75,7 +75,7 @@ pub struct TargetLibrary {
 pub struct Library {
     /// SHA512 hash of the package (for NuGet packages).
     pub sha512: Option<String>,
-    /// Type of the library: "package" or "project".
+    /// Type of the library.
     #[serde(rename = "type")]
     pub library_type: LibraryType,
     /// Path to the package or project.
