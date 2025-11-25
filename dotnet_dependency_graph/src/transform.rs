@@ -12,7 +12,12 @@ pub fn get_display_text(info: &DependencyInfo) -> String {
             proj.path.clone()
         }
         DependencyInfo::Package(pck) => {
-            format!("{}@{}", pck.name, pck.version.clone().unwrap_or_default())
+            // Display package name on first line, version on second line
+            if let Some(version) = &pck.version {
+                format!("{}\n{}", pck.name, version)
+            } else {
+                pck.name.clone()
+            }
         }
     }
 }
