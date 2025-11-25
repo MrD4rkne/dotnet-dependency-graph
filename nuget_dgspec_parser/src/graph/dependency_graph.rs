@@ -6,7 +6,6 @@ use std::hash::Hash;
 pub enum DependencyId {
     ProjectId(String),
     PackageId(String, Option<String>),
-    UnknownId(String, Option<String>),
 }
 
 pub trait DependencyWithId {
