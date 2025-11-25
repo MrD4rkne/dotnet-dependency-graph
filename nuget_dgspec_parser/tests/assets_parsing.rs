@@ -3,21 +3,12 @@ use nuget_dgspec_parser::graph::from_assets::create_dependency_graph_from_assets
 use nuget_dgspec_parser::graph::{DependencyId, DependencyInfo};
 use std::fs;
 
+mod dotnet_project;
+
 #[test]
 fn test_parse_project_assets_json() -> std::io::Result<()> {
-    // Arrange
-    let crate_root = std::env::current_dir()?;
-    let assets_path = crate_root
-        .join("tests")
-        .join("data")
-        .join("project_with_two_frameworks")
-        .join("console1")
-        .join("obj")
-        .join("project.assets.json");
-
-    let content = fs::read_to_string(&assets_path)?;
-
     // Act
+    let content = get_assets_content()?;
     let assets = parse_project_assets(&content).expect("Failed to parse project.assets.json");
     let graph = create_dependency_graph_from_assets(assets);
 
@@ -29,9 +20,9 @@ fn test_parse_project_assets_json() -> std::io::Result<()> {
     for (_id, info) in graph.iter() {
         match info {
             DependencyInfo::Package(_) => {
-                if info.get_name().eq_ignore_ascii_case("Serilog") {
+                if info.get_name() == "Serilog" {
                     found_serilog = true;
-                    assert_eq!(pkg.version, Some("4.0.0".to_string()));
+                    assert_eq!(info.get_version(), Some(&"4.0.0".to_string()));
                 }
                 if info.get_name() == "Serilog.Sinks.Console" {
                     found_serilog_console = true;
@@ -80,16 +71,7 @@ fn test_parse_project_assets_json() -> std::io::Result<()> {
 #[test]
 fn test_parse_project_assets_includes_all_frameworks() -> std::io::Result<()> {
     // Arrange
-    let crate_root = std::env::current_dir()?;
-    let assets_path = crate_root
-        .join("tests")
-        .join("data")
-        .join("project_with_two_frameworks")
-        .join("console1")
-        .join("obj")
-        .join("project.assets.json");
-
-    let content = fs::read_to_string(&assets_path)?;
+    let content = get_assets_content()?;
 
     // Act
     let assets = parse_project_assets(&content).expect("Failed to parse project.assets.json");
@@ -108,4 +90,22 @@ fn test_parse_project_assets_includes_all_frameworks() -> std::io::Result<()> {
     );
 
     Ok(())
+}
+
+fn get_assets_content() -> std::io::Result<String> {
+    // Arrange
+    let crate_root = std::env::current_dir()?;
+    let sln_dir = crate_root
+        .join("tests")
+        .join("data")
+        .join("project_with_two_frameworks");
+
+    dotnet_project::clean_dotnet_sln(&sln_dir)?;
+    dotnet_project::restore_dotnet_sln(&sln_dir)?;
+
+    let assets_path = sln_dir
+        .join("console1")
+        .join("obj")
+        .join("project.assets.json");
+    fs::read_to_string(assets_path)
 }

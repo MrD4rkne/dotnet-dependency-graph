@@ -1,5 +1,7 @@
 use serde_json::Value;
-use std::{fs, path::PathBuf, process::Command};
+use std::{fs, path::PathBuf};
+
+mod dotnet_project;
 
 use nuget_dgspec_parser::models::parse_dependency_graph_spec;
 
@@ -13,8 +15,8 @@ fn dgspec_for_project_and_libraries_dependencies_deserializing_then_serializing_
         .join("data")
         .join("project_with_two_frameworks");
 
-    clean_dotnet_sln(&sln_dir)?;
-    restore_dotnet_sln(&sln_dir)?;
+    dotnet_project::clean_dotnet_sln(&sln_dir)?;
+    dotnet_project::restore_dotnet_sln(&sln_dir)?;
 
     let dgspec_files = get_dgspecs_from_dir(&sln_dir)?;
     assert!(
@@ -43,34 +45,6 @@ fn dgspec_for_project_and_libraries_dependencies_deserializing_then_serializing_
     }
 
     Ok(())
-}
-
-fn clean_dotnet_sln(sln_path: &std::path::Path) -> std::io::Result<()> {
-    let status = Command::new("dotnet")
-        .arg("clean")
-        .current_dir(sln_path)
-        .status()?;
-    match status.success() {
-        true => Ok(()),
-        false => Err(std::io::Error::other(format!(
-            "Dotnet clean failed with exit status: {}",
-            status
-        ))),
-    }
-}
-
-fn restore_dotnet_sln(sln_path: &std::path::Path) -> std::io::Result<()> {
-    let status = Command::new("dotnet")
-        .arg("restore")
-        .current_dir(sln_path)
-        .status()?;
-    match status.success() {
-        true => Ok(()),
-        false => Err(std::io::Error::other(format!(
-            "Dotnet restore failed with exit status: {}",
-            status
-        ))),
-    }
 }
 
 // Remove the nulls from the json value.

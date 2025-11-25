@@ -1,6 +1,4 @@
-use nuget_dgspec_parser::graph::{
-    DependencyGraph, DependencyId, DependencyInfo, Framework, PackageInfo, ProjectInfo,
-};
+use nuget_dgspec_parser::graph::{DependencyGraph, DependencyId, DependencyInfo, Framework};
 
 #[test]
 fn test_new_graph_is_empty() {
@@ -13,7 +11,7 @@ fn test_add_project() {
     let mut graph = DependencyGraph::new();
     let project_path = "/path/to/project.csproj".to_string();
 
-    let id = graph.add_project(project_path.clone());
+    let id = graph.add_project(project_path.clone(), None);
 
     // Verify the dependency was added
     assert_eq!(graph.iter().count(), 1);
@@ -32,9 +30,9 @@ fn test_add_project() {
 fn test_add_multiple_projects() {
     let mut graph = DependencyGraph::new();
 
-    let proj1 = graph.add_project("/path/to/proj1.csproj".to_string());
-    let proj2 = graph.add_project("/path/to/proj2.csproj".to_string());
-    let proj3 = graph.add_project("/path/to/proj3.csproj".to_string());
+    let proj1 = graph.add_project("/path/to/proj1.csproj".to_string(), None);
+    let proj2 = graph.add_project("/path/to/proj2.csproj".to_string(), None);
+    let proj3 = graph.add_project("/path/to/proj3.csproj".to_string(), None);
 
     assert_eq!(graph.iter().count(), 3);
     assert!(graph.get(&proj1).is_some());
@@ -47,8 +45,8 @@ fn test_add_duplicate_project_returns_same_id() {
     let mut graph = DependencyGraph::new();
     let project_path = "/path/to/project.csproj".to_string();
 
-    let id1 = graph.add_project(project_path.clone());
-    let id2 = graph.add_project(project_path.clone());
+    let id1 = graph.add_project(project_path.clone(), None);
+    let id2 = graph.add_project(project_path.clone(), None);
 
     // Should only have one dependency
     assert_eq!(graph.iter().count(), 1);
@@ -69,9 +67,9 @@ fn test_add_package_with_version() {
 
     let dep_info = graph.get(&id).expect("Package should exist");
     match dep_info {
-        DependencyInfo::Package(info) => {
-            assert_eq!(info.name, package_name);
-            assert_eq!(info.version, version);
+        DependencyInfo::Package(_) => {
+            assert_eq!(dep_info.get_name(), package_name);
+            assert_eq!(dep_info.get_version(), version.as_ref());
         }
         _ => panic!("Expected Package dependency"),
     }
@@ -88,9 +86,9 @@ fn test_add_package_without_version() {
 
     let dep_info = graph.get(&id).expect("Package should exist");
     match dep_info {
-        DependencyInfo::Package(info) => {
-            assert_eq!(info.name, package_name);
-            assert_eq!(info.version, None);
+        DependencyInfo::Package(_) => {
+            assert_eq!(dep_info.get_name(), package_name);
+            assert_eq!(dep_info.get_version(), None);
         }
         _ => panic!("Expected Package dependency"),
     }
@@ -159,8 +157,8 @@ fn test_different_package_names_are_different() {
 fn test_add_relation_between_projects() {
     let mut graph = DependencyGraph::new();
 
-    let proj1 = graph.add_project("/path/to/proj1.csproj".to_string());
-    let proj2 = graph.add_project("/path/to/proj2.csproj".to_string());
+    let proj1 = graph.add_project("/path/to/proj1.csproj".to_string(), None);
+    let proj2 = graph.add_project("/path/to/proj2.csproj".to_string(), None);
 
     let framework = Framework::new("net8.0".to_string());
 
@@ -180,7 +178,7 @@ fn test_add_relation_between_projects() {
 fn test_add_relation_project_to_package() {
     let mut graph = DependencyGraph::new();
 
-    let proj = graph.add_project("/path/to/proj.csproj".to_string());
+    let proj = graph.add_project("/path/to/proj.csproj".to_string(), None);
     let pkg = graph.add_package("Newtonsoft.Json".to_string(), Some("13.0.1".to_string()));
 
     let framework = Framework::new("net8.0".to_string());
@@ -200,7 +198,7 @@ fn test_add_relation_project_to_package() {
 fn test_add_relation_with_nonexistent_source() {
     let mut graph = DependencyGraph::new();
 
-    let proj = graph.add_project("/path/to/proj.csproj".to_string());
+    let proj = graph.add_project("/path/to/proj.csproj".to_string(), None);
     let fake_id = DependencyId::ProjectId("/fake/project.csproj".to_string());
 
     let framework = Framework::new("net8.0".to_string());
@@ -214,7 +212,7 @@ fn test_add_relation_with_nonexistent_source() {
 fn test_add_relation_with_nonexistent_target() {
     let mut graph = DependencyGraph::new();
 
-    let proj = graph.add_project("/path/to/proj.csproj".to_string());
+    let proj = graph.add_project("/path/to/proj.csproj".to_string(), None);
     let fake_id = DependencyId::PackageId("FakePackage".to_string(), None);
 
     let framework = Framework::new("net8.0".to_string());
@@ -228,7 +226,7 @@ fn test_add_relation_with_nonexistent_target() {
 fn test_multiple_relations_same_framework() {
     let mut graph = DependencyGraph::new();
 
-    let proj = graph.add_project("/path/to/proj.csproj".to_string());
+    let proj = graph.add_project("/path/to/proj.csproj".to_string(), None);
     let pkg1 = graph.add_package("Package1".to_string(), None);
     let pkg2 = graph.add_package("Package2".to_string(), None);
     let pkg3 = graph.add_package("Package3".to_string(), None);
@@ -255,7 +253,7 @@ fn test_multiple_relations_same_framework() {
 fn test_relations_with_different_frameworks() {
     let mut graph = DependencyGraph::new();
 
-    let proj = graph.add_project("/path/to/proj.csproj".to_string());
+    let proj = graph.add_project("/path/to/proj.csproj".to_string(), None);
     let pkg1 = graph.add_package("Package1".to_string(), None);
     let pkg2 = graph.add_package("Package2".to_string(), None);
 
@@ -287,8 +285,8 @@ fn test_relations_with_different_frameworks() {
 fn test_edge_from_and_to_are_correct() {
     let mut graph = DependencyGraph::new();
 
-    let proj1 = graph.add_project("/path/to/proj1.csproj".to_string());
-    let proj2 = graph.add_project("/path/to/proj2.csproj".to_string());
+    let proj1 = graph.add_project("/path/to/proj1.csproj".to_string(), None);
+    let proj2 = graph.add_project("/path/to/proj2.csproj".to_string(), None);
 
     let framework = Framework::new("net8.0".to_string());
 
@@ -314,7 +312,7 @@ fn test_edge_from_and_to_are_correct() {
 fn test_edge_from_to_with_project_and_package() {
     let mut graph = DependencyGraph::new();
 
-    let proj = graph.add_project("/path/to/proj.csproj".to_string());
+    let proj = graph.add_project("/path/to/proj.csproj".to_string(), None);
     let pkg = graph.add_package("Newtonsoft.Json".to_string(), Some("13.0.1".to_string()));
 
     let framework = Framework::new("net8.0".to_string());
@@ -339,7 +337,7 @@ fn test_edge_from_to_with_project_and_package() {
 fn test_multiple_edges_from_same_source() {
     let mut graph = DependencyGraph::new();
 
-    let proj = graph.add_project("/path/to/proj.csproj".to_string());
+    let proj = graph.add_project("/path/to/proj.csproj".to_string(), None);
     let pkg1 = graph.add_package("Package1".to_string(), None);
     let pkg2 = graph.add_package("Package2".to_string(), None);
     let pkg3 = graph.add_package("Package3".to_string(), None);
@@ -378,8 +376,8 @@ fn test_multiple_edges_from_same_source() {
 fn test_reverse_dependencies_edge_from_to() {
     let mut graph = DependencyGraph::new();
 
-    let proj1 = graph.add_project("/path/to/proj1.csproj".to_string());
-    let proj2 = graph.add_project("/path/to/proj2.csproj".to_string());
+    let proj1 = graph.add_project("/path/to/proj1.csproj".to_string(), None);
+    let proj2 = graph.add_project("/path/to/proj2.csproj".to_string(), None);
     let pkg = graph.add_package("SharedPackage".to_string(), None);
 
     let framework = Framework::new("net8.0".to_string());
@@ -413,8 +411,8 @@ fn test_reverse_dependencies_edge_from_to() {
 fn test_chain_of_dependencies_edge_consistency() {
     let mut graph = DependencyGraph::new();
 
-    let app = graph.add_project("/path/to/app.csproj".to_string());
-    let lib = graph.add_project("/path/to/lib.csproj".to_string());
+    let app = graph.add_project("/path/to/app.csproj".to_string(), None);
+    let lib = graph.add_project("/path/to/lib.csproj".to_string(), None);
     let pkg = graph.add_package("CorePackage".to_string(), Some("1.0.0".to_string()));
 
     let framework = Framework::new("net8.0".to_string());
@@ -448,8 +446,8 @@ fn test_chain_of_dependencies_edge_consistency() {
 fn test_get_reverse_dependencies() {
     let mut graph = DependencyGraph::new();
 
-    let proj1 = graph.add_project("/path/to/proj1.csproj".to_string());
-    let proj2 = graph.add_project("/path/to/proj2.csproj".to_string());
+    let proj1 = graph.add_project("/path/to/proj1.csproj".to_string(), None);
+    let proj2 = graph.add_project("/path/to/proj2.csproj".to_string(), None);
     let pkg = graph.add_package("SharedPackage".to_string(), None);
 
     let framework = Framework::new("net8.0".to_string());
@@ -475,7 +473,7 @@ fn test_get_reverse_dependencies() {
 fn test_no_reverse_dependencies_for_root_node() {
     let mut graph = DependencyGraph::new();
 
-    let proj = graph.add_project("/path/to/proj.csproj".to_string());
+    let proj = graph.add_project("/path/to/proj.csproj".to_string(), None);
     let pkg = graph.add_package("LeafPackage".to_string(), None);
 
     let framework = Framework::new("net8.0".to_string());
@@ -515,8 +513,8 @@ fn test_get_reverse_dependencies_panics_for_nonexistent_dependency() {
 fn test_iter_frameworks() {
     let mut graph = DependencyGraph::new();
 
-    let proj1 = graph.add_project("/path/to/proj1.csproj".to_string());
-    let proj2 = graph.add_project("/path/to/proj2.csproj".to_string());
+    let proj1 = graph.add_project("/path/to/proj1.csproj".to_string(), None);
+    let proj2 = graph.add_project("/path/to/proj2.csproj".to_string(), None);
 
     let net8 = Framework::new("net8.0".to_string());
     let net7 = Framework::new("net7.0".to_string());
@@ -540,8 +538,8 @@ fn test_iter_frameworks() {
 fn test_iter_all_dependencies() {
     let mut graph = DependencyGraph::new();
 
-    let _proj1 = graph.add_project("/path/to/proj1.csproj".to_string());
-    let _proj2 = graph.add_project("/path/to/proj2.csproj".to_string());
+    let _proj1 = graph.add_project("/path/to/proj1.csproj".to_string(), None);
+    let _proj2 = graph.add_project("/path/to/proj2.csproj".to_string(), None);
     let _pkg1 = graph.add_package("Package1".to_string(), Some("1.0.0".to_string()));
     let _pkg2 = graph.add_package("Package2".to_string(), None);
 
@@ -587,9 +585,9 @@ fn test_complex_dependency_graph() {
     let mut graph = DependencyGraph::new();
 
     // Create a more complex graph structure
-    let app = graph.add_project("/path/to/app.csproj".to_string());
-    let lib1 = graph.add_project("/path/to/lib1.csproj".to_string());
-    let lib2 = graph.add_project("/path/to/lib2.csproj".to_string());
+    let app = graph.add_project("/path/to/app.csproj".to_string(), None);
+    let lib1 = graph.add_project("/path/to/lib1.csproj".to_string(), None);
+    let lib2 = graph.add_project("/path/to/lib2.csproj".to_string(), None);
 
     let pkg1 = graph.add_package("Newtonsoft.Json".to_string(), Some("13.0.1".to_string()));
     let pkg2 = graph.add_package("Serilog".to_string(), Some("3.0.1".to_string()));
@@ -659,34 +657,4 @@ fn test_get_nonexistent_dependency() {
     let fake_id = DependencyId::ProjectId("/fake/project.csproj".to_string());
 
     assert!(graph.get(&fake_id).is_none());
-}
-
-#[test]
-fn test_dependency_info_project() {
-    let info = DependencyInfo::Project(ProjectInfo {
-        path: "/path/to/project.csproj".to_string(),
-    });
-
-    match info {
-        DependencyInfo::Project(proj) => {
-            assert_eq!(proj.path, "/path/to/project.csproj");
-        }
-        _ => panic!("Expected Project"),
-    }
-}
-
-#[test]
-fn test_dependency_info_package() {
-    let info = DependencyInfo::Package(PackageInfo {
-        name: "MyPackage".to_string(),
-        version: Some("1.0.0".to_string()),
-    });
-
-    match info {
-        DependencyInfo::Package(pkg) => {
-            assert_eq!(pkg.name, "MyPackage");
-            assert_eq!(pkg.version, Some("1.0.0".to_string()));
-        }
-        _ => panic!("Expected Package"),
-    }
 }
