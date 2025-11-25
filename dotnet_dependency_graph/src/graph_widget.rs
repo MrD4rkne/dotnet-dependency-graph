@@ -161,12 +161,7 @@ fn draw_all_edges(
     framework: &Framework,
     visible_nodes: &HashSet<DependencyId>,
 ) {
-    for (src_id, _) in ctx.graph.iter() {
-        // Only draw edges from visible nodes
-        if !visible_nodes.contains(src_id) {
-            continue;
-        }
-
+    for src_id in visible_nodes.iter() {
         if let Some(&src_pos) = positions.get(src_id) {
             let src_screen = ctx.transform(src_pos);
 
