@@ -34,7 +34,7 @@ pub fn draw_node(
     position: Pos2,
     painter: &egui::Painter,
     zoom: f32,
-) -> (Rect, bool) {
+) -> Rect {
     // Create zoomed values for all properties
     let width = Zoomed::new(constants::NODE_WIDTH, zoom);
     let height = Zoomed::new(constants::NODE_HEIGHT, zoom);
@@ -62,55 +62,32 @@ pub fn draw_node(
         egui::epaint::StrokeKind::Middle,
     );
 
-    // Handle multi-line text by splitting on newlines
     let font = FontId::proportional(font_size.into_value());
-    let lines: Vec<&str> = text.lines().collect();
-    let mut text_truncated = false;
 
-    // Process each line
-    let mut display_lines = Vec::new();
-    for line in &lines {
-        let full_galley =
-            painter.layout_no_wrap(line.to_string(), font.clone(), constants::TEXT_COLOR);
+    // Calculate available space for text (with padding)
+    let max_text_height = height.into_value() - padding.into_value();
 
-        // Check if line needs truncation
-        if full_galley.size().x > max_text_width.into_value() {
-            // Truncate and add ellipsis
-            let mut truncated = line.to_string();
-            while !truncated.is_empty() {
-                let test_text = format!("{}...", truncated);
-                let test_galley =
-                    painter.layout_no_wrap(test_text.clone(), font.clone(), constants::TEXT_COLOR);
-                if test_galley.size().x <= max_text_width.into_value() {
-                    break;
-                }
-                truncated.pop();
-            }
-            display_lines.push(format!("{}...", truncated));
-            text_truncated = true;
-        } else {
-            display_lines.push(line.to_string());
-        }
-    }
+    // Use TextWrapMode::Truncate to handle both width and height truncation
+    use egui::text::LayoutJob;
+    let mut job = LayoutJob::simple(
+        text.to_string(),
+        font,
+        constants::TEXT_COLOR,
+        max_text_width.into_value(),
+    );
+    job.wrap.max_rows = ((max_text_height / font_size.into_value()).floor() as usize).max(1);
 
-    // Calculate total height of text block
-    let line_height = font_size.into_value() * 1.2; // Line spacing
-    let total_text_height = line_height * display_lines.len() as f32;
+    let galley = painter.layout_job(job);
 
-    // Draw each line centered vertically within the node
-    let start_y = rect.center().y - (total_text_height / 2.0) + (line_height / 2.0);
+    // Center the text in the node
+    let text_pos = Pos2::new(
+        rect.center().x - galley.size().x / 2.0,
+        rect.center().y - galley.size().y / 2.0,
+    );
 
-    for (i, line) in display_lines.iter().enumerate() {
-        let galley = painter.layout_no_wrap(line.clone(), font.clone(), constants::TEXT_COLOR);
-        let y_offset = start_y + (i as f32 * line_height);
-        let text_pos = Pos2::new(
-            rect.center().x - galley.size().x / 2.0,
-            y_offset - galley.size().y / 2.0,
-        );
-        painter.galley(text_pos, galley, constants::TEXT_COLOR);
-    }
+    painter.galley(text_pos, galley, constants::TEXT_COLOR);
 
-    (rect, text_truncated)
+    rect
 }
 
 pub fn join_layouts(layouts: Vec<Layout<DependencyId>>) -> HashMap<DependencyId, (f32, f32)> {
