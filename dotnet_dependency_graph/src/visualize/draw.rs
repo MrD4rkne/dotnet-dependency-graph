@@ -12,10 +12,19 @@ pub fn calculate_size(
 ) -> (f64, f64) {
     let text = get_node_text(dep);
 
-    // Calculate width based on text length
-    let text_width = (text.len() as f64) * constants::CHAR_WIDTH + constants::TEXT_PADDING;
+    // Handle multi-line text
+    let lines: Vec<&str> = text.lines().collect();
+    let max_line_length = lines.iter().map(|line| line.len()).max().unwrap_or(0);
+
+    // Calculate width based on longest line
+    let text_width = (max_line_length as f64) * constants::CHAR_WIDTH + constants::TEXT_PADDING;
     let width = text_width.clamp(constants::MIN_WIDTH, constants::MAX_WIDTH);
-    (width, constants::NODE_HEIGHT as f64)
+
+    // Calculate height based on number of lines
+    let line_count = lines.len().max(1);
+    let height = constants::NODE_HEIGHT as f64 * (line_count as f64 / 2.0).max(1.0);
+
+    (width, height)
 }
 
 pub fn draw_node(
@@ -52,31 +61,53 @@ pub fn draw_node(
         egui::epaint::StrokeKind::Middle,
     );
 
-    // Draw text with truncation - scale font with zoom
+    // Handle multi-line text by splitting on newlines
     let font = FontId::proportional(font_size.into_value());
-    let full_galley = painter.layout_no_wrap(text.to_string(), font.clone(), constants::TEXT_COLOR);
+    let lines: Vec<&str> = text.lines().collect();
+    let mut text_truncated = false;
 
-    // Check if text needs truncation
-    let (display_text, text_truncated) = if full_galley.size().x > max_text_width.into_value() {
-        // Truncate and add ellipsis
-        let mut truncated = text.to_string();
-        while !truncated.is_empty() {
-            let test_text = format!("{}...", truncated);
-            let test_galley =
-                painter.layout_no_wrap(test_text.clone(), font.clone(), constants::TEXT_COLOR);
-            if test_galley.size().x <= max_text_width.into_value() {
-                break;
+    // Process each line
+    let mut display_lines = Vec::new();
+    for line in &lines {
+        let full_galley =
+            painter.layout_no_wrap(line.to_string(), font.clone(), constants::TEXT_COLOR);
+
+        // Check if line needs truncation
+        if full_galley.size().x > max_text_width.into_value() {
+            // Truncate and add ellipsis
+            let mut truncated = line.to_string();
+            while !truncated.is_empty() {
+                let test_text = format!("{}...", truncated);
+                let test_galley =
+                    painter.layout_no_wrap(test_text.clone(), font.clone(), constants::TEXT_COLOR);
+                if test_galley.size().x <= max_text_width.into_value() {
+                    break;
+                }
+                truncated.pop();
             }
-            truncated.pop();
+            display_lines.push(format!("{}...", truncated));
+            text_truncated = true;
+        } else {
+            display_lines.push(line.to_string());
         }
-        (format!("{}...", truncated), true)
-    } else {
-        (text.to_string(), false)
-    };
+    }
 
-    let galley = painter.layout_no_wrap(display_text, font, constants::TEXT_COLOR);
-    let text_pos = rect.center() - Vec2::new(galley.size().x / 2.0, galley.size().y / 2.0);
-    painter.galley(text_pos, galley, constants::TEXT_COLOR);
+    // Calculate total height of text block
+    let line_height = font_size.into_value() * 1.2; // Line spacing
+    let total_text_height = line_height * display_lines.len() as f32;
+
+    // Draw each line centered vertically within the node
+    let start_y = rect.center().y - (total_text_height / 2.0) + (line_height / 2.0);
+
+    for (i, line) in display_lines.iter().enumerate() {
+        let galley = painter.layout_no_wrap(line.clone(), font.clone(), constants::TEXT_COLOR);
+        let y_offset = start_y + (i as f32 * line_height);
+        let text_pos = Pos2::new(
+            rect.center().x - galley.size().x / 2.0,
+            y_offset - galley.size().y / 2.0,
+        );
+        painter.galley(text_pos, galley, constants::TEXT_COLOR);
+    }
 
     (rect, text_truncated)
 }
