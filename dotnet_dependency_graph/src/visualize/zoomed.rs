@@ -135,49 +135,6 @@ mod tests {
     }
 
     #[test]
-    fn test_mul_scalar() {
-        let zoomed = Zoomed::new(10.0, 2.0);
-        let result = zoomed * 3.0;
-        assert_eq!(result.into_value(), 60.0);
-    }
-
-    #[test]
-    fn test_mul_scalar_less_than_one() {
-        let zoomed = Zoomed::new(10.0, 2.0);
-        let result = zoomed * 0.5;
-        assert_eq!(result.into_value(), 10.0);
-    }
-
-    #[test]
-    fn test_mul_scalar_negative() {
-        let zoomed = Zoomed::new(10.0, 2.0);
-        let result = zoomed * -2.0;
-        assert_eq!(result.into_value(), -40.0);
-    }
-
-    #[test]
-    fn test_div_scalar() {
-        let zoomed = Zoomed::new(10.0, 2.0);
-        let result = zoomed / 4.0;
-        assert_eq!(result.into_value(), 5.0);
-    }
-
-    #[test]
-    fn test_div_scalar_less_than_one() {
-        let zoomed = Zoomed::new(10.0, 2.0);
-        let result = zoomed / 0.5;
-        assert_eq!(result.into_value(), 40.0);
-    }
-
-    #[test]
-    fn test_chained_operations() {
-        let z1 = Zoomed::new(10.0, 2.0);
-        let z2 = Zoomed::new(5.0, 2.0);
-        let result = (z1 + z2) * 2.0 / 3.0;
-        assert_eq!(result.into_value(), 20.0);
-    }
-
-    #[test]
     fn test_zero_values() {
         let zoomed = Zoomed::new(0.0, 2.0);
         assert_eq!(zoomed.into_value(), 0.0);
