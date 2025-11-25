@@ -48,29 +48,27 @@ where
     }
 }
 
-impl<T> std::ops::Mul<f32> for Zoomed<T>
+impl<T> std::ops::Mul for Zoomed<T>
 where
-    T: std::ops::Mul<f32, Output = T>,
+    T: std::ops::Mul<Output = T>,
 {
     type Output = Self;
 
-    fn mul(self, scalar: f32) -> Self {
+    fn mul(self, scalar: Self) -> Self {
         Self {
-            value: self.value * scalar,
+            value: self.value * scalar.value,
         }
     }
 }
 
-impl<T> std::ops::Div<f32> for Zoomed<T>
+impl<T> std::ops::Div for Zoomed<T>
 where
-    T: std::ops::Div<f32, Output = T>,
+    T: std::ops::Div<Output = T>,
 {
-    type Output = Self;
+    type Output = T;
 
-    fn div(self, scalar: f32) -> Self {
-        Self {
-            value: self.value / scalar,
-        }
+    fn div(self, other: Self) -> T {
+        self.value / other.value
     }
 }
 
