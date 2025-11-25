@@ -11,6 +11,7 @@ const EDGE_STROKE_WIDTH: f32 = 2.0;
 const EDGE_COLOR: Color32 = Color32::from_rgb(100, 100, 100);
 const ARROW_SIZE: f32 = 10.0;
 const ARROW_HEAD_WIDTH_FACTOR: f32 = 0.5;
+const LINE_HEIGHT: f32 = 20.0;
 
 pub fn calculate_dimensions_from_text(text: &str) -> (f32, f32) {
     let lines: Vec<&str> = text.lines().collect();
@@ -20,9 +21,7 @@ pub fn calculate_dimensions_from_text(text: &str) -> (f32, f32) {
     let width = text_width.clamp(constants::MIN_WIDTH, constants::MAX_WIDTH) as f32;
 
     let line_count = lines.len().max(1);
-    // Use a reasonable line height (e.g., 20px per line) plus padding
-    let line_height = 20.0;
-    let height = (line_height * line_count as f32 + constants::NODE_PADDING * 2.0)
+    let height = (LINE_HEIGHT * line_count as f32 + constants::NODE_PADDING * 2.0)
         .max(constants::NODE_HEIGHT);
 
     (width, height)
@@ -93,11 +92,8 @@ fn create_label(
     max_text_width: Zoomed<f32>,
 ) -> LayoutJob {
     let font = FontId::proportional(font_size.into_value());
-
-    // Calculate available space for text (with padding)
     let max_text_height = height - padding;
 
-    // Use TextWrapMode::Truncate to handle both width and height truncation
     let mut job = LayoutJob::simple(
         text,
         font,
