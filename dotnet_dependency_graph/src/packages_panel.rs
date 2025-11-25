@@ -74,21 +74,13 @@ impl<'a> PackagesPanel<'a> {
                 if versions.len() == 1 {
                     // Single version - show as flat checkbox
                     let (id, _) = versions[0];
-                    let mut is_visible = self.visible_nodes.contains(id);
-                    if ui.checkbox(&mut is_visible, &name).changed() {
-                        if is_visible {
-                            self.visible_nodes.insert(id.clone());
-                        } else {
-                            self.visible_nodes.remove(id);
-                        }
-                    }
+                    show_checkbox(ui, self.visible_nodes, id.clone(), &name);
                 } else {
                     // Multiple versions - show as collapsing header with nested items
                     egui::CollapsingHeader::new(&name)
                         .default_open(false)
                         .show(ui, |ui| {
                             for (id, info) in versions {
-                                let mut is_visible = self.visible_nodes.contains(id);
                                 let version_label = match info {
                                     DependencyInfo::Package(pck) => pck
                                         .version
@@ -100,18 +92,28 @@ impl<'a> PackagesPanel<'a> {
                                         .unwrap_or_else(|| "no version".to_string()),
                                 };
 
-                                if ui.checkbox(&mut is_visible, &version_label).changed() {
-                                    if is_visible {
-                                        self.visible_nodes.insert(id.clone());
-                                    } else {
-                                        self.visible_nodes.remove(id);
-                                    }
-                                }
+                                show_checkbox(ui, self.visible_nodes, id.clone(), &version_label);
                             }
                         });
                 }
             }
         });
+    }
+}
+
+fn show_checkbox(
+    ui: &mut Ui,
+    visible_nodes: &mut HashSet<DependencyId>,
+    id: DependencyId,
+    label: &str,
+) {
+    let mut is_visible = visible_nodes.contains(&id);
+    if ui.checkbox(&mut is_visible, label).changed() {
+        if is_visible {
+            visible_nodes.insert(id);
+        } else {
+            visible_nodes.remove(&id);
+        }
     }
 }
 
