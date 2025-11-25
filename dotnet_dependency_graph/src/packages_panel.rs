@@ -81,23 +81,20 @@ impl<'a> PackagesPanel<'a> {
                         .default_open(false)
                         .show(ui, |ui| {
                             for (id, info) in versions {
-                                let version_label = match info {
-                                    DependencyInfo::Package(pck) => pck
-                                        .version
-                                        .clone()
-                                        .unwrap_or_else(|| "no version".to_string()),
-                                    DependencyInfo::Project(proj) => proj
-                                        .version
-                                        .clone()
-                                        .unwrap_or_else(|| "no version".to_string()),
-                                };
-
-                                show_checkbox(ui, self.visible_nodes, id.clone(), &version_label);
+                                let version_label = get_checkbox_text(info);
+                                show_checkbox(ui, self.visible_nodes, id.clone(), version_label);
                             }
                         });
                 }
             }
         });
+    }
+}
+
+fn get_checkbox_text(dep: &DependencyInfo) -> &str {
+    match dep {
+        DependencyInfo::Package(pck) => pck.version.as_deref().unwrap_or("no version"),
+        DependencyInfo::Project(proj) => proj.version.as_deref().unwrap_or("no version"),
     }
 }
 
