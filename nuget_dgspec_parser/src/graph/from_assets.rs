@@ -104,6 +104,7 @@ fn parse_dep_requirement(req: String) -> (String, Option<String>) {
     if parts.len() == 1 {
         (parts[0].to_string(), None)
     } else if parts.len() == 3 && parts[1] == ">=" {
+        // TODO: parse more
         (parts[0].to_string(), Some(parts[2].to_string()))
     } else {
         // Fallback: assume first part is name, ignore others
