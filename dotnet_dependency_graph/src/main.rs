@@ -166,6 +166,7 @@ impl App for DependencyApp {
 
 fn load_file(path: PathBuf) -> std::io::Result<File> {
     // Detect file type and use appropriate parser
+    // TODO: objective parser by ending?
     let graph = if path
         .file_name()
         .and_then(|n| n.to_str())
