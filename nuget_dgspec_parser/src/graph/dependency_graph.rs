@@ -26,7 +26,7 @@ impl ProjectInfo {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PackageInfo {
-    pub name: String,
+    name: String,
     pub version: Option<String>,
 }
 
@@ -54,10 +54,17 @@ impl DependencyWithId for DependencyInfo {
 }
 
 impl DependencyInfo {
-    fn get_name(&self) -> &str {
+    pub fn get_name(&self) -> &str {
         match self {
             DependencyInfo::Project(info) => &info.path,
             DependencyInfo::Package(info) => &info.name,
+        }
+    }
+
+    pub fn get_version(&self) -> Option<&String> {
+        match self {
+            DependencyInfo::Project(info) => info.version.as_ref(),
+            DependencyInfo::Package(info) => info.version.as_ref(),
         }
     }
 }

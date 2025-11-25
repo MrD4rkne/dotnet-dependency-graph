@@ -28,15 +28,15 @@ fn test_parse_project_assets_json() -> std::io::Result<()> {
 
     for (_id, info) in graph.iter() {
         match info {
-            DependencyInfo::Package(pkg) => {
-                if pkg.name.eq_ignore_ascii_case("Serilog") {
+            DependencyInfo::Package(_) => {
+                if info.get_name().eq_ignore_ascii_case("Serilog") {
                     found_serilog = true;
                     assert_eq!(pkg.version, Some("4.0.0".to_string()));
                 }
-                if pkg.name == "Serilog.Sinks.Console" {
+                if info.get_name() == "Serilog.Sinks.Console" {
                     found_serilog_console = true;
                 }
-                if pkg.name == "Serilog.Sinks.Debug" {
+                if info.get_name() == "Serilog.Sinks.Debug" {
                     found_serilog_debug = true;
                 }
             }

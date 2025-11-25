@@ -14,9 +14,9 @@ pub fn get_display_text(info: &DependencyInfo) -> String {
         DependencyInfo::Package(pck) => {
             // Display package name on first line, version on second line
             if let Some(version) = &pck.version {
-                format!("{}\n{}", pck.name, version)
+                format!("{}\n{}", info.get_name(), version)
             } else {
-                pck.name.clone()
+                info.get_name().to_string()
             }
         }
     }
