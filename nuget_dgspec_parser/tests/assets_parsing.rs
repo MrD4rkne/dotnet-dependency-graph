@@ -58,6 +58,7 @@ fn test_parse_project_assets_json() -> std::io::Result<()> {
 
     let deps: Vec<_> = graph
         .get_direct_dependencies_in_framework(&serilog_console_id, framework)
+        .unwrap()
         .collect();
 
     assert!(

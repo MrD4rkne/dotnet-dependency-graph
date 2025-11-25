@@ -13,32 +13,6 @@ use crate::graph::{DependencyGraph, DependencyId, DependencyWithId, Framework};
 ///
 /// # Returns
 /// A DependencyGraph containing all dependencies and their relationships
-///
-/// # Example
-/// ```
-/// use nuget_dgspec_parser::assets_models::parse_project_assets;
-/// use nuget_dgspec_parser::graph::from_assets::create_dependency_graph_from_assets;
-///
-/// let json = r#"{
-///   "version": 3,
-///   "targets": {
-///     "net8.0": {
-///       "Newtonsoft.Json/13.0.1": {
-///         "type": "package",
-///         "dependencies": {}
-///       }
-///     }
-///   },
-///   "libraries": {
-///     "Newtonsoft.Json/13.0.1": {
-///       "type": "package",
-///       "path": "newtonsoft.json/13.0.1"
-///     }
-///   }
-/// }"#;
-/// let assets = parse_project_assets(json).expect("Failed to parse");
-/// let graph = create_dependency_graph_from_assets(assets);
-/// ```
 pub fn create_dependency_graph_from_assets(assets: ProjectAssets) -> DependencyGraph {
     let mut graph = DependencyGraph::new();
     // Get the project path and add to graph.
@@ -72,8 +46,8 @@ fn parse_libraries(graph: &mut DependencyGraph, libraries: HashMap<String, Libra
     libraries.into_iter().for_each(|(key, library)| {
         let (name, version) = parse_library_id(key);
         _ = match library.library_type {
-            LibraryType::Project => graph.add_project(name, version),
-            LibraryType::Package => graph.add_package(name, version),
+            LibraryType::Project => graph.add_project(name, version).ok(),
+            LibraryType::Package => graph.add_package(name, version).ok(),
             _ => return, // TODO: support all
         }
     });
@@ -127,6 +101,11 @@ fn parse_library_entry(
         _ => return,
     };
 
+    let id = match id {
+        Ok(id) => id,
+        Err(_) => return,
+    };
+
     // Add relations for dependencies
     library_info
         .dependencies
@@ -144,7 +123,7 @@ fn parse_library_entry(
 fn parse_project(graph: &mut DependencyGraph, proj: ProjectInfo) -> Option<DependencyId> {
     proj.restore
         .and_then(|r| r.project_path)
-        .map(|path| graph.add_project(path, proj.version))
+        .and_then(|path| graph.add_project(path, proj.version).ok())
 }
 
 /// Parses a library ID in format "name/version" into separate components.

@@ -140,58 +140,93 @@ impl Default for DependencyGraph {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct DependencyNotFound;
 
-#[derive(Debug, Default)]
+impl std::fmt::Display for DependencyNotFound {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Dependency not found in the graph")
+    }
+}
+
+impl std::error::Error for DependencyNotFound {}
+
+#[derive(Debug, Default, Clone)]
 pub struct DependencyCycle;
+
+impl std::fmt::Display for DependencyCycle {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Dependency cycle detected")
+    }
+}
+
+impl std::error::Error for DependencyCycle {}
+
+#[derive(Debug, Default, Clone)]
+pub struct DifferentDependencyType;
+
+impl std::fmt::Display for DifferentDependencyType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Dependencies with same name but different types")
+    }
+}
+
+impl std::error::Error for DifferentDependencyType {}
 
 impl DependencyGraph {
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn add_project(&mut self, path: String, version: Option<String>) -> DependencyId {
+    pub fn add_project(
+        &mut self,
+        path: String,
+        version: Option<String>,
+    ) -> Result<DependencyId, DifferentDependencyType> {
         let project = DependencyInfo::Project(ProjectInfo::new(path, version));
         self.add_dependency(project)
     }
 
-    pub fn add_package(&mut self, name: String, version: Option<String>) -> DependencyId {
+    pub fn add_package(
+        &mut self,
+        name: String,
+        version: Option<String>,
+    ) -> Result<DependencyId, DifferentDependencyType> {
         let lib = DependencyInfo::Package(PackageInfo::new(name, version));
         self.add_dependency(lib)
     }
 
-    // TODO: return result
     /// Ensures a dependency is in the graph. Returns id to it.
     ///
-    /// **Panics** if there is already a dependency with same name but different type.
-    fn add_dependency(&mut self, dependency: DependencyInfo) -> DependencyId {
+    /// Returns **Error** if there is already a dependency with same name but different type.
+    fn add_dependency(
+        &mut self,
+        dependency: DependencyInfo,
+    ) -> Result<DependencyId, DifferentDependencyType> {
         let id = dependency.id();
         if self.info.contains_key(&id) {
-            return id;
+            return Ok(id);
         }
 
-        let existing_versions_ids = self
-            .id_by_name
-            .entry(dependency.get_name().to_string())
-            .or_default();
-        if let Some(existing_id) = existing_versions_ids.first()
+        let existing_versions = self.id_by_name.get(dependency.get_name());
+        if let Some(vec) = existing_versions
+            && let Some(existing_id) = vec.first()
             && let Some(lib) = self.info.get(existing_id)
             && std::mem::discriminant(&dependency) != std::mem::discriminant(lib)
         {
-            panic!(
-                "Dependency with name {} has different type than existing",
-                dependency.get_name()
-            );
+            return Err(DifferentDependencyType);
         }
 
-        existing_versions_ids.push(id.clone());
+        self.id_by_name
+            .entry(dependency.get_name().to_string())
+            .or_default()
+            .push(id.clone());
         self.info.insert(id.clone(), dependency);
 
         let node_ix = self.graph.add_node(id.clone());
         self.ix_by_id.insert(id.clone(), node_ix);
 
-        id
+        Ok(id)
     }
 
     /// Get the lib with name and version.
@@ -216,17 +251,11 @@ impl DependencyGraph {
             if let Some(info) = vec.first().and_then(|id| self.get(id)) {
                 match info {
                     DependencyInfo::Package(_) => {
-                        let id = self.add_dependency(DependencyInfo::Package(PackageInfo::new(
-                            name.to_string(),
-                            version,
-                        )));
+                        let id = self.add_package(name.to_string(), version).ok()?;
                         return self.info.get(&id);
                     }
                     DependencyInfo::Project(_) => {
-                        let id = self.add_dependency(DependencyInfo::Project(ProjectInfo::new(
-                            name.to_string(),
-                            version,
-                        )));
+                        let id = self.add_project(name.to_string(), version).ok()?;
                         return self.info.get(&id);
                     }
                 }
@@ -246,14 +275,18 @@ impl DependencyGraph {
 
     /// Get direct dependencies of the dependency.
     ///
-    /// **Panics** if dependency with the provided id was not from this graph.
-    fn get_direct_dependencies(&self, id: &DependencyId) -> impl Iterator<Item = &DepEdge> {
+    /// Returns **Error** if dependency with the provided id was not from this graph.
+    fn get_direct_dependencies(
+        &self,
+        id: &DependencyId,
+    ) -> Result<impl Iterator<Item = &DepEdge>, DependencyNotFound> {
         if let Some(index) = self.ix_by_id.get(id) {
-            self.graph
+            Ok(self
+                .graph
                 .edges_directed(*index, petgraph::Direction::Outgoing)
-                .map(|edge| edge.weight())
+                .map(|edge| edge.weight()))
         } else {
-            panic!("The dependency is not available in the graph");
+            Err(DependencyNotFound)
         }
     }
 
@@ -261,24 +294,26 @@ impl DependencyGraph {
         &self,
         id: &DependencyId,
         framework: Framework,
-    ) -> impl Iterator<Item = &DepEdge> {
-        self.get_direct_dependencies(id)
-            .filter(move |edge| *edge.get_framework() == framework)
+    ) -> Result<impl Iterator<Item = &DepEdge>, DependencyNotFound> {
+        Ok(self
+            .get_direct_dependencies(id)?
+            .filter(move |edge| *edge.get_framework() == framework))
     }
 
     /// Get direct reverse dependencies of the dependency.
     ///
-    /// **Panics** if dependency with the provided id was not from this graph.
+    /// Returns **Error** if dependency with the provided id was not from this graph.
     pub fn get_direct_reverse_dependencies(
         &self,
         id: &DependencyId,
-    ) -> impl Iterator<Item = &DepEdge> {
+    ) -> Result<impl Iterator<Item = &DepEdge>, DependencyNotFound> {
         if let Some(index) = self.ix_by_id.get(id) {
-            self.graph
+            Ok(self
+                .graph
                 .edges_directed(*index, petgraph::Direction::Incoming)
-                .map(|edge| edge.weight())
+                .map(|edge| edge.weight()))
         } else {
-            panic!("The dependency is not available in the graph");
+            Err(DependencyNotFound)
         }
     }
 
@@ -312,11 +347,14 @@ impl DependencyGraph {
     pub fn layout(
         &self,
         vertex_size: &impl Fn(&DependencyId, &DependencyInfo) -> (f64, f64),
-    ) -> Vec<super::algo::Layout<DependencyId>> {
-        let vertex_size = |_: NodeIndex, id: &DependencyId| -> (f64, f64) {
-            let dep = self.get(id).expect("Node from graph should be in info");
+    ) -> Result<Vec<super::algo::Layout<DependencyId>>, DependencyNotFound> {
+        let vertex_size_fn = |_: NodeIndex, id: &DependencyId| -> (f64, f64) {
+            let dep = self
+                .info
+                .get(id)
+                .expect("Lib's info from graph should be in info");
             vertex_size(id, dep)
         };
-        super::algo::layout_sugiyama(&self.graph, &vertex_size)
+        Ok(super::algo::layout_sugiyama(&self.graph, &vertex_size_fn))
     }
 }

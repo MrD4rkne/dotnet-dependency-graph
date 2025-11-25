@@ -1,7 +1,9 @@
 use eframe::{App, run_native};
 use egui::Context;
 use egui_file_dialog::FileDialog;
-use nuget_dgspec_parser::graph::{DependencyGraph, DependencyId, Framework, Layout};
+use nuget_dgspec_parser::graph::{
+    DependencyGraph, DependencyId, DependencyNotFound, Framework, Layout,
+};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
@@ -178,12 +180,15 @@ fn load_file(path: PathBuf) -> std::io::Result<File> {
         // Default to dgspec for backward compatibility
         parse::load_dgspec_from_file(path.to_path_buf())?
     };
-    let layouts = calculate_layout(&graph);
+    let layouts = calculate_layout(&graph)
+        .map_err(|e| std::io::Error::other(format!("Failed to calculate layout: {}", e)))?;
     let node_positions = visualize::join_layouts(layouts);
     Ok(File::new(path, graph, node_positions))
 }
 
-fn calculate_layout(graph: &DependencyGraph) -> Vec<Layout<DependencyId>> {
+fn calculate_layout(
+    graph: &DependencyGraph,
+) -> Result<Vec<Layout<DependencyId>>, DependencyNotFound> {
     graph.layout(&|id, dep| visualize::calculate_size(id, dep, transform::get_display_text))
 }
 
