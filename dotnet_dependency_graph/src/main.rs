@@ -6,11 +6,13 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 mod graph_widget;
+mod packages_panel;
 mod parse;
 mod transform;
 mod visualize;
 
 use graph_widget::GraphWidget;
+use packages_panel::PackagesPanel;
 
 struct File {
     path: PathBuf,
@@ -107,62 +109,8 @@ impl App for DependencyApp {
         if let Some(file) = &mut self.current_dgspec_file {
             // Side panel with node list
             egui::SidePanel::left("nodes_panel").show(ctx, |ui| {
-                ui.heading("Packages");
-                ui.separator();
-
-                // Add search/filter box
-                ui.horizontal(|ui| {
-                    ui.label("Filter:");
-                    ui.text_edit_singleline(&mut self.package_filter);
-                });
-
-                ui.separator();
-
-                // Add Select All / Deselect All buttons
-                ui.horizontal(|ui| {
-                    if ui.button("Select All").clicked() {
-                        file.visible_nodes = file.graph.iter().map(|(id, _)| id.clone()).collect();
-                    }
-                    if ui.button("Deselect All").clicked() {
-                        file.visible_nodes.clear();
-                    }
-                });
-
-                ui.separator();
-
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    let mut nodes: Vec<_> = file.graph.iter().collect();
-                    // Sort for consistent ordering
-                    nodes.sort_by(|a, b| get_display_name(a.1).cmp(&get_display_name(b.1)));
-
-                    // Apply filter
-                    let filter_lower = self.package_filter.to_lowercase();
-                    let filtered_nodes: Vec<_> = if filter_lower.is_empty() {
-                        nodes
-                    } else {
-                        nodes
-                            .into_iter()
-                            .filter(|(_, info)| {
-                                get_display_name(info)
-                                    .to_lowercase()
-                                    .contains(&filter_lower)
-                            })
-                            .collect()
-                    };
-
-                    for (id, info) in filtered_nodes {
-                        let mut is_visible = file.visible_nodes.contains(id);
-                        let display_name = get_display_name(info);
-
-                        if ui.checkbox(&mut is_visible, &display_name).changed() {
-                            if is_visible {
-                                file.visible_nodes.insert(id.clone());
-                            } else {
-                                file.visible_nodes.remove(id);
-                            }
-                        }
-                    }
-                });
+                PackagesPanel::new(&file.graph, &mut file.visible_nodes, &mut self.package_filter)
+                    .show(ui);
             });
         }
 
@@ -232,23 +180,6 @@ fn load_file(path: PathBuf) -> std::io::Result<File> {
 
 fn calculate_layout(graph: &DependencyGraph) -> Vec<Layout<DependencyId>> {
     graph.layout(&|id, dep| visualize::calculate_size(id, dep, transform::get_display_text))
-}
-
-fn get_display_name(dep: &nuget_dgspec_parser::graph::DependencyInfo) -> String {
-    use nuget_dgspec_parser::graph::DependencyInfo;
-
-    match dep {
-        DependencyInfo::Project(proj) => {
-            // Extract just the project name from the full path
-            if let Some(file_name) = std::path::Path::new(&proj.path).file_stem()
-                && let Some(name_str) = file_name.to_str()
-            {
-                return name_str.to_string();
-            }
-            proj.path.clone()
-        }
-        DependencyInfo::Package(pck) => pck.name.clone(),
-    }
 }
 
 fn main() -> Result<(), eframe::Error> {
