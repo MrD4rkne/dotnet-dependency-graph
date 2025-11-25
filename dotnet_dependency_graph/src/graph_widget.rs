@@ -1,15 +1,11 @@
-use egui::{Color32, Painter, Pos2, Rect, Response, Sense, Stroke, Ui, Vec2, Widget};
+use egui::{Painter, Pos2, Rect, Response, Sense, Ui, Vec2, Widget};
 use nuget_dgspec_parser::graph::{DependencyGraph, DependencyId, DependencyInfo, Framework};
 use std::collections::{HashMap, HashSet};
 
+use crate::transform;
 use crate::visualize;
 
 // Constants
-const EDGE_STROKE_WIDTH: f32 = 2.0;
-const EDGE_COLOR: Color32 = Color32::from_rgb(100, 100, 100);
-const ARROW_SIZE: f32 = 10.0;
-const ARROW_TIP_OFFSET: f32 = 30.0;
-const ARROW_HEAD_WIDTH_FACTOR: f32 = 0.5;
 const ZOOM_MIN: f32 = 0.1;
 const ZOOM_MAX: f32 = 3.0;
 const ZOOM_SENSITIVITY: f32 = 0.001;
@@ -164,6 +160,9 @@ fn draw_all_edges(
     for src_id in visible_nodes.iter() {
         if let Some(&src_pos) = positions.get(src_id) {
             let src_screen = ctx.transform(src_pos);
+            let src_text =
+                transform::get_display_text(ctx.graph.get(src_id).expect("Node should exist"));
+            let src_rect = visualize::calculate_node_rect(&src_text, src_screen, ctx.zoom);
 
             for edge in ctx
                 .graph
@@ -178,38 +177,15 @@ fn draw_all_edges(
 
                 if let Some(&dst_pos) = positions.get(dst_id) {
                     let dst_screen = ctx.transform(dst_pos);
-                    draw_edge(painter, src_screen, dst_screen);
+                    let dst_text = transform::get_display_text(
+                        ctx.graph.get(dst_id).expect("Node should exist"),
+                    );
+                    let dst_rect = visualize::calculate_node_rect(&dst_text, dst_screen, ctx.zoom);
+                    visualize::draw_edge(painter, src_rect, dst_rect, ctx.zoom);
                 }
             }
         }
     }
-}
-
-/// Draw a single edge with arrow from source to destination
-fn draw_edge(painter: &Painter, src: Pos2, dst: Pos2) {
-    // Draw line
-    painter.line_segment([src, dst], Stroke::new(EDGE_STROKE_WIDTH, EDGE_COLOR));
-
-    // Draw arrow head
-    let dir = (dst - src).normalized();
-    let perp = Vec2::new(-dir.y, dir.x);
-    let tip = dst - dir * ARROW_TIP_OFFSET;
-
-    // Two sides of the arrow
-    painter.line_segment(
-        [
-            tip,
-            tip - dir * ARROW_SIZE + perp * ARROW_SIZE * ARROW_HEAD_WIDTH_FACTOR,
-        ],
-        Stroke::new(EDGE_STROKE_WIDTH, EDGE_COLOR),
-    );
-    painter.line_segment(
-        [
-            tip,
-            tip - dir * ARROW_SIZE - perp * ARROW_SIZE * ARROW_HEAD_WIDTH_FACTOR,
-        ],
-        Stroke::new(EDGE_STROKE_WIDTH, EDGE_COLOR),
-    );
 }
 
 /// Draw a single node and handle its dragging interaction
