@@ -23,7 +23,7 @@ pub struct ProjectAssets {
 /// Represents the type of a library.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum LibraryType {
-    /// Indicates that the library comes from compiling an .NET project.
+    /// Indicates that the library comes from compiling a .NET project.
     #[serde(rename = "project")]
     Project,
     /// Indicates that the library comes from compiling an external project (such as an MSBuild-based project)
