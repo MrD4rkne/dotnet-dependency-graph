@@ -87,7 +87,7 @@ fn create_label(
     let font = FontId::proportional(font_size.into_value());
 
     // Calculate available space for text (with padding)
-    let max_text_height = height.into_value() - padding.into_value();
+    let max_text_height = height - padding;
 
     // Use TextWrapMode::Truncate to handle both width and height truncation
     let mut job = LayoutJob::simple(
@@ -96,7 +96,7 @@ fn create_label(
         constants::TEXT_COLOR,
         max_text_width.into_value(),
     );
-    job.wrap.max_rows = ((max_text_height / font_size.into_value()).floor() as usize).max(1);
+    job.wrap.max_rows = ((max_text_height / font_size).floor() as usize).max(1);
 
     job
 }
