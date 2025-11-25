@@ -109,8 +109,12 @@ impl App for DependencyApp {
         if let Some(file) = &mut self.current_dgspec_file {
             // Side panel with node list
             egui::SidePanel::left("nodes_panel").show(ctx, |ui| {
-                PackagesPanel::new(&file.graph, &mut file.visible_nodes, &mut self.package_filter)
-                    .show(ui);
+                PackagesPanel::new(
+                    &file.graph,
+                    &mut file.visible_nodes,
+                    &mut self.package_filter,
+                )
+                .show(ui);
             });
         }
 
