@@ -156,7 +156,11 @@ fn rect_edge_point(rect: Rect, direction: Vec2) -> Pos2 {
     };
 
     let t = t_x.min(t_y);
-    center + direction * t
+    if t.is_infinite() {
+        center
+    } else {
+        center + direction * t
+    }
 }
 
 /// Draw a single edge with arrow from source to destination
