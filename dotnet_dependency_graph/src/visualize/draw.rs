@@ -100,7 +100,7 @@ fn create_label(
         constants::TEXT_COLOR,
         max_text_width.into_value(),
     );
-    job.wrap.max_rows = ((max_text_height / font_size).floor() as usize).max(1);
+    job.wrap.max_rows = ((max_text_height / font_size).into_value().floor() as usize).max(1);
 
     job
 }
