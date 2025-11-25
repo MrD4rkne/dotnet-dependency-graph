@@ -1,3 +1,4 @@
+use egui::text::LayoutJob;
 use egui::{FontId, Pos2, Rect, Stroke, Vec2};
 use nuget_dgspec_parser::graph::{DependencyId, DependencyInfo, Layout};
 use std::collections::HashMap;
@@ -62,22 +63,8 @@ pub fn draw_node(
         egui::epaint::StrokeKind::Middle,
     );
 
-    let font = FontId::proportional(font_size.into_value());
-
-    // Calculate available space for text (with padding)
-    let max_text_height = height.into_value() - padding.into_value();
-
-    // Use TextWrapMode::Truncate to handle both width and height truncation
-    use egui::text::LayoutJob;
-    let mut job = LayoutJob::simple(
-        text.to_string(),
-        font,
-        constants::TEXT_COLOR,
-        max_text_width.into_value(),
-    );
-    job.wrap.max_rows = ((max_text_height / font_size.into_value()).floor() as usize).max(1);
-
-    let galley = painter.layout_job(job);
+    let label_job = create_label(text.to_string(), font_size, height, padding, max_text_width);
+    let galley = painter.layout_job(label_job);
 
     // Center the text in the node
     let text_pos = Pos2::new(
@@ -88,6 +75,30 @@ pub fn draw_node(
     painter.galley(text_pos, galley, constants::TEXT_COLOR);
 
     rect
+}
+
+fn create_label(
+    text: String,
+    font_size: Zoomed<f32>,
+    height: Zoomed<f32>,
+    padding: Zoomed<f32>,
+    max_text_width: Zoomed<f32>,
+) -> LayoutJob {
+    let font = FontId::proportional(font_size.into_value());
+
+    // Calculate available space for text (with padding)
+    let max_text_height = height.into_value() - padding.into_value();
+
+    // Use TextWrapMode::Truncate to handle both width and height truncation
+    let mut job = LayoutJob::simple(
+        text,
+        font,
+        constants::TEXT_COLOR,
+        max_text_width.into_value(),
+    );
+    job.wrap.max_rows = ((max_text_height / font_size.into_value()).floor() as usize).max(1);
+
+    job
 }
 
 pub fn join_layouts(layouts: Vec<Layout<DependencyId>>) -> HashMap<DependencyId, (f32, f32)> {
