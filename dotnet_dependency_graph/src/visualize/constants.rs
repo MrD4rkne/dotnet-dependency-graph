@@ -1,7 +1,6 @@
 use egui::Color32;
 
 // Node dimensions
-pub const NODE_WIDTH: f32 = 300.0;
 pub const NODE_HEIGHT: f32 = 80.0;
 pub const NODE_PADDING: f32 = 16.0;
 pub const NODE_CORNER_RADIUS: f32 = 4.0;
