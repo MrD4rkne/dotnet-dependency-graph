@@ -20,4 +20,4 @@ pub const NODE_BORDER_COLOR: Color32 = Color32::from_rgb(30, 60, 100);
 pub const TEXT_COLOR: Color32 = Color32::WHITE;
 
 // Layout constants
-pub const LAYOUT_SPACING: f64 = 100.0;
+pub const LAYOUT_SPACING: f64 = 50.0;
