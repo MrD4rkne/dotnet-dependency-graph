@@ -33,10 +33,10 @@ fn test_parse_project_assets_json() -> std::io::Result<()> {
                     found_serilog = true;
                     assert_eq!(pkg.version, Some("4.0.0".to_string()));
                 }
-                if pkg.name.eq_ignore_ascii_case("Serilog.Sinks.Console") {
+                if pkg.name == "Serilog.Sinks.Console" {
                     found_serilog_console = true;
                 }
-                if pkg.name.eq_ignore_ascii_case("Serilog.Sinks.Debug") {
+                if pkg.name == "Serilog.Sinks.Debug" {
                     found_serilog_debug = true;
                 }
             }
