@@ -164,24 +164,28 @@ fn draw_all_edges(
                 transform::get_display_text(ctx.graph.get(src_id).expect("Node should exist"));
             let src_rect = visualize::calculate_node_rect(&src_text, src_screen, ctx.zoom);
 
-            for edge in ctx
+            let deps = ctx
                 .graph
-                .get_direct_dependencies_in_framework(src_id, framework.clone())
-            {
-                let dst_id = edge.get_id();
+                .get_direct_dependencies_in_framework(src_id, framework.clone());
 
-                // Only draw edges to visible nodes
-                if !visible_nodes.contains(dst_id) {
-                    continue;
-                }
+            if let Ok(edges) = deps {
+                for edge in edges {
+                    let dst_id = edge.get_id();
 
-                if let Some(&dst_pos) = positions.get(dst_id) {
-                    let dst_screen = ctx.transform(dst_pos);
-                    let dst_text = transform::get_display_text(
-                        ctx.graph.get(dst_id).expect("Node should exist"),
-                    );
-                    let dst_rect = visualize::calculate_node_rect(&dst_text, dst_screen, ctx.zoom);
-                    visualize::draw_edge(painter, src_rect, dst_rect, ctx.zoom);
+                    // Only draw edges to visible nodes
+                    if !visible_nodes.contains(dst_id) {
+                        continue;
+                    }
+
+                    if let Some(&dst_pos) = positions.get(dst_id) {
+                        let dst_screen = ctx.transform(dst_pos);
+                        let dst_text = transform::get_display_text(
+                            ctx.graph.get(dst_id).expect("Node should exist"),
+                        );
+                        let dst_rect =
+                            visualize::calculate_node_rect(&dst_text, dst_screen, ctx.zoom);
+                        visualize::draw_edge(painter, src_rect, dst_rect, ctx.zoom);
+                    }
                 }
             }
         }
