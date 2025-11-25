@@ -50,4 +50,3 @@ For a project that references `Serilog.Sinks.Console`:
 
 - **dgspec.json** shows: `MyProject` → `Serilog.Sinks.Console`
 - **project.assets.json** shows: `MyProject` → `Serilog.Sinks.Console` → `Serilog` (complete graph)
-
