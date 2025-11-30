@@ -1,7 +1,7 @@
 use serde_json::Value;
 use std::{fs, path::PathBuf, process::Command};
 
-use dotnet_dependency_parser::models::parse_dependency_graph_spec;
+use dotnet_dependency_parser::parsing::dgspec::parse_dependency_graph_spec;
 
 #[test]
 fn dgspec_for_project_and_libraries_dependencies_deserializing_then_serializing_produces_equivalent_json()
