@@ -3,3 +3,6 @@
 # Dotnet build artifacts
 **/obj
 **/bin
+
+# Folder with data for development
+/data
