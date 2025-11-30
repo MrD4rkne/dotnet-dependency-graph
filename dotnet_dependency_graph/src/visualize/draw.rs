@@ -1,5 +1,5 @@
 use egui::{FontId, Pos2, Rect, Stroke, Vec2};
-use nuget_dgspec_parser::graph::{DependencyId, DependencyInfo, Layout};
+use dotnet_dependency_parser::graph::{DependencyId, DependencyInfo, Layout};
 use std::collections::HashMap;
 
 use super::Zoomed;

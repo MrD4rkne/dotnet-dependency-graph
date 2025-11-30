@@ -1,7 +1,7 @@
 use eframe::{App, run_native};
 use egui::Context;
 use egui_file_dialog::FileDialog;
-use nuget_dgspec_parser::graph::{DependencyGraph, DependencyId, Framework, Layout};
+use dotnet_dependency_parser::graph::{DependencyGraph, DependencyId, Framework, Layout};
 use std::collections::HashMap;
 use std::path::PathBuf;
 

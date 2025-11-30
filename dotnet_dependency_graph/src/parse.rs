@@ -1,12 +1,12 @@
-use nuget_dgspec_parser::graph::{DependencyGraph, DependencyId, Framework};
-use nuget_dgspec_parser::models::{DependencyGraphSpec, LibraryDependency, ProjectReference};
+use dotnet_dependency_parser::graph::{DependencyGraph, DependencyId, Framework};
+use dotnet_dependency_parser::models::{DependencyGraphSpec, LibraryDependency, ProjectReference};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
 pub fn load_dgspec_from_file(path: PathBuf) -> std::io::Result<DependencyGraph> {
     let contents = fs::read_to_string(path)?;
-    let dgspec = nuget_dgspec_parser::models::parse_dependency_graph_spec(&contents)
+    let dgspec = dotnet_dependency_parser::models::parse_dependency_graph_spec(&contents)
         .map_err(|_| std::io::Error::other("Couldn't parse file's content"))?;
     Ok(create_dependency_graph(dgspec))
 }

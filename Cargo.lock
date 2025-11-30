@@ -783,10 +783,20 @@ dependencies = [
 name = "dotnet_dependency_graph"
 version = "0.1.0"
 dependencies = [
+ "dotnet_dependency_parser",
  "eframe",
  "egui",
  "egui-file-dialog",
- "nuget_dgspec_parser",
+]
+
+[[package]]
+name = "dotnet_dependency_parser"
+version = "0.1.0"
+dependencies = [
+ "petgraph",
+ "rust-sugiyama",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1832,16 +1842,6 @@ name = "nohash-hasher"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2bf50223579dc7cdcfb3bfcacf7069ff68243f8c363f62ffa99cf000a6b9c451"
-
-[[package]]
-name = "nuget_dgspec_parser"
-version = "0.1.0"
-dependencies = [
- "petgraph",
- "rust-sugiyama",
- "serde",
- "serde_json",
-]
 
 [[package]]
 name = "num-traits"
