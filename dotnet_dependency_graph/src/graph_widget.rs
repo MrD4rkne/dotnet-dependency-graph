@@ -1,5 +1,5 @@
+use dotnet_dependency_parser::graph::{DependencyGraph, DependencyId, Framework};
 use egui::{Color32, Painter, Pos2, Rect, Response, Sense, Stroke, Ui, Vec2, Widget};
-use nuget_dgspec_parser::graph::{DependencyGraph, DependencyId, Framework};
 use std::collections::HashMap;
 
 use crate::visualize;
@@ -111,8 +111,8 @@ impl<'a> Widget for GraphWidget<'a> {
     }
 }
 
-fn get_node_text(dep: &nuget_dgspec_parser::graph::DependencyInfo) -> String {
-    use nuget_dgspec_parser::graph::DependencyInfo;
+fn get_node_text(dep: &dotnet_dependency_parser::graph::DependencyInfo) -> String {
+    use dotnet_dependency_parser::graph::DependencyInfo;
 
     match dep {
         DependencyInfo::Project(proj) => {

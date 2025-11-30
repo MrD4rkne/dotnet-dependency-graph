@@ -1,4 +1,4 @@
-use nuget_dgspec_parser::graph::{
+use dotnet_dependency_parser::graph::{
     DependencyGraph, DependencyId, DependencyInfo, Framework, PackageInfo, ProjectInfo,
 };
 

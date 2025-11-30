@@ -7,4 +7,4 @@ edition = "2024"
 eframe = "0.33.2"
 egui = "0.33.2"
 egui-file-dialog = "0.12.0"
-nuget_dgspec_parser = { path = "../nuget_dgspec_parser" }
+dotnet_dependency_parser = { path = "../dotnet_dependency_parser" }

@@ -163,7 +163,7 @@ pub struct LibraryDependency {
 ///
 /// # Example
 /// ```
-/// use nuget_dgspec_parser::models::parse_dependency_graph_spec;
+/// use dotnet_dependency_parser::models::parse_dependency_graph_spec;
 ///
 /// let json = r#"{
 ///   "format": 1,
