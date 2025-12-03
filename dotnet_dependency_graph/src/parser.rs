@@ -109,21 +109,17 @@ impl DependencyFileParser for ProjectAssetsParser {
 }
 
 #[test]
-fn test_dgspec_parser_supports_extension() {
-    assert!(DgspecParser::does_support_extension(
-        "foo.nuget.dgspec.json"
-    ));
-    assert!(!DgspecParser::does_support_extension(
-        "foo.project.assets.json"
-    ));
+fn test_supported_parser_enumeration() {
+    let all = SupportedParser::all();
+    let exts: Vec<Vec<&str>> = all.iter().map(|p| p.extensions()).collect();
+    assert!(exts.iter().any(|e| e.contains(&"nuget.dgspec.json")));
+    assert!(exts.iter().any(|e| e.contains(&"project.assets.json")));
 }
 
 #[test]
-fn test_project_assets_parser_supports_extension() {
-    assert!(ProjectAssetsParser::does_support_extension(
-        "foo.project.assets.json"
-    ));
-    assert!(!ProjectAssetsParser::does_support_extension(
-        "foo.nuget.dgspec.json"
-    ));
+fn test_try_parse_with_supported_parsers_unsupported() {
+    let path = Path::new("foo.unknown.json");
+    let result = parse_with_supported_parsers(path);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().to_string(), "Unsupported file type");
 }
