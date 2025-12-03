@@ -229,10 +229,10 @@ impl DependencyGraph {
         Ok(id)
     }
 
-    /// Get the lib with name and version.
-    /// - If there already exists lib with this name and version - return it.
-    /// - If there already exists lib with this name - create new with the same type and provided version and return it.
-    /// - Else - return None
+    /// Gets or creates a dependency (package or project) with the specified name and version.  
+    /// - If a dependency with this name and version already exists - return it.  
+    /// - If a dependency with this name exists (but different version) - create a new one with the same type and provided version and return it.  
+    /// - Otherwise - return None  
     pub fn get_or_create_if_exists(
         &mut self,
         name: &str,
