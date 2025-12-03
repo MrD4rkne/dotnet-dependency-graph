@@ -1,5 +1,4 @@
 use dotnet_dependency_parser::graph::{DependencyGraph, DependencyId, Framework, Layout};
-use dotnet_dependency_parser::parsing::dgspec;
 use eframe::{App, run_native};
 use egui::Context;
 use egui_file_dialog::FileDialog;
@@ -7,6 +6,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 mod graph_widget;
+mod parser;
 mod visualize;
 
 use graph_widget::GraphWidget;
@@ -123,7 +123,7 @@ impl App for DependencyApp {
                     );
                 });
             } else {
-                ui.label("Choose a .dgspec file to visualize dependencies.");
+                ui.label("Choose a file to visualize dependencies.");
             }
         });
 
@@ -139,8 +139,8 @@ impl App for DependencyApp {
     }
 }
 
-fn load_file(path: PathBuf) -> std::io::Result<File> {
-    let graph = dgspec::load_dgspec_from_file(path.to_path_buf())?;
+fn load_file(path: PathBuf) -> Result<File, Box<dyn std::error::Error + Send + Sync>> {
+    let graph = parser::parse_with_supported_parsers(&path)?;
     let layouts = calculate_layout(&graph);
     let node_positions = visualize::join_layouts(layouts);
     Ok(File::new(path, graph, node_positions))

@@ -1,19 +1,8 @@
 use crate::graph::{DependencyGraph, DependencyId, Framework};
 use crate::parsing::dgspec::{DependencyGraphSpec, LibraryDependency, ProjectReference};
 use std::collections::HashMap;
-use std::fs;
-use std::path::PathBuf;
 
-use super::models;
-
-pub fn load_dgspec_from_file(path: PathBuf) -> std::io::Result<DependencyGraph> {
-    let contents = fs::read_to_string(path)?;
-    let dgspec = models::parse_dependency_graph_spec(&contents)
-        .map_err(|_| std::io::Error::other("Couldn't parse file's content"))?;
-    create_dependency_graph(dgspec).map_err(std::io::Error::other)
-}
-
-fn create_dependency_graph(
+pub fn create_dependency_graph(
     spec: DependencyGraphSpec,
 ) -> Result<DependencyGraph, Box<dyn std::error::Error + Send + Sync>> {
     let mut graph = DependencyGraph::new();

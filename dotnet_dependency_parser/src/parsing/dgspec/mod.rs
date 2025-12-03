@@ -2,4 +2,4 @@ mod models;
 pub use models::*;
 
 mod parsing;
-pub use parsing::load_dgspec_from_file;
+pub use parsing::create_dependency_graph;
