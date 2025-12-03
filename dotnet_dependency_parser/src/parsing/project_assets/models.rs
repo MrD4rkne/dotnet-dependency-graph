@@ -128,7 +128,7 @@ pub struct ProjectRestore {
 ///
 /// # Example
 /// ```
-/// use nuget_dgspec_parser::assets_models::parse_project_assets;
+/// use dotnet_dependency_parser::parsing::project_assets::parse_project_assets;
 ///
 /// let json = r#"{
 ///   "version": 3,
