@@ -15,17 +15,18 @@ pub trait DependencyWithId {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ProjectInfo {
     pub path: String,
+    pub version: Option<String>,
 }
 
 impl ProjectInfo {
-    fn new(path: String) -> Self {
-        Self { path }
+    fn new(path: String, version: Option<String>) -> Self {
+        Self { path, version }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PackageInfo {
-    pub name: String,
+    name: String,
     pub version: Option<String>,
 }
 
@@ -52,6 +53,24 @@ impl DependencyWithId for DependencyInfo {
     }
 }
 
+impl DependencyInfo {
+    /// Get name of the dependency.
+    pub fn name(&self) -> &str {
+        match self {
+            DependencyInfo::Project(info) => &info.path,
+            DependencyInfo::Package(info) => &info.name,
+        }
+    }
+
+    /// Get version of the dependency.
+    pub fn version(&self) -> Option<&String> {
+        match self {
+            DependencyInfo::Project(info) => info.version.as_ref(),
+            DependencyInfo::Package(info) => info.version.as_ref(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Framework {
     name: String,
@@ -62,7 +81,7 @@ impl Framework {
         Self { name }
     }
 
-    pub fn get_name(&self) -> &str {
+    pub fn name(&self) -> &str {
         &self.name
     }
 }
@@ -83,19 +102,19 @@ impl DepEdge {
         }
     }
 
-    pub fn get_id(&self) -> &DependencyId {
+    pub fn id(&self) -> &DependencyId {
         &self.to
     }
 
-    pub fn get_from(&self) -> &DependencyId {
+    pub fn from(&self) -> &DependencyId {
         &self.from
     }
 
-    pub fn get_to(&self) -> &DependencyId {
+    pub fn to(&self) -> &DependencyId {
         &self.to
     }
 
-    pub fn get_framework(&self) -> &Framework {
+    pub fn framework(&self) -> &Framework {
         &self.target_framework
     }
 }
@@ -105,6 +124,7 @@ pub struct DependencyGraph {
     graph: StableDiGraph<DependencyId, DepEdge>,
     info: HashMap<DependencyId, DependencyInfo>,
     ix_by_id: HashMap<DependencyId, NodeIndex>,
+    id_by_name: HashMap<String, Vec<DependencyId>>,
     frameworks: HashSet<Framework>,
 }
 
@@ -114,40 +134,135 @@ impl Default for DependencyGraph {
             graph: StableDiGraph::<DependencyId, DepEdge>::new(),
             info: HashMap::new(),
             ix_by_id: HashMap::new(),
+            id_by_name: HashMap::new(),
             frameworks: HashSet::new(),
         }
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct DependencyNotFound;
 
-#[derive(Debug, Default)]
+impl std::fmt::Display for DependencyNotFound {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Dependency not found in the graph")
+    }
+}
+
+impl std::error::Error for DependencyNotFound {}
+
+#[derive(Debug, Default, Clone)]
 pub struct DependencyCycle;
+
+impl std::fmt::Display for DependencyCycle {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Dependency cycle detected")
+    }
+}
+
+impl std::error::Error for DependencyCycle {}
+
+#[derive(Debug, Default, Clone)]
+pub struct DifferentDependencyType;
+
+impl std::fmt::Display for DifferentDependencyType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Dependencies with same name but different types")
+    }
+}
+
+impl std::error::Error for DifferentDependencyType {}
 
 impl DependencyGraph {
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn add_project(&mut self, path: String) -> DependencyId {
-        let project = DependencyInfo::Project(ProjectInfo::new(path));
+    pub fn add_project(
+        &mut self,
+        path: String,
+        version: Option<String>,
+    ) -> Result<DependencyId, DifferentDependencyType> {
+        let project = DependencyInfo::Project(ProjectInfo::new(path, version));
         self.add_dependency(project)
     }
 
-    pub fn add_package(&mut self, name: String, version: Option<String>) -> DependencyId {
+    pub fn add_package(
+        &mut self,
+        name: String,
+        version: Option<String>,
+    ) -> Result<DependencyId, DifferentDependencyType> {
         let lib = DependencyInfo::Package(PackageInfo::new(name, version));
         self.add_dependency(lib)
     }
 
     /// Ensures a dependency is in the graph. Returns id to it.
-    fn add_dependency(&mut self, dependency: DependencyInfo) -> DependencyId {
-        let dependency = self.info.entry(dependency.id()).or_insert_with(|| {
-            self.ix_by_id
-                .insert(dependency.id(), self.graph.add_node(dependency.id()));
-            dependency
-        });
-        dependency.id()
+    ///
+    /// Returns **Error** if there is already a dependency with same name but different type.
+    fn add_dependency(
+        &mut self,
+        dependency: DependencyInfo,
+    ) -> Result<DependencyId, DifferentDependencyType> {
+        let id = dependency.id();
+        if self.info.contains_key(&id) {
+            return Ok(id);
+        }
+
+        let existing_versions = self.id_by_name.get(dependency.name());
+        if let Some(vec) = existing_versions
+            && let Some(existing_id) = vec.first()
+            && let Some(lib) = self.info.get(existing_id)
+            && std::mem::discriminant(&dependency) != std::mem::discriminant(lib)
+        {
+            return Err(DifferentDependencyType);
+        }
+
+        self.id_by_name
+            .entry(dependency.name().to_string())
+            .or_default()
+            .push(id.clone());
+        self.info.insert(id.clone(), dependency);
+
+        let node_ix = self.graph.add_node(id.clone());
+        self.ix_by_id.insert(id.clone(), node_ix);
+
+        Ok(id)
+    }
+
+    /// Get the lib with name and version.
+    /// - If there already exists lib with this name and version - return it.
+    /// - If there already exists lib with this name - create new with the same type and provided version and return it.
+    /// - Else - return None
+    pub fn get_or_create_if_exists(
+        &mut self,
+        name: &str,
+        version: Option<String>,
+    ) -> Option<&DependencyInfo> {
+        if let Some(vec) = self.id_by_name.get(name) {
+            if let Some(id) = vec.iter().find(|id| {
+                self.info.get(id).is_some_and(|info| match info {
+                    DependencyInfo::Package(p) => p.version == version,
+                    DependencyInfo::Project(p) => p.version == version,
+                })
+            }) {
+                return self.info.get(id);
+            }
+
+            if let Some(info) = vec.first().and_then(|id| self.get(id)) {
+                match info {
+                    DependencyInfo::Package(_) => {
+                        let id = self.add_package(name.to_string(), version).ok()?;
+                        return self.info.get(&id);
+                    }
+                    DependencyInfo::Project(_) => {
+                        let id = self.add_project(name.to_string(), version).ok()?;
+                        return self.info.get(&id);
+                    }
+                }
+            }
+        }
+
+        None
     }
 
     pub fn get(&self, id: &DependencyId) -> Option<&DependencyInfo> {
@@ -160,14 +275,18 @@ impl DependencyGraph {
 
     /// Get direct dependencies of the dependency.
     ///
-    /// **Panics** if dependency with the provided id was not from this graph.
-    fn get_direct_dependencies(&self, id: &DependencyId) -> impl Iterator<Item = &DepEdge> {
+    /// Returns **Error** if dependency with the provided id was not from this graph.
+    fn get_direct_dependencies(
+        &self,
+        id: &DependencyId,
+    ) -> Result<impl Iterator<Item = &DepEdge>, DependencyNotFound> {
         if let Some(index) = self.ix_by_id.get(id) {
-            self.graph
+            Ok(self
+                .graph
                 .edges_directed(*index, petgraph::Direction::Outgoing)
-                .map(|edge| edge.weight())
+                .map(|edge| edge.weight()))
         } else {
-            panic!("The dependency is not available in the graph");
+            Err(DependencyNotFound)
         }
     }
 
@@ -175,24 +294,26 @@ impl DependencyGraph {
         &self,
         id: &DependencyId,
         framework: Framework,
-    ) -> impl Iterator<Item = &DepEdge> {
-        self.get_direct_dependencies(id)
-            .filter(move |edge| *edge.get_framework() == framework)
+    ) -> Result<impl Iterator<Item = &DepEdge>, DependencyNotFound> {
+        Ok(self
+            .get_direct_dependencies(id)?
+            .filter(move |edge| *edge.framework() == framework))
     }
 
     /// Get direct reverse dependencies of the dependency.
     ///
-    /// **Panics** if dependency with the provided id was not from this graph.
+    /// Returns **Error** if dependency with the provided id was not from this graph.
     pub fn get_direct_reverse_dependencies(
         &self,
         id: &DependencyId,
-    ) -> impl Iterator<Item = &DepEdge> {
+    ) -> Result<impl Iterator<Item = &DepEdge>, DependencyNotFound> {
         if let Some(index) = self.ix_by_id.get(id) {
-            self.graph
+            Ok(self
+                .graph
                 .edges_directed(*index, petgraph::Direction::Incoming)
-                .map(|edge| edge.weight())
+                .map(|edge| edge.weight()))
         } else {
-            panic!("The dependency is not available in the graph");
+            Err(DependencyNotFound)
         }
     }
 
@@ -227,10 +348,13 @@ impl DependencyGraph {
         &self,
         vertex_size: &impl Fn(&DependencyId, &DependencyInfo) -> (f64, f64),
     ) -> Vec<super::algo::Layout<DependencyId>> {
-        let vertex_size = |_: NodeIndex, id: &DependencyId| -> (f64, f64) {
-            let dep = self.get(id).expect("Node from graph should be in info");
+        let vertex_size_fn = |_: NodeIndex, id: &DependencyId| -> (f64, f64) {
+            let dep = self
+                .info
+                .get(id)
+                .expect("Lib's info from graph should be in info");
             vertex_size(id, dep)
         };
-        super::algo::layout_sugiyama(&self.graph, &vertex_size)
+        super::algo::layout_sugiyama(&self.graph, &vertex_size_fn)
     }
 }
