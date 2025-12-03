@@ -128,15 +128,15 @@ pub struct ProjectRestore {
 ///
 /// # Example
 /// ```
+/// # use std::fs;
 /// use dotnet_dependency_parser::parsing::project_assets::parse_project_assets;
 ///
-/// let json = r#"{
-///   "version": 3,
-///   "targets": {},
-///   "libraries": {}
-/// }"#;
-/// let assets = parse_project_assets(json).expect("Failed to parse project.assets.json");
-/// println!("Parsed assets: {:?}", assets);
+/// fn example_usage() -> std::io::Result<()> {
+///     let json = fs::read_to_string("project.assets.json")?;
+///     let assets = parse_project_assets(&json).expect("Failed to parse project.assets.json");
+///     println!("Parsed assets: {:?}", assets);
+///     Ok(())
+/// }
 /// ```
 pub fn parse_project_assets(s: &str) -> serde_json::Result<ProjectAssets> {
     serde_json::from_str(s)
