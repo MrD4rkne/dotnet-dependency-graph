@@ -352,7 +352,7 @@ impl DependencyGraph {
             let dep = self
                 .info
                 .get(id)
-                .expect("Lib's info from graph should be in info");
+                .expect("Dependency info from graph should be in info");
             vertex_size(id, dep)
         };
         super::algo::layout_sugiyama(&self.graph, &vertex_size_fn)
