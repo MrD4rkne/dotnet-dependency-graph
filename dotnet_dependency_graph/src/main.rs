@@ -74,7 +74,7 @@ impl App for DependencyApp {
                         if ui
                             .selectable_label(
                                 file.selected_framework.as_ref() == Some(fw),
-                                fw.get_name(),
+                                fw.name(),
                             )
                             .clicked()
                         {

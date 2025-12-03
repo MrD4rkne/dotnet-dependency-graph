@@ -112,22 +112,11 @@ impl<'a> Widget for GraphWidget<'a> {
 }
 
 fn get_node_text(dep: &dotnet_dependency_parser::graph::DependencyInfo) -> String {
-    use dotnet_dependency_parser::graph::DependencyInfo;
-
-    match dep {
-        DependencyInfo::Project(proj) => {
-            // Extract just the project name from the full path
-            if let Some(file_name) = std::path::Path::new(&proj.path).file_stem()
-                && let Some(name_str) = file_name.to_str()
-            {
-                return name_str.to_string();
-            }
-            proj.path.clone()
-        }
-        DependencyInfo::Package(pck) => {
-            format!("{}@{}", pck.name, pck.version.clone().unwrap_or_default())
-        }
-    }
+    format!(
+        "{}@{}",
+        dep.name(),
+        dep.version().cloned().unwrap_or_default()
+    )
 }
 
 /// Transform a graph position to screen coordinates
@@ -175,11 +164,13 @@ fn draw_all_edges(
     };
 
     for (src_id, _) in graph.iter() {
-        if let Some(&src_pos) = positions.get(src_id) {
+        if let Some(&src_pos) = positions.get(src_id)
+            && let Ok(edges) = graph.get_direct_dependencies_in_framework(src_id, framework.clone())
+        {
             let src_screen = ctx.transform(src_pos);
 
-            for edge in graph.get_direct_dependencies_in_framework(src_id, framework.clone()) {
-                let dst_id = edge.get_id();
+            for edge in edges {
+                let dst_id = edge.to();
                 if let Some(&dst_pos) = positions.get(dst_id) {
                     let dst_screen = ctx.transform(dst_pos);
                     draw_edge(painter, src_screen, dst_screen);

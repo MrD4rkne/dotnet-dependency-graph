@@ -4,23 +4,27 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
+use super::models;
+
 pub fn load_dgspec_from_file(path: PathBuf) -> std::io::Result<DependencyGraph> {
     let contents = fs::read_to_string(path)?;
-    let dgspec = crate::parsing::dgspec::parse_dependency_graph_spec(&contents)
+    let dgspec = models::parse_dependency_graph_spec(&contents)
         .map_err(|_| std::io::Error::other("Couldn't parse file's content"))?;
-    Ok(create_dependency_graph(dgspec))
+    create_dependency_graph(dgspec).map_err(std::io::Error::other)
 }
 
-fn create_dependency_graph(spec: DependencyGraphSpec) -> DependencyGraph {
+fn create_dependency_graph(
+    spec: DependencyGraphSpec,
+) -> Result<DependencyGraph, Box<dyn std::error::Error + Send + Sync>> {
     let mut graph = DependencyGraph::new();
 
     for (project, spec) in spec.projects {
-        let project_id = graph.add_project(project);
+        let project_id = graph.add_project(project, spec.version)?;
         if let Some(frameworks) = spec.frameworks {
             for (framework, framework_entry) in frameworks {
                 let framework = Framework::new(framework);
                 if let Some(libs) = framework_entry.dependencies {
-                    add_libs(&mut graph, project_id.clone(), framework, libs);
+                    add_libs(&mut graph, project_id.clone(), framework, libs)?;
                 }
             }
         }
@@ -33,12 +37,12 @@ fn create_dependency_graph(spec: DependencyGraphSpec) -> DependencyGraph {
                     project_id.clone(),
                     framework,
                     framework_entry.project_references,
-                );
+                )?;
             }
         }
     }
 
-    graph
+    Ok(graph)
 }
 
 fn add_libs(
@@ -46,13 +50,13 @@ fn add_libs(
     project_id: DependencyId,
     framework: Framework,
     libs: HashMap<String, LibraryDependency>,
-) {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     for (dep, info) in libs {
-        let dep_id = graph.add_package(dep, info.version);
-        graph
-            .add_relation(project_id.clone(), dep_id, framework.clone())
-            .expect("Both dependencies should be in the graph");
+        let dep_id = graph.add_package(dep, info.version)?;
+        graph.add_relation(project_id.clone(), dep_id, framework.clone())?;
     }
+
+    Ok(())
 }
 
 fn add_projs(
@@ -60,11 +64,11 @@ fn add_projs(
     project_id: DependencyId,
     framework: Framework,
     projs: HashMap<String, ProjectReference>,
-) {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     for (dep, _) in projs {
-        let dep_id = graph.add_project(dep);
-        graph
-            .add_relation(project_id.clone(), dep_id, framework.clone())
-            .expect("Both dependencies should be in the graph");
+        let dep_id = graph.add_project(dep, None)?;
+        graph.add_relation(project_id.clone(), dep_id, framework.clone())?;
     }
+
+    Ok(())
 }

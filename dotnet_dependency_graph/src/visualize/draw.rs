@@ -17,7 +17,7 @@ pub fn calculate_size(_id: &DependencyId, dep: &DependencyInfo) -> (f64, f64) {
                 &proj.path
             }
         }
-        DependencyInfo::Package(pck) => &pck.name,
+        DependencyInfo::Package(_) => dep.name(),
     };
 
     // Calculate width based on text length
