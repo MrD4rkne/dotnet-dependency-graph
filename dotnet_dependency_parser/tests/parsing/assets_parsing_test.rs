@@ -106,5 +106,5 @@ fn get_assets_content() -> String {
         .join("console1")
         .join("obj")
         .join("project.assets.json");
-    fs::read_to_string(assets_path).expect("Faile dwhile reading project.assets.json")
+    fs::read_to_string(assets_path).expect("Failed while reading project.assets.json")
 }
