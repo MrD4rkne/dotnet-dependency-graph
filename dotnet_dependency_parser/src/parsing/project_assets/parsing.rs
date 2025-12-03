@@ -18,7 +18,7 @@ pub fn create_dependency_graph_from_assets(assets: ProjectAssets) -> DependencyG
     // Get the project path and add to graph.
     let project_id = assets.project.and_then(|p| parse_project(&mut graph, p));
 
-    // Then let's process all "libraries", so we hopefully can deduce type (Project, Library etc.) for all of them.
+    // Process all "libraries" section to add all dependencies (Projects and Packages) to the graph.
     parse_libraries(&mut graph, assets.libraries);
 
     // Process each target framework
