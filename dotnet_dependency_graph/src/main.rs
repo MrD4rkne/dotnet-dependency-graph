@@ -3,9 +3,11 @@ use eframe::{App, run_native};
 use egui::Context;
 use egui_file_dialog::FileDialog;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::path::PathBuf;
 
 mod graph_widget;
+mod node;
 mod parser;
 mod visualize;
 
@@ -16,6 +18,7 @@ struct File {
     graph: DependencyGraph,
     node_positions: HashMap<DependencyId, (f32, f32)>,
     selected_framework: Option<Framework>,
+    visible_nodes: HashSet<DependencyId>,
 }
 
 impl File {
@@ -24,11 +27,13 @@ impl File {
         graph: DependencyGraph,
         node_positions: HashMap<DependencyId, (f32, f32)>,
     ) -> Self {
+        let all_dep_ids = graph.iter().map(|(id, _)| id.clone()).collect();
         Self {
             path,
             graph,
             node_positions,
             selected_framework: None,
+            visible_nodes: all_dep_ids,
         }
     }
 }
@@ -110,6 +115,7 @@ impl App for DependencyApp {
                     &mut file.node_positions,
                     &mut self.dragging_node,
                     &file.selected_framework,
+                    &file.visible_nodes,
                 ));
 
                 // Show controls
