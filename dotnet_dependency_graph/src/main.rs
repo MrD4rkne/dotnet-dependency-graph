@@ -12,7 +12,7 @@ mod node;
 mod parser;
 mod visualize;
 
-use graph_widget::GraphWidget;
+use graph_widget::{CachedNodeData, GraphWidget};
 
 struct FpsCounter {
     last_update: Instant,
@@ -76,6 +76,10 @@ struct DependencyApp {
     dragging_node: Option<DependencyId>,
     error_text: Option<String>,
     fps_counter: FpsCounter,
+    node_cache: Option<std::collections::HashMap<DependencyId, CachedNodeData>>,
+    old_zoom: f32,
+    old_pan: egui::Vec2,
+    drag_happened: bool,
 }
 
 impl DependencyApp {
@@ -88,6 +92,10 @@ impl DependencyApp {
             dragging_node: None,
             error_text: None,
             fps_counter: FpsCounter::new(),
+            node_cache: None,
+            old_zoom: 1.0,
+            old_pan: egui::Vec2::ZERO,
+            drag_happened: false,
         }
     }
 }
@@ -129,11 +137,35 @@ impl App for DependencyApp {
         if let Some(path) = self.file_dialog.take_picked() {
             let new_file = load_file(path);
             match new_file {
-                Ok(loaded_file) => self.current_dgspec_file = Some(loaded_file),
+                Ok(loaded_file) => {
+                    self.current_dgspec_file = Some(loaded_file);
+                    self.node_cache = None; // invalidate on new file
+                }
                 Err(e) => {
                     self.error_text = Some(format!("Failed to load dgspec file: {}", e));
                 }
             }
+        }
+
+        // Handle caching
+        if let Some(file) = &self.current_dgspec_file {
+            let zoom_changed = self.zoom != self.old_zoom;
+            let pan_changed = self.pan_offset != self.old_pan;
+            if zoom_changed || pan_changed {
+                self.node_cache = None;
+            }
+            if self.node_cache.is_none() {
+                let cache = graph_widget::compute_node_cache(
+                    &file.graph,
+                    &file.node_positions,
+                    &file.visible_nodes,
+                    self.zoom,
+                    self.pan_offset,
+                );
+                self.node_cache = Some(cache);
+            }
+            self.old_zoom = self.zoom;
+            self.old_pan = self.pan_offset;
         }
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -151,6 +183,8 @@ impl App for DependencyApp {
                     &mut self.dragging_node,
                     &file.selected_framework,
                     &file.visible_nodes,
+                    self.node_cache.as_ref().unwrap(),
+                    &mut self.drag_happened,
                 ));
 
                 // Show controls
@@ -170,6 +204,12 @@ impl App for DependencyApp {
                 ui.label("Choose a file to visualize dependencies.");
             }
         });
+
+        // Invalidate cache if drag happened
+        if self.drag_happened {
+            self.node_cache = None;
+        }
+        self.drag_happened = false;
 
         if let Some(error_message) = self.error_text.clone() {
             egui::Window::new("Error").show(ctx, |ui| {
