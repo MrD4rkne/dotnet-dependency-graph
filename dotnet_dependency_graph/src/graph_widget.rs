@@ -59,12 +59,6 @@ pub struct GraphData<'a> {
     pub visible_nodes: &'a HashSet<DependencyId>,
 }
 
-// Constants
-const ZOOM_MIN: f32 = 0.1;
-const ZOOM_MAX: f32 = 3.0;
-const ZOOM_SENSITIVITY: f32 = 0.001;
-const SCROLL_THRESHOLD: f32 = 0.1;
-
 pub struct GraphWidget<'a> {
     view_state: ViewState<'a>,
     interaction_state: InteractionState<'a>,
@@ -261,6 +255,11 @@ fn handle_panning(
         *pan_offset += response.drag_delta();
     }
 }
+
+const ZOOM_MIN: f32 = 0.1;
+const ZOOM_MAX: f32 = 3.0;
+const ZOOM_SENSITIVITY: f32 = 0.001;
+const SCROLL_THRESHOLD: f32 = 0.1;
 
 /// Handle zoom with mouse wheel
 fn handle_zoom(response: &Response, ui: &Ui, zoom: &mut f32) {
