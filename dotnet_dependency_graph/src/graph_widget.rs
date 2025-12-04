@@ -39,6 +39,26 @@ pub struct CachedNodeData {
     text: String,
 }
 
+// Grouped parameters for view state
+pub struct ViewState<'a> {
+    pub pan_offset: &'a mut Vec2,
+    pub zoom: &'a mut f32,
+}
+
+// Grouped parameters for interaction state
+pub struct InteractionState<'a> {
+    pub dragging_node: &'a mut Option<DependencyId>,
+    pub node_positions: &'a mut HashMap<DependencyId, (f32, f32)>,
+    pub drag_happened: &'a mut bool,
+}
+
+// Grouped parameters for graph data
+pub struct GraphData<'a> {
+    pub graph: &'a DependencyGraph,
+    pub selected_framework: &'a Option<Framework>,
+    pub visible_nodes: &'a HashSet<DependencyId>,
+}
+
 // Constants
 const ZOOM_MIN: f32 = 0.1;
 const ZOOM_MAX: f32 = 3.0;
@@ -46,52 +66,36 @@ const ZOOM_SENSITIVITY: f32 = 0.001;
 const SCROLL_THRESHOLD: f32 = 0.1;
 
 pub struct GraphWidget<'a> {
-    graph: &'a DependencyGraph,
-    pan_offset: &'a mut Vec2,
-    zoom: &'a mut f32,
-    node_interaction_state: NodeInteractionState<'a>,
-    selected_framework: &'a Option<Framework>,
-    visible_nodes: &'a HashSet<DependencyId>,
+    view_state: ViewState<'a>,
+    interaction_state: InteractionState<'a>,
+    graph_data: GraphData<'a>,
     node_cache: &'a HashMap<DependencyId, CachedNodeData>,
-    drag_happened: &'a mut bool,
 }
 
 impl<'a> GraphWidget<'a> {
     pub fn new(
-        graph: &'a DependencyGraph,
-        pan_offset: &'a mut Vec2,
-        zoom: &'a mut f32,
-        node_positions: &'a mut HashMap<DependencyId, (f32, f32)>,
-        dragging_node: &'a mut Option<DependencyId>,
-        selected_framework: &'a Option<Framework>,
-        visible_nodes: &'a HashSet<DependencyId>,
+        view_state: ViewState<'a>,
+        interaction_state: InteractionState<'a>,
+        graph_data: GraphData<'a>,
         node_cache: &'a HashMap<DependencyId, CachedNodeData>,
-        drag_happened: &'a mut bool,
     ) -> Self {
         Self {
-            graph,
-            pan_offset,
-            zoom,
-            node_interaction_state: NodeInteractionState {
-                node_positions,
-                dragging_node,
-            },
-            selected_framework,
-            visible_nodes,
+            view_state,
+            interaction_state,
+            graph_data,
             node_cache,
-            drag_happened,
         }
     }
 
     fn try_draw_edges(&self, painter: &Painter, cache: &HashMap<DependencyId, CachedNodeData>) {
-        if let Some(framework) = self.selected_framework {
+        if let Some(_framework) = self.graph_data.selected_framework {
             draw_all_edges(
                 cache,
                 painter,
-                self.graph,
-                framework,
-                self.visible_nodes,
-                *self.zoom,
+                self.graph_data.graph,
+                self.graph_data.selected_framework.as_ref().unwrap(),
+                self.graph_data.visible_nodes,
+                *self.view_state.zoom,
             );
         }
     }
@@ -102,16 +106,19 @@ impl<'a> GraphWidget<'a> {
         painter: &Painter,
         cache: &HashMap<DependencyId, CachedNodeData>,
     ) {
-        for id in self.visible_nodes.iter() {
+        for id in self.graph_data.visible_nodes.iter() {
             if let Some(data) = cache.get(id) {
                 draw_single_node(
                     id,
                     data,
                     ui,
                     painter,
-                    &mut self.node_interaction_state,
-                    *self.zoom,
-                    &mut self.drag_happened,
+                    &mut NodeInteractionState {
+                        dragging_node: self.interaction_state.dragging_node,
+                        node_positions: self.interaction_state.node_positions,
+                    },
+                    *self.view_state.zoom,
+                    self.interaction_state.drag_happened,
                 );
             }
         }
@@ -120,10 +127,10 @@ impl<'a> GraphWidget<'a> {
     fn handle_interactions(&mut self, response: &Response, ui: &Ui) {
         handle_panning(
             response,
-            self.pan_offset,
-            self.node_interaction_state.dragging_node,
+            self.view_state.pan_offset,
+            self.interaction_state.dragging_node,
         );
-        handle_zoom(response, ui, self.zoom);
+        handle_zoom(response, ui, self.view_state.zoom);
     }
 }
 
@@ -133,10 +140,8 @@ impl<'a> Widget for GraphWidget<'a> {
 
         self.handle_interactions(&response, ui);
 
-        // Draw edges first (behind nodes)
         self.try_draw_edges(&painter, self.node_cache);
 
-        // Draw nodes on top
         self.draw_nodes(ui, &painter, self.node_cache);
 
         response
@@ -178,7 +183,7 @@ fn draw_all_edges(
         if let Some(src_data) = cache.get(src_id) {
             let src_rect = src_data.rect;
 
-            let deps = graph.get_direct_dependencies_in_framework(src_id, framework.clone());
+            let deps = graph.get_direct_dependencies_in_framework(src_id, framework);
 
             if let Ok(edges) = deps {
                 for edge in edges {

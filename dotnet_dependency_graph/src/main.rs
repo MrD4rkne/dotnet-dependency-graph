@@ -176,15 +176,21 @@ impl App for DependencyApp {
                 ));
 
                 ui.add(GraphWidget::new(
-                    &file.graph,
-                    &mut self.pan_offset,
-                    &mut self.zoom,
-                    &mut file.node_positions,
-                    &mut self.dragging_node,
-                    &file.selected_framework,
-                    &file.visible_nodes,
+                    graph_widget::ViewState {
+                        pan_offset: &mut self.pan_offset,
+                        zoom: &mut self.zoom,
+                    },
+                    graph_widget::InteractionState {
+                        dragging_node: &mut self.dragging_node,
+                        node_positions: &mut file.node_positions,
+                        drag_happened: &mut self.drag_happened,
+                    },
+                    graph_widget::GraphData {
+                        graph: &file.graph,
+                        selected_framework: &file.selected_framework,
+                        visible_nodes: &file.visible_nodes,
+                    },
                     self.node_cache.as_ref().unwrap(),
-                    &mut self.drag_happened,
                 ));
 
                 // Show controls
