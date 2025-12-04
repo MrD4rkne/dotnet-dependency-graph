@@ -230,12 +230,11 @@ impl App for DependencyApp {
         self.fps_counter.update();
         self.render_menu_bar(ctx);
         self.handle_file_dialog(ctx);
-        self.render_central_panel(ctx);
-
         if self.drag_happened {
             self.cache_manager.invalidate();
         }
         self.drag_happened = false;
+        self.render_central_panel(ctx);
 
         self.render_error_window(ctx);
         ctx.request_repaint();
