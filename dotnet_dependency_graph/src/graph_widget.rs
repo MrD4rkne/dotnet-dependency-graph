@@ -46,9 +46,11 @@ impl<'a> GraphWidget<'a> {
     fn try_draw_edges(&self, painter: &Painter, response: &Response) {
         if let Some(framework) = self.selected_framework {
             let ctx = DrawContext {
-                zoom: *self.zoom,
-                pan_offset: *self.pan_offset,
-                rect_min: response.rect.min,
+                state: State {
+                    zoom: *self.zoom,
+                    pan_offset: *self.pan_offset,
+                    rect_min: response.rect.min,
+                },
                 graph: self.graph,
             };
 
@@ -70,9 +72,11 @@ impl<'a> GraphWidget<'a> {
         get_node_text: impl Fn(&DependencyInfo) -> &str,
     ) {
         let ctx = DrawContext {
-            zoom: *self.zoom,
-            pan_offset: *self.pan_offset,
-            rect_min: response.rect.min,
+            state: State {
+                zoom: *self.zoom,
+                pan_offset: *self.pan_offset,
+                rect_min: response.rect.min,
+            },
             graph: self.graph,
         };
 
@@ -124,22 +128,30 @@ impl<'a> Widget for GraphWidget<'a> {
 }
 
 fn transform_position(pos: (f32, f32), zoom: f32, pan_offset: Vec2, rect_min: Pos2) -> Pos2 {
-    let zoom_wrapper = visualize::Zoomed::new(1.0, zoom);
     let pos_vec = Pos2::new(pos.0, pos.1);
-    rect_min + pos_vec.to_vec2() * zoom_wrapper.into_value() + pan_offset
+    rect_min + pos_vec.to_vec2() * zoom + pan_offset
+}
+
+struct State {
+    zoom: f32,
+    pan_offset: Vec2,
+    rect_min: Pos2,
 }
 
 /// Context for drawing operations to reduce parameter passing
 struct DrawContext<'a> {
-    zoom: f32,
-    pan_offset: Vec2,
-    rect_min: Pos2,
+    state: State,
     graph: &'a DependencyGraph,
 }
 
 impl<'a> DrawContext<'a> {
     fn transform(&self, pos: (f32, f32)) -> Pos2 {
-        transform_position(pos, self.zoom, self.pan_offset, self.rect_min)
+        transform_position(
+            pos,
+            self.state.zoom,
+            self.state.pan_offset,
+            self.state.rect_min,
+        )
     }
 }
 
@@ -162,7 +174,7 @@ fn draw_all_edges(
             let src_screen = ctx.transform(src_pos);
             let src_text =
                 node::get_display_text(ctx.graph.get(src_id).expect("Node should exist"));
-            let src_rect = visualize::calculate_node_rect(src_text, src_screen, ctx.zoom);
+            let src_rect = visualize::calculate_node_rect(src_text, src_screen, ctx.state.zoom);
 
             let deps = ctx
                 .graph
@@ -183,8 +195,8 @@ fn draw_all_edges(
                             ctx.graph.get(dst_id).expect("Node should exist"),
                         );
                         let dst_rect =
-                            visualize::calculate_node_rect(dst_text, dst_screen, ctx.zoom);
-                        visualize::draw_edge(painter, src_rect, dst_rect, ctx.zoom);
+                            visualize::calculate_node_rect(dst_text, dst_screen, ctx.state.zoom);
+                        visualize::draw_edge(painter, src_rect, dst_rect, ctx.state.zoom);
                     }
                 }
             }
@@ -209,8 +221,8 @@ fn draw_single_node(
             .expect("Dep from layout should be in the graph"),
     );
 
-    let rect = visualize::draw_node(ui, text, screen_pos, painter, ctx.zoom);
-    handle_node_drag(id, rect, ui, state, ctx.zoom, text);
+    let rect = visualize::draw_node(ui, text, screen_pos, painter, ctx.state.zoom);
+    handle_node_drag(id, rect, ui, state, ctx.state.zoom, text);
 }
 
 /// Handle dragging interaction for a single node
