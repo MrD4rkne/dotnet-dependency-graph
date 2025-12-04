@@ -14,6 +14,49 @@ mod visualize;
 
 use graph_widget::{CachedNodeData, GraphWidget};
 
+struct NodeCacheManager {
+    cache: Option<std::collections::HashMap<DependencyId, CachedNodeData>>,
+    old_zoom: f32,
+    old_pan: egui::Vec2,
+}
+
+impl NodeCacheManager {
+    fn new() -> Self {
+        Self {
+            cache: None,
+            old_zoom: 1.0,
+            old_pan: egui::Vec2::ZERO,
+        }
+    }
+
+    fn get_or_compute(
+        &mut self,
+        graph: &DependencyGraph,
+        positions: &std::collections::HashMap<DependencyId, (f32, f32)>,
+        visible_nodes: &std::collections::HashSet<DependencyId>,
+        zoom: f32,
+        pan_offset: egui::Vec2,
+    ) -> &std::collections::HashMap<DependencyId, CachedNodeData> {
+        let zoom_changed = zoom != self.old_zoom;
+        let pan_changed = pan_offset != self.old_pan;
+        if zoom_changed || pan_changed {
+            self.cache = None;
+        }
+        if self.cache.is_none() {
+            let cache =
+                graph_widget::compute_node_cache(graph, positions, visible_nodes, zoom, pan_offset);
+            self.cache = Some(cache);
+        }
+        self.old_zoom = zoom;
+        self.old_pan = pan_offset;
+        self.cache.as_ref().unwrap()
+    }
+
+    fn invalidate(&mut self) {
+        self.cache = None;
+    }
+}
+
 struct FpsCounter {
     last_update: Instant,
     frames_since_last: u32,
@@ -76,9 +119,7 @@ struct DependencyApp {
     dragging_node: Option<DependencyId>,
     error_text: Option<String>,
     fps_counter: FpsCounter,
-    node_cache: Option<std::collections::HashMap<DependencyId, CachedNodeData>>,
-    old_zoom: f32,
-    old_pan: egui::Vec2,
+    cache_manager: NodeCacheManager,
     drag_happened: bool,
 }
 
@@ -92,9 +133,7 @@ impl DependencyApp {
             dragging_node: None,
             error_text: None,
             fps_counter: FpsCounter::new(),
-            node_cache: None,
-            old_zoom: 1.0,
-            old_pan: egui::Vec2::ZERO,
+            cache_manager: NodeCacheManager::new(),
             drag_happened: false,
         }
     }
@@ -139,7 +178,7 @@ impl App for DependencyApp {
             match new_file {
                 Ok(loaded_file) => {
                     self.current_dgspec_file = Some(loaded_file);
-                    self.node_cache = None; // invalidate on new file
+                    self.cache_manager.invalidate();
                 }
                 Err(e) => {
                     self.error_text = Some(format!("Failed to load dgspec file: {}", e));
@@ -147,29 +186,16 @@ impl App for DependencyApp {
             }
         }
 
-        // Handle caching
-        if let Some(file) = &self.current_dgspec_file {
-            let zoom_changed = self.zoom != self.old_zoom;
-            let pan_changed = self.pan_offset != self.old_pan;
-            if zoom_changed || pan_changed {
-                self.node_cache = None;
-            }
-            if self.node_cache.is_none() {
-                let cache = graph_widget::compute_node_cache(
+        egui::CentralPanel::default().show(ctx, |ui| {
+            if let Some(file) = &mut self.current_dgspec_file {
+                let node_cache = self.cache_manager.get_or_compute(
                     &file.graph,
                     &file.node_positions,
                     &file.visible_nodes,
                     self.zoom,
                     self.pan_offset,
                 );
-                self.node_cache = Some(cache);
-            }
-            self.old_zoom = self.zoom;
-            self.old_pan = self.pan_offset;
-        }
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            if let Some(file) = &mut self.current_dgspec_file {
                 ui.label(format!(
                     "File: {}",
                     file.path.file_name().unwrap_or_default().to_string_lossy()
@@ -190,7 +216,7 @@ impl App for DependencyApp {
                         selected_framework: &file.selected_framework,
                         visible_nodes: &file.visible_nodes,
                     },
-                    self.node_cache.as_ref().unwrap(),
+                    node_cache,
                 ));
 
                 // Show controls
@@ -213,7 +239,7 @@ impl App for DependencyApp {
 
         // Invalidate cache if drag happened
         if self.drag_happened {
-            self.node_cache = None;
+            self.cache_manager.invalidate();
         }
         self.drag_happened = false;
 
