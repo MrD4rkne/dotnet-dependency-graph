@@ -1,4 +1,5 @@
 use dotnet_dependency_parser::graph::{DependencyId, DependencyInfo, Layout};
+use egui::TextFormat;
 use egui::text::LayoutJob;
 use egui::{Color32, FontId, Painter, Pos2, Rect, Stroke, Vec2};
 use std::collections::HashMap;
@@ -65,7 +66,7 @@ pub fn draw_node(
         egui::epaint::StrokeKind::Middle,
     );
 
-    let label_job = create_label(text.to_string(), font_size, height, padding, max_text_width);
+    let label_job = create_label(text, font_size, height, padding, max_text_width);
     let galley = painter.layout_job(label_job);
 
     // Center the text in the node
@@ -80,22 +81,23 @@ pub fn draw_node(
 }
 
 fn create_label(
-    text: String,
+    text: &str,
     font_size: Zoomed<f32>,
     height: Zoomed<f32>,
     padding: Zoomed<f32>,
     max_text_width: Zoomed<f32>,
 ) -> LayoutJob {
-    let font = FontId::proportional(font_size.into_value());
+    let font_id = FontId::proportional(font_size.into_value());
     let max_text_height = height - padding;
 
-    let mut job = LayoutJob::simple(
+    let mut job = LayoutJob::default();
+    job.append(
         text,
-        font,
-        constants::TEXT_COLOR,
-        max_text_width.into_value(),
+        0.0,
+        TextFormat::simple(font_id, constants::TEXT_COLOR),
     );
     job.wrap.max_rows = ((max_text_height / font_size).into_value().floor() as usize).max(1);
+    job.wrap.max_width = max_text_width.into_value();
 
     job
 }
