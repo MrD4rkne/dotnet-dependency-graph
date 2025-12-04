@@ -59,7 +59,7 @@ fn test_parse_project_assets_json() {
     let framework = Framework::new("net8.0".to_string());
 
     let deps: Vec<_> = graph
-        .get_direct_dependencies_in_framework(&serilog_console_id, framework)
+        .get_direct_dependencies_in_framework(&serilog_console_id, &framework)
         .unwrap()
         .collect();
 
