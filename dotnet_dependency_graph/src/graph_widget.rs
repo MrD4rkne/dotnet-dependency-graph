@@ -1,15 +1,11 @@
-use dotnet_dependency_parser::graph::{DependencyGraph, DependencyId, Framework};
-use egui::{Color32, Painter, Pos2, Rect, Response, Sense, Stroke, Ui, Vec2, Widget};
-use std::collections::HashMap;
+use dotnet_dependency_parser::graph::{DependencyGraph, DependencyId, DependencyInfo, Framework};
+use egui::{Painter, Pos2, Rect, Response, Sense, Ui, Vec2, Widget};
+use std::collections::{HashMap, HashSet};
 
+use crate::node;
 use crate::visualize;
 
 // Constants
-const EDGE_STROKE_WIDTH: f32 = 2.0;
-const EDGE_COLOR: Color32 = Color32::from_rgb(100, 100, 100);
-const ARROW_SIZE: f32 = 10.0;
-const ARROW_TIP_OFFSET: f32 = 30.0;
-const ARROW_HEAD_WIDTH_FACTOR: f32 = 0.5;
 const ZOOM_MIN: f32 = 0.1;
 const ZOOM_MAX: f32 = 3.0;
 const ZOOM_SENSITIVITY: f32 = 0.001;
@@ -21,6 +17,7 @@ pub struct GraphWidget<'a> {
     zoom: &'a mut f32,
     node_interaction_state: NodeInteractionState<'a>,
     selected_framework: &'a Option<Framework>,
+    visible_nodes: &'a HashSet<DependencyId>,
 }
 
 impl<'a> GraphWidget<'a> {
@@ -31,6 +28,7 @@ impl<'a> GraphWidget<'a> {
         node_positions: &'a mut HashMap<DependencyId, (f32, f32)>,
         dragging_node: &'a mut Option<DependencyId>,
         selected_framework: &'a Option<Framework>,
+        visible_nodes: &'a HashSet<DependencyId>,
     ) -> Self {
         Self {
             graph,
@@ -41,24 +39,36 @@ impl<'a> GraphWidget<'a> {
                 dragging_node,
             },
             selected_framework,
+            visible_nodes,
         }
     }
 
     fn try_draw_edges(&self, painter: &Painter, response: &Response) {
         if let Some(framework) = self.selected_framework {
+            let ctx = DrawContext {
+                zoom: *self.zoom,
+                pan_offset: *self.pan_offset,
+                rect_min: response.rect.min,
+                graph: self.graph,
+            };
+
             draw_all_edges(
-                self.graph,
+                &ctx,
                 self.node_interaction_state.node_positions,
-                *self.zoom,
-                *self.pan_offset,
                 painter,
-                response,
                 framework,
+                self.visible_nodes,
             );
         }
     }
 
-    fn draw_nodes(&mut self, ui: &mut Ui, painter: &Painter, response: &Response) {
+    fn draw_nodes(
+        &mut self,
+        ui: &mut Ui,
+        painter: &Painter,
+        response: &Response,
+        get_node_text: impl Fn(&DependencyInfo) -> &str,
+    ) {
         let ctx = DrawContext {
             zoom: *self.zoom,
             pan_offset: *self.pan_offset,
@@ -70,6 +80,7 @@ impl<'a> GraphWidget<'a> {
             .node_interaction_state
             .node_positions
             .iter()
+            .filter(|(id, _)| self.visible_nodes.contains(id))
             .map(|(id, &pos)| (id.clone(), pos))
             .collect();
 
@@ -80,6 +91,7 @@ impl<'a> GraphWidget<'a> {
                 &ctx,
                 ui,
                 painter,
+                &get_node_text,
                 &mut self.node_interaction_state,
             );
         }
@@ -105,21 +117,12 @@ impl<'a> Widget for GraphWidget<'a> {
         self.try_draw_edges(&painter, &response);
 
         // Draw nodes on top
-        self.draw_nodes(ui, &painter, &response);
+        self.draw_nodes(ui, &painter, &response, node::get_display_text);
 
         response
     }
 }
 
-fn get_node_text(dep: &dotnet_dependency_parser::graph::DependencyInfo) -> String {
-    format!(
-        "{}@{}",
-        dep.name(),
-        dep.version().cloned().unwrap_or_default()
-    )
-}
-
-/// Transform a graph position to screen coordinates
 fn transform_position(pos: (f32, f32), zoom: f32, pan_offset: Vec2, rect_min: Pos2) -> Pos2 {
     let zoom_wrapper = visualize::Zoomed::new(1.0, zoom);
     let pos_vec = Pos2::new(pos.0, pos.1);
@@ -148,63 +151,45 @@ struct NodeInteractionState<'a> {
 
 /// Draw all edges for the given framework
 fn draw_all_edges(
-    graph: &DependencyGraph,
+    ctx: &DrawContext,
     positions: &HashMap<DependencyId, (f32, f32)>,
-    zoom: f32,
-    pan_offset: Vec2,
     painter: &Painter,
-    response: &Response,
     framework: &Framework,
+    visible_nodes: &HashSet<DependencyId>,
 ) {
-    let ctx = DrawContext {
-        zoom,
-        pan_offset,
-        rect_min: response.rect.min,
-        graph,
-    };
-
-    for (src_id, _) in graph.iter() {
-        if let Some(&src_pos) = positions.get(src_id)
-            && let Ok(edges) = graph.get_direct_dependencies_in_framework(src_id, framework.clone())
-        {
+    for src_id in visible_nodes.iter() {
+        if let Some(&src_pos) = positions.get(src_id) {
             let src_screen = ctx.transform(src_pos);
+            let src_text =
+                node::get_display_text(ctx.graph.get(src_id).expect("Node should exist"));
+            let src_rect = visualize::calculate_node_rect(src_text, src_screen, ctx.zoom);
 
-            for edge in edges {
-                let dst_id = edge.to();
-                if let Some(&dst_pos) = positions.get(dst_id) {
-                    let dst_screen = ctx.transform(dst_pos);
-                    draw_edge(painter, src_screen, dst_screen);
+            let deps = ctx
+                .graph
+                .get_direct_dependencies_in_framework(src_id, framework.clone());
+
+            if let Ok(edges) = deps {
+                for edge in edges {
+                    let dst_id = edge.to();
+
+                    // Only draw edges to visible nodes
+                    if !visible_nodes.contains(dst_id) {
+                        continue;
+                    }
+
+                    if let Some(&dst_pos) = positions.get(dst_id) {
+                        let dst_screen = ctx.transform(dst_pos);
+                        let dst_text = node::get_display_text(
+                            ctx.graph.get(dst_id).expect("Node should exist"),
+                        );
+                        let dst_rect =
+                            visualize::calculate_node_rect(dst_text, dst_screen, ctx.zoom);
+                        visualize::draw_edge(painter, src_rect, dst_rect, ctx.zoom);
+                    }
                 }
             }
         }
     }
-}
-
-/// Draw a single edge with arrow from source to destination
-fn draw_edge(painter: &Painter, src: Pos2, dst: Pos2) {
-    // Draw line
-    painter.line_segment([src, dst], Stroke::new(EDGE_STROKE_WIDTH, EDGE_COLOR));
-
-    // Draw arrow head
-    let dir = (dst - src).normalized();
-    let perp = Vec2::new(-dir.y, dir.x);
-    let tip = dst - dir * ARROW_TIP_OFFSET;
-
-    // Two sides of the arrow
-    painter.line_segment(
-        [
-            tip,
-            tip - dir * ARROW_SIZE + perp * ARROW_SIZE * ARROW_HEAD_WIDTH_FACTOR,
-        ],
-        Stroke::new(EDGE_STROKE_WIDTH, EDGE_COLOR),
-    );
-    painter.line_segment(
-        [
-            tip,
-            tip - dir * ARROW_SIZE - perp * ARROW_SIZE * ARROW_HEAD_WIDTH_FACTOR,
-        ],
-        Stroke::new(EDGE_STROKE_WIDTH, EDGE_COLOR),
-    );
 }
 
 /// Draw a single node and handle its dragging interaction
@@ -214,18 +199,18 @@ fn draw_single_node(
     ctx: &DrawContext,
     ui: &mut Ui,
     painter: &Painter,
+    get_node_text: &impl Fn(&DependencyInfo) -> &str,
     state: &mut NodeInteractionState,
 ) {
     let screen_pos = ctx.transform(pos);
-
     let text = get_node_text(
         ctx.graph
             .get(id)
             .expect("Dep from layout should be in the graph"),
     );
-    let (rect, text_truncated) = visualize::draw_node(ui, &text, screen_pos, painter, ctx.zoom);
 
-    handle_node_drag(id, rect, ui, state, ctx.zoom, &text, text_truncated);
+    let rect = visualize::draw_node(ui, text, screen_pos, painter, ctx.zoom);
+    handle_node_drag(id, rect, ui, state, ctx.zoom, text);
 }
 
 /// Handle dragging interaction for a single node
@@ -236,7 +221,6 @@ fn handle_node_drag(
     state: &mut NodeInteractionState,
     zoom: f32,
     text: &str,
-    text_truncated: bool,
 ) {
     let zoom_wrapper = visualize::Zoomed::new(1.0, zoom);
     let node_response = ui.interact(rect, ui.id().with(id), Sense::drag());
@@ -257,10 +241,7 @@ fn handle_node_drag(
         *state.dragging_node = None;
     }
 
-    // Show tooltip on hover with full name if truncated
-    if text_truncated && node_response.hovered() {
-        node_response.on_hover_text(text);
-    }
+    node_response.on_hover_text(text);
 }
 
 /// Handle panning of the graph view

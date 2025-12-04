@@ -48,28 +48,28 @@ where
     }
 }
 
-impl<T> std::ops::Mul<f32> for Zoomed<T>
+impl<T> std::ops::Mul for Zoomed<T>
 where
-    T: std::ops::Mul<f32, Output = T>,
+    T: std::ops::Mul<Output = T>,
 {
     type Output = Self;
 
-    fn mul(self, scalar: f32) -> Self {
+    fn mul(self, scalar: Self) -> Self {
         Self {
-            value: self.value * scalar,
+            value: self.value * scalar.value,
         }
     }
 }
 
-impl<T> std::ops::Div<f32> for Zoomed<T>
+impl<T> std::ops::Div for Zoomed<T>
 where
-    T: std::ops::Div<f32, Output = T>,
+    T: std::ops::Div<Output = T>,
 {
     type Output = Self;
 
-    fn div(self, scalar: f32) -> Self {
+    fn div(self, other: Self) -> Self {
         Self {
-            value: self.value / scalar,
+            value: self.value / other.value,
         }
     }
 }
@@ -134,49 +134,6 @@ mod tests {
         let z2 = Zoomed::new(10.0, 2.0);
         let result = z1 - z2;
         assert_eq!(result.into_value(), -14.0);
-    }
-
-    #[test]
-    fn test_mul_scalar() {
-        let zoomed = Zoomed::new(10.0, 2.0);
-        let result = zoomed * 3.0;
-        assert_eq!(result.into_value(), 60.0);
-    }
-
-    #[test]
-    fn test_mul_scalar_less_than_one() {
-        let zoomed = Zoomed::new(10.0, 2.0);
-        let result = zoomed * 0.5;
-        assert_eq!(result.into_value(), 10.0);
-    }
-
-    #[test]
-    fn test_mul_scalar_negative() {
-        let zoomed = Zoomed::new(10.0, 2.0);
-        let result = zoomed * -2.0;
-        assert_eq!(result.into_value(), -40.0);
-    }
-
-    #[test]
-    fn test_div_scalar() {
-        let zoomed = Zoomed::new(10.0, 2.0);
-        let result = zoomed / 4.0;
-        assert_eq!(result.into_value(), 5.0);
-    }
-
-    #[test]
-    fn test_div_scalar_less_than_one() {
-        let zoomed = Zoomed::new(10.0, 2.0);
-        let result = zoomed / 0.5;
-        assert_eq!(result.into_value(), 40.0);
-    }
-
-    #[test]
-    fn test_chained_operations() {
-        let z1 = Zoomed::new(10.0, 2.0);
-        let z2 = Zoomed::new(5.0, 2.0);
-        let result = (z1 + z2) * 2.0 / 3.0;
-        assert_eq!(result.into_value(), 20.0);
     }
 
     #[test]
