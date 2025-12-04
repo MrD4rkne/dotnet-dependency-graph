@@ -5,6 +5,7 @@ use egui_file_dialog::FileDialog;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::PathBuf;
+use std::time::{Duration, Instant};
 
 mod graph_widget;
 mod node;
@@ -12,6 +13,35 @@ mod parser;
 mod visualize;
 
 use graph_widget::GraphWidget;
+
+struct FpsCounter {
+    last_update: Instant,
+    frames_since_last: u32,
+    current_fps: f32,
+}
+
+impl FpsCounter {
+    fn new() -> Self {
+        Self {
+            last_update: Instant::now(),
+            frames_since_last: 0,
+            current_fps: 0.0,
+        }
+    }
+
+    fn update(&mut self) {
+        self.frames_since_last += 1;
+        if self.last_update.elapsed() >= Duration::from_secs(1) {
+            self.current_fps = self.frames_since_last as f32;
+            self.frames_since_last = 0;
+            self.last_update = Instant::now();
+        }
+    }
+
+    fn fps(&self) -> f32 {
+        self.current_fps
+    }
+}
 
 struct File {
     path: PathBuf,
@@ -45,6 +75,7 @@ struct DependencyApp {
     zoom: f32,
     dragging_node: Option<DependencyId>,
     error_text: Option<String>,
+    fps_counter: FpsCounter,
 }
 
 impl DependencyApp {
@@ -56,12 +87,16 @@ impl DependencyApp {
             zoom: 1.0,
             dragging_node: None,
             error_text: None,
+            fps_counter: FpsCounter::new(),
         }
     }
 }
 
 impl App for DependencyApp {
     fn update(&mut self, ctx: &Context, _: &mut eframe::Frame) {
+        // Calculate FPS
+        self.fps_counter.update();
+
         // --- Menu Bar using Top Panel ---
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
@@ -121,8 +156,11 @@ impl App for DependencyApp {
                 // Show controls
                 ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
                     ui.label(format!(
-                        "Zoom: {:.1}x | Pan: ({:.0}, {:.0})",
-                        self.zoom, self.pan_offset.x, self.pan_offset.y
+                        "Zoom: {:.1}x | Pan: ({:.0}, {:.0}) | FPS: {:.0}",
+                        self.zoom,
+                        self.pan_offset.x,
+                        self.pan_offset.y,
+                        self.fps_counter.fps()
                     ));
                     ui.label(
                         "Mouse wheel to zoom | Drag background to pan | Drag nodes to move them",
@@ -142,6 +180,9 @@ impl App for DependencyApp {
                 }
             });
         }
+
+        // Request continuous repaint for accurate FPS calculation
+        ctx.request_repaint();
     }
 }
 
