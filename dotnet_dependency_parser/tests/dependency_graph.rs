@@ -196,7 +196,7 @@ fn test_add_relation_between_projects() {
 
     // Check that the relation was added
     let deps: Vec<_> = graph
-        .get_direct_dependencies_in_framework(&proj1, framework)
+        .get_direct_dependencies_in_framework(&proj1, &framework)
         .unwrap()
         .collect();
     assert_eq!(deps.len(), 1);
@@ -221,7 +221,7 @@ fn test_add_relation_project_to_package() {
     assert!(result.is_ok());
 
     let deps: Vec<_> = graph
-        .get_direct_dependencies_in_framework(&proj, framework)
+        .get_direct_dependencies_in_framework(&proj, &framework)
         .unwrap()
         .collect();
     assert_eq!(deps.len(), 1);
@@ -284,7 +284,7 @@ fn test_multiple_relations_same_framework() {
         .unwrap();
 
     let deps: Vec<_> = graph
-        .get_direct_dependencies_in_framework(&proj, framework)
+        .get_direct_dependencies_in_framework(&proj, &framework)
         .unwrap()
         .collect();
     assert_eq!(deps.len(), 3);
@@ -311,11 +311,11 @@ fn test_relations_with_different_frameworks() {
         .unwrap();
 
     let deps_net8: Vec<_> = graph
-        .get_direct_dependencies_in_framework(&proj, net8)
+        .get_direct_dependencies_in_framework(&proj, &net8)
         .unwrap()
         .collect();
     let deps_net7: Vec<_> = graph
-        .get_direct_dependencies_in_framework(&proj, net7)
+        .get_direct_dependencies_in_framework(&proj, &net7)
         .unwrap()
         .collect();
 
@@ -345,7 +345,7 @@ fn test_edge_from_and_to_are_correct() {
 
     // Get the edge from proj1 to proj2
     let deps: Vec<_> = graph
-        .get_direct_dependencies_in_framework(&proj1, framework)
+        .get_direct_dependencies_in_framework(&proj1, &framework)
         .unwrap()
         .collect();
 
@@ -376,7 +376,7 @@ fn test_edge_from_to_with_project_and_package() {
         .unwrap();
 
     let deps: Vec<_> = graph
-        .get_direct_dependencies_in_framework(&proj, framework)
+        .get_direct_dependencies_in_framework(&proj, &framework)
         .unwrap()
         .collect();
 
@@ -412,7 +412,7 @@ fn test_multiple_edges_from_same_source() {
         .unwrap();
 
     let deps: Vec<_> = graph
-        .get_direct_dependencies_in_framework(&proj, framework)
+        .get_direct_dependencies_in_framework(&proj, &framework)
         .unwrap()
         .collect();
 
@@ -500,7 +500,7 @@ fn test_chain_of_dependencies_edge_consistency() {
 
     // Check app -> lib edge
     let app_deps: Vec<_> = graph
-        .get_direct_dependencies_in_framework(&app, framework.clone())
+        .get_direct_dependencies_in_framework(&app, &framework)
         .unwrap()
         .collect();
     assert_eq!(app_deps.len(), 1);
@@ -509,7 +509,7 @@ fn test_chain_of_dependencies_edge_consistency() {
 
     // Check lib -> pkg edge
     let lib_deps: Vec<_> = graph
-        .get_direct_dependencies_in_framework(&lib, framework)
+        .get_direct_dependencies_in_framework(&lib, &framework)
         .unwrap()
         .collect();
     assert_eq!(lib_deps.len(), 1);
@@ -582,8 +582,8 @@ fn test_get_direct_dependencies_returns_error_for_nonexistent_dependency() {
     let fake_id = DependencyId::ProjectId("/fake/project.csproj".to_string());
 
     // This should return an error
-    let result =
-        graph.get_direct_dependencies_in_framework(&fake_id, Framework::new("net8.0".to_string()));
+    let non_existing_framework = Framework::new("net8.0".to_string());
+    let result = graph.get_direct_dependencies_in_framework(&fake_id, &non_existing_framework);
 
     assert!(result.is_err());
 }
@@ -735,21 +735,21 @@ fn test_complex_dependency_graph() {
 
     // Verify app dependencies
     let app_deps: Vec<_> = graph
-        .get_direct_dependencies_in_framework(&app, framework.clone())
+        .get_direct_dependencies_in_framework(&app, &framework)
         .unwrap()
         .collect();
     assert_eq!(app_deps.len(), 3);
 
     // Verify lib1 dependencies
     let lib1_deps: Vec<_> = graph
-        .get_direct_dependencies_in_framework(&lib1, framework.clone())
+        .get_direct_dependencies_in_framework(&lib1, &framework)
         .unwrap()
         .collect();
     assert_eq!(lib1_deps.len(), 2);
 
     // Verify lib2 dependencies
     let lib2_deps: Vec<_> = graph
-        .get_direct_dependencies_in_framework(&lib2, framework.clone())
+        .get_direct_dependencies_in_framework(&lib2, &framework)
         .unwrap()
         .collect();
     assert_eq!(lib2_deps.len(), 1);
