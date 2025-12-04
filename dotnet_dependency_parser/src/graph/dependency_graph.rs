@@ -293,11 +293,11 @@ impl DependencyGraph {
     pub fn get_direct_dependencies_in_framework(
         &self,
         id: &DependencyId,
-        framework: Framework,
+        framework: &Framework,
     ) -> Result<impl Iterator<Item = &DepEdge>, DependencyNotFound> {
         Ok(self
             .get_direct_dependencies(id)?
-            .filter(move |edge| *edge.framework() == framework))
+            .filter(move |edge| edge.framework() == framework))
     }
 
     /// Get direct reverse dependencies of the dependency.
