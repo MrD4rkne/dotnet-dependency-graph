@@ -1,4 +1,3 @@
-+
 use dotnet_dependency_parser::graph::{DependencyGraph, DependencyId, Framework};
 use egui::{Painter, Pos2, Rect, Response, Sense, Ui, Vec2, Widget};
 use std::collections::{HashMap, HashSet};
@@ -14,19 +13,12 @@ pub fn compute_node_cache(
     pan_offset: Vec2,
 ) -> HashMap<DependencyId, CachedNodeData> {
     let mut cache = HashMap::new();
-    let ctx = DrawContext {
-        state: State {
-            zoom,
-            pan_offset,
-            rect_min: Pos2::ZERO, // dummy
-        },
-        graph,
-    };
+    let ctx = State { zoom, pan_offset };
     for id in visible_nodes.iter() {
         if let Some(&pos) = positions.get(id) {
             let screen_pos = ctx.transform(pos);
             let text = node::get_display_text(graph.get(id).expect("Node should exist"));
-            let rect = visualize::calculate_node_rect(&text, screen_pos, zoom);
+            let rect = visualize::calculate_node_rect(text, screen_pos, zoom);
             cache.insert(
                 id.clone(),
                 CachedNodeData {
@@ -91,11 +83,7 @@ impl<'a> GraphWidget<'a> {
         }
     }
 
-    fn try_draw_edges(
-        &self,
-        painter: &Painter,
-        cache: &HashMap<DependencyId, CachedNodeData>,
-    ) {
+    fn try_draw_edges(&self, painter: &Painter, cache: &HashMap<DependencyId, CachedNodeData>) {
         if let Some(framework) = self.selected_framework {
             draw_all_edges(
                 cache,
@@ -155,31 +143,19 @@ impl<'a> Widget for GraphWidget<'a> {
     }
 }
 
-fn transform_position(pos: (f32, f32), zoom: f32, pan_offset: Vec2, rect_min: Pos2) -> Pos2 {
+fn transform_position(pos: (f32, f32), zoom: f32, pan_offset: Vec2) -> Pos2 {
     let pos_vec = Pos2::new(pos.0, pos.1);
-    rect_min + pos_vec.to_vec2() * zoom + pan_offset
+    (pos_vec.to_vec2() * zoom + pan_offset).to_pos2()
 }
 
 struct State {
     zoom: f32,
     pan_offset: Vec2,
-    rect_min: Pos2,
 }
 
-/// Context for drawing operations to reduce parameter passing
-struct DrawContext<'a> {
-    state: State,
-    graph: &'a DependencyGraph,
-}
-
-impl<'a> DrawContext<'a> {
+impl State {
     fn transform(&self, pos: (f32, f32)) -> Pos2 {
-        transform_position(
-            pos,
-            self.state.zoom,
-            self.state.pan_offset,
-            self.state.rect_min,
-        )
+        transform_position(pos, self.zoom, self.pan_offset)
     }
 }
 
