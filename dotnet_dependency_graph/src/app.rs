@@ -6,11 +6,11 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::time::{Duration, Instant};
 
+use crate::dependency_panel::DependencyPanel;
+use crate::dependency_panel::SearchOptions;
 use crate::file::File;
 use crate::graph_widget::{CachedNodeData, GraphWidget};
 use crate::loader::load_file;
-use crate::packages_panel::PackagesPanel;
-use crate::packages_panel::SearchOptions;
 
 struct NodeCacheManager {
     cache: Option<HashMap<DependencyId, CachedNodeData>>,
@@ -233,7 +233,7 @@ impl DependencyApp {
     fn render_packages_view(&mut self, ctx: &Context) {
         if let Some(file) = &mut self.current_dgspec_file {
             egui::SidePanel::left("nodes_panel").show(ctx, |ui| {
-                ui.add(PackagesPanel::new(
+                ui.add(DependencyPanel::new(
                     &file.graph,
                     &mut file.visible_nodes,
                     &mut self.package_filter,

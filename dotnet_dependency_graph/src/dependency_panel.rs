@@ -105,7 +105,7 @@ impl Searcher {
 }
 
 /// A panel widget for displaying and filtering dependency packages.  
-pub(crate) struct PackagesPanel<'a> {
+pub(crate) struct DependencyPanel<'a> {
     // Dependency graph being the source of packages.
     graph: &'a DependencyGraph,
     // Set with visible.
@@ -116,7 +116,7 @@ pub(crate) struct PackagesPanel<'a> {
     search_options: &'a mut SearchOptions,
 }
 
-impl<'a> PackagesPanel<'a> {
+impl<'a> DependencyPanel<'a> {
     pub fn new(
         graph: &'a DependencyGraph,
         visible_nodes: &'a mut HashSet<DependencyId>,
@@ -272,7 +272,7 @@ impl<'a> PackagesPanel<'a> {
     }
 }
 
-impl<'a> Widget for PackagesPanel<'a> {
+impl<'a> Widget for DependencyPanel<'a> {
     fn ui(mut self, ui: &mut Ui) -> Response {
         ui.group(|ui| {
             self.show(ui);
