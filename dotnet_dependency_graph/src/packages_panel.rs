@@ -152,59 +152,71 @@ impl<'a> PackagesPanel<'a> {
 
         ui.separator();
 
-        // Add Select All / Deselect All buttons
+        // Group nodes by name
+        let mut groups: BTreeMap<String, Vec<(&DependencyId, &DependencyInfo)>> = BTreeMap::new();
+
+        for (id, info) in self.graph.iter() {
+            let name = get_display_text(info);
+            groups.entry(name.to_string()).or_default().push((id, info));
+        }
+
+        let dependencies_to_show: Vec<_> = groups
+            .into_iter()
+            .filter(|(name, _)| searcher.is_match(name))
+            .map(|(name, mut versions)| {
+                // Sort versions within each group
+                versions.sort_by(|a, b| a.1.version().cmp(&b.1.version()));
+                (name, versions)
+            })
+            .collect();
+
         ui.horizontal(|ui| {
             if ui.button("Select All").clicked() {
-                *self.visible_nodes = self.graph.iter().map(|(id, _)| id.clone()).collect();
+                for dep in &dependencies_to_show {
+                    dep.1.iter().for_each(|version| {
+                        _ = self.visible_nodes.insert(version.0.clone());
+                    });
+                }
             }
             if ui.button("Deselect All").clicked() {
-                self.visible_nodes.clear();
+                for dep in &dependencies_to_show {
+                    dep.1.iter().for_each(|version| {
+                        _ = self.visible_nodes.remove(version.0);
+                    });
+                }
+            }
+            if ui.button("Reset").clicked() {
+                *self.visible_nodes = self.graph.iter().map(|(id, _)| id.clone()).collect();
+                *self.filter = String::new();
             }
         });
 
         ui.separator();
 
         egui::ScrollArea::vertical().show(ui, |ui| {
-            // Group nodes by name
-            let mut groups: BTreeMap<String, Vec<(&DependencyId, &DependencyInfo)>> =
-                BTreeMap::new();
-
-            for (id, info) in self.graph.iter() {
-                let name = get_display_text(info);
-                groups.entry(name.to_string()).or_default().push((id, info));
+            for (name, versions) in &dependencies_to_show {
+                if versions.len() == 1 {
+                    // Single version - show as flat checkbox
+                    let (id, _) = versions[0];
+                    show_checkbox(ui, self.visible_nodes, id.clone(), name, Some(&searcher));
+                } else {
+                    // Multiple versions - show as collapsing header with nested items
+                    egui::CollapsingHeader::new(rich_text_for_label(name, &searcher))
+                        .default_open(false)
+                        .show(ui, |ui| {
+                            for (id, info) in versions {
+                                let version_label = info.version().unwrap_or("no version");
+                                show_checkbox(
+                                    ui,
+                                    self.visible_nodes,
+                                    (*id).clone(),
+                                    version_label,
+                                    None,
+                                );
+                            }
+                        });
+                }
             }
-
-            groups
-                .into_iter()
-                .filter(|(name, _)| searcher.is_match(name))
-                .map(|(name, mut versions)| {
-                    // Sort versions within each group
-                    versions.sort_by(|a, b| a.1.version().cmp(&b.1.version()));
-                    (name, versions)
-                })
-                .for_each(|(name, versions)| {
-                    if versions.len() == 1 {
-                        // Single version - show as flat checkbox
-                        let (id, _) = versions[0];
-                        show_checkbox(ui, self.visible_nodes, id.clone(), &name, Some(&searcher));
-                    } else {
-                        // Multiple versions - show as collapsing header with nested items
-                        egui::CollapsingHeader::new(rich_text_for_label(&name, &searcher))
-                            .default_open(false)
-                            .show(ui, |ui| {
-                                for (id, info) in versions {
-                                    let version_label = info.version().unwrap_or("no version");
-                                    show_checkbox(
-                                        ui,
-                                        self.visible_nodes,
-                                        id.clone(),
-                                        version_label,
-                                        None,
-                                    );
-                                }
-                            });
-                    }
-                });
         });
     }
 }
@@ -218,7 +230,7 @@ impl<'a> Widget for PackagesPanel<'a> {
     }
 }
 
-// Display chechbox. If searcher is provided, match fragment of text will be highlighted.
+// Display checkbox. If searcher is provided, match fragment of text will be highlighted.
 fn show_checkbox(
     ui: &mut Ui,
     visible_nodes: &mut HashSet<DependencyId>,
