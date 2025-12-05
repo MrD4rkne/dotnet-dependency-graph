@@ -125,7 +125,19 @@ impl<'a> PackagesPanel<'a> {
 
         let searcher = Searcher::new(&*self.search_options, self.filter);
 
-        // Add search/filter box
+        self.show_search_box(ui, &searcher);
+        self.show_mode_selection(ui);
+
+        let groups = Self::group_packages_by_name(self.graph);
+        let dependencies_to_show =
+            Self::compute_dependencies_to_show_from_groups(groups, &searcher);
+
+        self.show_selection_buttons(ui, &dependencies_to_show);
+
+        self.show_packages(ui, &dependencies_to_show, &searcher);
+    }
+
+    fn show_search_box(&mut self, ui: &mut Ui, searcher: &Searcher) {
         ui.horizontal(|ui| {
             ui.label("Filter:");
             let original_visuals = ui.visuals().clone();
@@ -141,6 +153,9 @@ impl<'a> PackagesPanel<'a> {
             ui.text_edit_singleline(self.filter);
             *ui.visuals_mut() = original_visuals;
         });
+    }
+
+    fn show_mode_selection(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
             ui.label("Mode:");
             ui.selectable_value(&mut self.search_options.kind, SearchKind::Text, "Text");
@@ -149,18 +164,13 @@ impl<'a> PackagesPanel<'a> {
             ui.checkbox(&mut self.search_options.whole_word, "Match Whole Word");
             ui.checkbox(&mut self.search_options.case_sensitive, "Match Case");
         });
+    }
 
-        ui.separator();
-
-        // Group nodes by name
-        let mut groups: BTreeMap<String, Vec<(&DependencyId, &DependencyInfo)>> = BTreeMap::new();
-
-        for (id, info) in self.graph.iter() {
-            let name = get_display_text(info);
-            groups.entry(name.to_string()).or_default().push((id, info));
-        }
-
-        let dependencies_to_show: Vec<_> = groups
+    fn compute_dependencies_to_show_from_groups(
+        groups: BTreeMap<String, Vec<(DependencyId, DependencyInfo)>>,
+        searcher: &Searcher,
+    ) -> Vec<(String, Vec<(DependencyId, DependencyInfo)>)> {
+        groups
             .into_iter()
             .filter(|(name, _)| searcher.is_match(name))
             .map(|(name, mut versions)| {
@@ -168,20 +178,28 @@ impl<'a> PackagesPanel<'a> {
                 versions.sort_by(|a, b| a.1.version().cmp(&b.1.version()));
                 (name, versions)
             })
-            .collect();
+            .collect()
+    }
+
+    fn show_selection_buttons(
+        &mut self,
+        ui: &mut Ui,
+        dependencies_to_show: &[(String, Vec<(DependencyId, DependencyInfo)>)],
+    ) {
+        ui.separator();
 
         ui.horizontal(|ui| {
             if ui.button("Select All").clicked() {
-                for dep in &dependencies_to_show {
+                for dep in dependencies_to_show {
                     dep.1.iter().for_each(|version| {
                         _ = self.visible_nodes.insert(version.0.clone());
                     });
                 }
             }
             if ui.button("Deselect All").clicked() {
-                for dep in &dependencies_to_show {
+                for dep in dependencies_to_show {
                     dep.1.iter().for_each(|version| {
-                        _ = self.visible_nodes.remove(version.0);
+                        _ = self.visible_nodes.remove(&version.0);
                     });
                 }
             }
@@ -190,18 +208,25 @@ impl<'a> PackagesPanel<'a> {
                 *self.filter = String::new();
             }
         });
+    }
 
+    fn show_packages(
+        &mut self,
+        ui: &mut Ui,
+        dependencies_to_show: &[(String, Vec<(DependencyId, DependencyInfo)>)],
+        searcher: &Searcher,
+    ) {
         ui.separator();
 
         egui::ScrollArea::vertical().show(ui, |ui| {
-            for (name, versions) in &dependencies_to_show {
+            for (name, versions) in dependencies_to_show {
                 if versions.len() == 1 {
                     // Single version - show as flat checkbox
-                    let (id, _) = versions[0];
-                    show_checkbox(ui, self.visible_nodes, id.clone(), name, Some(&searcher));
+                    let (id, _) = &versions[0];
+                    show_checkbox(ui, self.visible_nodes, id.clone(), name, Some(searcher));
                 } else {
                     // Multiple versions - show as collapsing header with nested items
-                    egui::CollapsingHeader::new(rich_text_for_label(name, &searcher))
+                    egui::CollapsingHeader::new(rich_text_for_label(name, searcher))
                         .default_open(false)
                         .show(ui, |ui| {
                             for (id, info) in versions {
@@ -209,7 +234,7 @@ impl<'a> PackagesPanel<'a> {
                                 show_checkbox(
                                     ui,
                                     self.visible_nodes,
-                                    (*id).clone(),
+                                    id.clone(),
                                     version_label,
                                     None,
                                 );
@@ -218,6 +243,20 @@ impl<'a> PackagesPanel<'a> {
                 }
             }
         });
+    }
+
+    fn group_packages_by_name(
+        graph: &DependencyGraph,
+    ) -> BTreeMap<String, Vec<(DependencyId, DependencyInfo)>> {
+        let mut groups: BTreeMap<String, Vec<(DependencyId, DependencyInfo)>> = BTreeMap::new();
+        for (id, info) in graph.iter() {
+            let name = get_display_text(info);
+            groups
+                .entry(name.to_string())
+                .or_default()
+                .push((id.clone(), info.clone()));
+        }
+        groups
     }
 }
 
