@@ -204,7 +204,7 @@ impl<'a> PackagesPanel<'a> {
             if ui.button("Select All").clicked() {
                 for dep in dependencies_to_show {
                     dep.1.iter().for_each(|version| {
-                        _ = self.visible_nodes.insert(version.0.clone());
+                        self.visible_nodes.insert(version.0.clone());
                     });
                 }
             }
