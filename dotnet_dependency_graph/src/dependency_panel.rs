@@ -111,7 +111,7 @@ pub(crate) struct DependencyPanel<'a> {
     graph: &'a DependencyGraph,
     /// Set containing the IDs of visible dependency nodes.
     visible_nodes: &'a mut HashSet<DependencyId>,
-    /// Search filter text for filtering which dependencies are shown in the list.
+    /// Text pattern used to filter dependencies in the list.
     filter: &'a mut String,
     /// Additional search options.
     search_options: &'a mut SearchOptions,
