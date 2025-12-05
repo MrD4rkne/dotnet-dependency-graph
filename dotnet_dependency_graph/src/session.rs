@@ -7,7 +7,7 @@ use crate::parser;
 use crate::visualize;
 use dotnet_dependency_parser::graph::Layout;
 
-pub struct Session {
+pub(crate) struct Session {
     pub path: PathBuf,
     pub graph: DependencyGraph,
     pub node_positions: HashMap<DependencyId, (f32, f32)>,

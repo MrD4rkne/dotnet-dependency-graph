@@ -144,7 +144,7 @@ impl DependencyApp {
                             )
                             .clicked()
                         {
-                            file.selected_framework = Some(fw.clone())
+                            file.selected_framework = Some(fw.clone());
                         }
                     }
                 });
