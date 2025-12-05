@@ -116,7 +116,7 @@ impl DependencyApp {
             cache_manager: NodeCacheManager::new(),
             drag_happened: false,
             package_filter: String::new(),
-            search_options: SearchOptions::new(),
+            search_options: SearchOptions::default(),
         }
     }
 
