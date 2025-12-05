@@ -5,10 +5,14 @@ use std::collections::{BTreeMap, HashSet};
 
 use crate::node::get_display_text;
 
+/// Options for configuring search behavior in the packages panel.
 #[derive(Debug, Clone)]
 pub(crate) struct SearchOptions {
+    /// The type of search to perform (text or regex).
     pub kind: SearchKind,
+    /// If true, only match complete words.
     pub whole_word: bool,
+    /// If true, perform case-sensitive matching.
     pub case_sensitive: bool,
 }
 
