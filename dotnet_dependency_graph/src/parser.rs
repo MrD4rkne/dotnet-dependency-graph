@@ -10,24 +10,21 @@ use std::path::Path;
 
 /// Enum for supported parsers
 enum SupportedParser {
-    Dgspec(DgspecParser),
-    ProjectAssets(ProjectAssetsParser),
+    Dgspec,
+    ProjectAssets,
 }
 
 impl SupportedParser {
     /// Returns all supported parsers
     pub fn all() -> Vec<Self> {
-        vec![
-            SupportedParser::Dgspec(DgspecParser),
-            SupportedParser::ProjectAssets(ProjectAssetsParser),
-        ]
+        vec![SupportedParser::Dgspec, SupportedParser::ProjectAssets]
     }
 
     /// Returns supported extensions for this parser
     pub fn extensions(&self) -> Vec<&'static str> {
         match self {
-            SupportedParser::Dgspec(_) => DgspecParser::extensions(),
-            SupportedParser::ProjectAssets(_) => ProjectAssetsParser::extensions(),
+            SupportedParser::Dgspec => DgspecParser::extensions(),
+            SupportedParser::ProjectAssets => ProjectAssetsParser::extensions(),
         }
     }
 
@@ -42,8 +39,14 @@ impl SupportedParser {
         path: &std::path::Path,
     ) -> Result<DependencyGraph, Box<dyn std::error::Error + Send + Sync>> {
         match self {
-            SupportedParser::Dgspec(p) => p.parse(path),
-            SupportedParser::ProjectAssets(p) => p.parse(path),
+            SupportedParser::Dgspec => {
+                let p = DgspecParser;
+                p.parse(path)
+            }
+            SupportedParser::ProjectAssets => {
+                let p = ProjectAssetsParser;
+                p.parse(path)
+            }
         }
     }
 }
