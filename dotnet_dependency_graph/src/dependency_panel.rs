@@ -35,6 +35,7 @@ pub(crate) enum SearchKind {
     Regex,
 }
 
+/// Struct responsible for handling matching of dependency name according to pattern and seatch options.
 struct Searcher {
     pattern: String,
     regex: Option<Regex>,
