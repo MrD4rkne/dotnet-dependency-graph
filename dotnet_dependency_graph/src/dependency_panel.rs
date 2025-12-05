@@ -107,13 +107,13 @@ impl Searcher {
 
 /// A panel widget for displaying and filtering dependency packages.  
 pub(crate) struct DependencyPanel<'a> {
-    // Dependency graph being the source of packages.
+    /// Dependency graph being the source of packages.
     graph: &'a DependencyGraph,
-    // Set with visible.
+    /// Set with visible.
     visible_nodes: &'a mut HashSet<DependencyId>,
-    // Filter which dependencies are shown in the list.
+    /// Search filter text for filtering which dependencies are shown in the list.
     filter: &'a mut String,
-    // Additional search options.
+    /// Additional search options.
     search_options: &'a mut SearchOptions,
 }
 
