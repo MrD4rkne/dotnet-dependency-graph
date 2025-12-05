@@ -8,9 +8,8 @@ use std::time::{Duration, Instant};
 
 use crate::dependency_panel::DependencyPanel;
 use crate::dependency_panel::SearchOptions;
-use crate::file::Session;
 use crate::graph_widget::{CachedNodeData, GraphWidget};
-use crate::loader::load_file;
+use crate::session::Session;
 
 struct NodeCacheManager {
     cache: Option<HashMap<DependencyId, CachedNodeData>>,
@@ -155,8 +154,9 @@ impl DependencyApp {
 
     fn handle_file_dialog(&mut self, ctx: &Context) {
         self.file_dialog.update(ctx);
+
         if let Some(path) = self.file_dialog.take_picked() {
-            let new_file = load_file(path);
+            let new_file = Session::load_from(path);
             match new_file {
                 Ok(loaded_file) => {
                     self.current_dgspec_file = Some(loaded_file);
