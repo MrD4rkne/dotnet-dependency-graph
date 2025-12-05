@@ -25,7 +25,7 @@ fn test_parse_project_assets_json() {
             DependencyInfo::Package(_) => {
                 if info.name() == "Serilog" {
                     found_serilog = true;
-                    assert_eq!(info.version(), Some(&"4.0.0".to_string()));
+                    assert_eq!(info.version(), Some("4.0.0"));
                 }
                 if info.name() == "Serilog.Sinks.Console" {
                     found_serilog_console = true;

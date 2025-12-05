@@ -8,3 +8,4 @@ eframe = "0.33.2"
 egui = "0.33.2"
 egui-file-dialog = "0.12.0"
 dotnet_dependency_parser = { path = "../dotnet_dependency_parser" }
+regex = "1.12.2"

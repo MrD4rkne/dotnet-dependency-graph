@@ -10,6 +10,7 @@ use crate::file::File;
 use crate::graph_widget::{CachedNodeData, GraphWidget};
 use crate::loader::load_file;
 use crate::packages_panel::PackagesPanel;
+use crate::packages_panel::SearchOptions;
 
 struct NodeCacheManager {
     cache: Option<HashMap<DependencyId, CachedNodeData>>,
@@ -99,6 +100,7 @@ pub struct DependencyApp {
     cache_manager: NodeCacheManager,
     drag_happened: bool,
     package_filter: String,
+    search_options: SearchOptions,
 }
 
 impl DependencyApp {
@@ -114,6 +116,7 @@ impl DependencyApp {
             cache_manager: NodeCacheManager::new(),
             drag_happened: false,
             package_filter: String::new(),
+            search_options: SearchOptions::new(),
         }
     }
 
@@ -230,12 +233,12 @@ impl DependencyApp {
     fn render_packages_view(&mut self, ctx: &Context) {
         if let Some(file) = &mut self.current_dgspec_file {
             egui::SidePanel::left("nodes_panel").show(ctx, |ui| {
-                PackagesPanel::new(
+                ui.add(PackagesPanel::new(
                     &file.graph,
                     &mut file.visible_nodes,
                     &mut self.package_filter,
-                )
-                .show(ui);
+                    &mut self.search_options,
+                ));
             });
         }
     }
