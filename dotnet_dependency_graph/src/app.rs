@@ -6,6 +6,8 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::time::{Duration, Instant};
 
+use crate::dependency_panel::DependencyPanel;
+use crate::dependency_panel::SearchOptions;
 use crate::file::File;
 use crate::graph_widget::{CachedNodeData, GraphWidget};
 use crate::loader::load_file;
@@ -97,6 +99,8 @@ pub struct DependencyApp {
     fps_counter: FpsCounter,
     cache_manager: NodeCacheManager,
     drag_happened: bool,
+    package_filter: String,
+    search_options: SearchOptions,
 }
 
 impl DependencyApp {
@@ -111,6 +115,8 @@ impl DependencyApp {
             fps_counter: FpsCounter::new(),
             cache_manager: NodeCacheManager::new(),
             drag_happened: false,
+            package_filter: String::new(),
+            search_options: SearchOptions::default(),
         }
     }
 
@@ -223,8 +229,20 @@ impl DependencyApp {
             });
         }
     }
-}
 
+    fn render_packages_view(&mut self, ctx: &Context) {
+        if let Some(file) = &mut self.current_dgspec_file {
+            egui::SidePanel::left("nodes_panel").show(ctx, |ui| {
+                ui.add(DependencyPanel::new(
+                    &file.graph,
+                    &mut file.visible_nodes,
+                    &mut self.package_filter,
+                    &mut self.search_options,
+                ));
+            });
+        }
+    }
+}
 impl App for DependencyApp {
     fn update(&mut self, ctx: &Context, _: &mut eframe::Frame) {
         self.fps_counter.update();
@@ -234,6 +252,9 @@ impl App for DependencyApp {
             self.cache_manager.invalidate();
         }
         self.drag_happened = false;
+
+        // Render left side first not to overlay over central panel.
+        self.render_packages_view(ctx);
         self.render_central_panel(ctx);
 
         self.render_error_window(ctx);
