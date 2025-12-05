@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-pub struct File {
+pub struct Session {
     pub path: PathBuf,
     pub graph: DependencyGraph,
     pub node_positions: HashMap<DependencyId, (f32, f32)>,
@@ -11,7 +11,7 @@ pub struct File {
     pub visible_nodes: HashSet<DependencyId>,
 }
 
-impl File {
+impl Session {
     pub fn new(
         path: PathBuf,
         graph: DependencyGraph,

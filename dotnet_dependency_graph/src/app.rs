@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 
 use crate::dependency_panel::DependencyPanel;
 use crate::dependency_panel::SearchOptions;
-use crate::file::File;
+use crate::file::Session;
 use crate::graph_widget::{CachedNodeData, GraphWidget};
 use crate::loader::load_file;
 
@@ -91,7 +91,7 @@ impl FpsCounter {
 
 pub struct DependencyApp {
     file_dialog: FileDialog,
-    current_dgspec_file: Option<File>,
+    current_dgspec_file: Option<Session>,
     pan_offset: egui::Vec2,
     zoom: f32,
     dragging_node: Option<DependencyId>,
@@ -125,6 +125,10 @@ impl DependencyApp {
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("Open file").clicked() {
+                        self.file_dialog.pick_file();
+                    }
+
+                    if self.current_dgspec_file.is_some() && ui.button("Merge file").clicked() {
                         self.file_dialog.pick_file();
                     }
                 });

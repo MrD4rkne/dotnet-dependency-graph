@@ -358,6 +358,54 @@ impl DependencyGraph {
             })
             .collect()
     }
+
+    fn merge(
+        &mut self,
+        graph: DependencyGraph,
+    ) -> Result<(), Vec<(DependencyId, DifferentDependencyType)>> {
+        self.frameworks.extend(graph.frameworks);
+
+        let (nodes, edges) = graph.graph.into_nodes_edges_iters();
+
+        // Add all dependencies into the graph.
+        let mapping: Vec<(DependencyId, Result<DependencyId, DifferentDependencyType>)> = nodes
+            .into_iter()
+            .map(|x| (DependencyId::new(x.index), self.add_dependency(x.weight)))
+            .collect();
+
+        let (errors, successes): (Vec<_>, Vec<_>) =
+            mapping.into_iter().partition(|(_, res)| res.is_err());
+
+        if !errors.is_empty() {
+            let error_list = errors
+                .into_iter()
+                .map(|(id, res)| (id, res.unwrap_err()))
+                .collect();
+            return Err(error_list);
+        }
+
+        let id_mapping: HashMap<DependencyId, DependencyId> = successes
+            .into_iter()
+            .map(|(old_id, res)| (old_id, res.unwrap()))
+            .collect();
+
+        // Now let's fill the missing edges.
+        for edge in edges {
+            let old_from = DependencyId::new(edge.source);
+            let old_to = DependencyId::new(edge.target);
+            if let (Some(new_from), Some(new_to)) =
+                (id_mapping.get(&old_from), id_mapping.get(&old_to))
+            {
+                self.graph.add_edge(
+                    new_from.ix,
+                    new_to.ix,
+                    DepEdge::new(*new_from, *new_to, edge.weight.target_framework.clone()),
+                );
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[test]
