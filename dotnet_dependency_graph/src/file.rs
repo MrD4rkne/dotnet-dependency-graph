@@ -17,7 +17,7 @@ impl File {
         graph: DependencyGraph,
         node_positions: HashMap<DependencyId, (f32, f32)>,
     ) -> Self {
-        let all_dep_ids = graph.iter().map(|(id, _)| id.clone()).collect();
+        let all_dep_ids = graph.iter().map(|(id, _)| id).collect();
         Self {
             path,
             graph,

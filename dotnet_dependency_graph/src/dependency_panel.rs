@@ -205,7 +205,7 @@ impl<'a> DependencyPanel<'a> {
             if ui.button("Select All").clicked() {
                 for dep in dependencies_to_show {
                     dep.1.iter().for_each(|version| {
-                        self.visible_nodes.insert(version.0.clone());
+                        self.visible_nodes.insert(version.0);
                     });
                 }
             }
@@ -217,7 +217,7 @@ impl<'a> DependencyPanel<'a> {
                 }
             }
             if ui.button("Reset").clicked() {
-                *self.visible_nodes = self.graph.iter().map(|(id, _)| id.clone()).collect();
+                *self.visible_nodes = self.graph.iter().map(|(id, _)| id).collect();
                 *self.filter = String::new();
             }
         });
@@ -236,7 +236,7 @@ impl<'a> DependencyPanel<'a> {
                 if versions.len() == 1 {
                     // Single version - show as flat checkbox
                     let (id, _) = &versions[0];
-                    show_checkbox(ui, self.visible_nodes, id.clone(), name, Some(searcher));
+                    show_checkbox(ui, self.visible_nodes, *id, name, Some(searcher));
                 } else {
                     // Multiple versions - show as collapsing header with nested items
                     egui::CollapsingHeader::new(rich_text_for_label(name, searcher))
@@ -244,13 +244,7 @@ impl<'a> DependencyPanel<'a> {
                         .show(ui, |ui| {
                             for (id, info) in versions {
                                 let version_label = info.version().unwrap_or("no version");
-                                show_checkbox(
-                                    ui,
-                                    self.visible_nodes,
-                                    id.clone(),
-                                    version_label,
-                                    None,
-                                );
+                                show_checkbox(ui, self.visible_nodes, *id, version_label, None);
                             }
                         });
                 }
@@ -267,7 +261,7 @@ impl<'a> DependencyPanel<'a> {
             groups
                 .entry(name.to_string())
                 .or_default()
-                .push((id.clone(), info.clone()));
+                .push((id, info.clone()));
         }
         groups
     }
