@@ -5,6 +5,7 @@ mod file;
 mod graph_widget;
 mod loader;
 mod node;
+mod packages_panel;
 mod parser;
 mod visualize;
 
