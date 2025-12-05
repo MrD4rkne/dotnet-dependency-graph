@@ -72,8 +72,16 @@ impl Searcher {
         if let Some(ref r) = self.regex {
             r.is_match(hay)
         } else {
-            false
+            // Invalid regex: show all packages
+            true
         }
+    }
+
+    fn is_valid(&self) -> bool {
+        if self.pattern.is_empty() {
+            return true;
+        }
+        self.regex.is_some()
     }
 
     fn match_range(&self, hay: &str) -> Option<(usize, usize)> {
@@ -115,10 +123,23 @@ impl<'a> PackagesPanel<'a> {
         ui.heading("Packages");
         ui.separator();
 
+        let searcher = Searcher::new(&*self.search_options, self.filter);
+
         // Add search/filter box
         ui.horizontal(|ui| {
             ui.label("Filter:");
+            let original_visuals = ui.visuals().clone();
+            if !searcher.is_valid() {
+                ui.visuals_mut().override_text_color = Some(egui::Color32::RED);
+                ui.visuals_mut().widgets.inactive.bg_stroke =
+                    egui::Stroke::new(1.0, egui::Color32::RED);
+                ui.visuals_mut().widgets.hovered.bg_stroke =
+                    egui::Stroke::new(1.0, egui::Color32::RED);
+                ui.visuals_mut().widgets.active.bg_stroke =
+                    egui::Stroke::new(1.0, egui::Color32::RED);
+            }
             ui.text_edit_singleline(self.filter);
+            *ui.visuals_mut() = original_visuals;
         });
         ui.horizontal(|ui| {
             ui.label("Mode:");
@@ -152,9 +173,6 @@ impl<'a> PackagesPanel<'a> {
                 let name = get_display_text(info);
                 groups.entry(name.to_string()).or_default().push((id, info));
             }
-
-            // Apply filter
-            let searcher = Searcher::new(&*self.search_options, self.filter);
 
             for (name, mut versions) in groups {
                 if !searcher.is_match(&name) {
