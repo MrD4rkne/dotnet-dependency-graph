@@ -109,7 +109,7 @@ impl Searcher {
 pub(crate) struct DependencyPanel<'a> {
     /// Dependency graph being the source of packages.
     graph: &'a DependencyGraph,
-    /// Set with visible.
+    /// Set containing the IDs of visible dependency nodes.
     visible_nodes: &'a mut HashSet<DependencyId>,
     /// Search filter text for filtering which dependencies are shown in the list.
     filter: &'a mut String,
