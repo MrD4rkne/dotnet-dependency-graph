@@ -13,7 +13,7 @@ pub fn create_dependency_graph(
             for (framework, framework_entry) in frameworks {
                 let framework = Framework::new(framework);
                 if let Some(libs) = framework_entry.dependencies {
-                    add_libs(&mut graph, project_id.clone(), framework, libs)?;
+                    add_libs(&mut graph, project_id, framework, libs)?;
                 }
             }
         }
@@ -23,7 +23,7 @@ pub fn create_dependency_graph(
                 let framework = Framework::new(framework);
                 add_projs(
                     &mut graph,
-                    project_id.clone(),
+                    project_id,
                     framework,
                     framework_entry.project_references,
                 )?;
@@ -42,7 +42,7 @@ fn add_libs(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     for (dep, info) in libs {
         let dep_id = graph.add_package(dep, info.version)?;
-        graph.add_relation(project_id.clone(), dep_id, framework.clone())?;
+        graph.add_relation(project_id, dep_id, framework.clone())?;
     }
 
     Ok(())
@@ -56,7 +56,7 @@ fn add_projs(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     for (dep, _) in projs {
         let dep_id = graph.add_project(dep, None)?;
-        graph.add_relation(project_id.clone(), dep_id, framework.clone())?;
+        graph.add_relation(project_id, dep_id, framework.clone())?;
     }
 
     Ok(())

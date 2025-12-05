@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::models::{Library, LibraryType, ProjectAssets, ProjectInfo, TargetLibrary};
-use crate::graph::{DependencyGraph, DependencyId, DependencyWithId, Framework};
+use crate::graph::{DependencyGraph, DependencyId, Framework};
 
 /// Creates a DependencyGraph from a ProjectAssets structure.
 ///
@@ -66,11 +66,9 @@ fn parse_project_file_dependency_groups(
         })
         .for_each(|(framework, dep)| {
             let (name, version) = parse_dep_requirement(dep);
-            let dep_id = graph
-                .get_or_create_if_exists(&name, version)
-                .map(|x| x.id());
+            let dep_id = graph.get_or_create_if_exists(&name, version);
             if let Some(dep_id) = dep_id {
-                _ = graph.add_relation(proj_id.clone(), dep_id, Framework::new(framework));
+                _ = graph.add_relation(*proj_id, dep_id, Framework::new(framework));
             }
         });
 }
@@ -111,11 +109,9 @@ fn parse_library_entry(
         .dependencies
         .into_iter()
         .for_each(|(dep_name, dep_version)| {
-            let dep_id = graph
-                .get_or_create_if_exists(&dep_name, Some(dep_version))
-                .map(|x| x.id());
+            let dep_id = graph.get_or_create_if_exists(&dep_name, Some(dep_version));
             if let Some(dep_id) = dep_id {
-                _ = graph.add_relation(id.clone(), dep_id, target_framework.clone());
+                _ = graph.add_relation(id, dep_id, target_framework.clone());
             }
         });
 }

@@ -1,4 +1,4 @@
-use dotnet_dependency_parser::graph::{DependencyId, DependencyInfo, Framework};
+use dotnet_dependency_parser::graph::{DependencyInfo, Framework};
 use dotnet_dependency_parser::parsing::project_assets::{
     create_dependency_graph_from_assets, parse_project_assets,
 };
@@ -15,23 +15,22 @@ fn test_parse_project_assets_json() {
     let assets = parse_project_assets(&content).expect("Failed to parse project.assets.json");
     let graph = create_dependency_graph_from_assets(assets);
 
-    // Assert - Check that we have the expected packages
-    let mut found_serilog = false;
-    let mut found_serilog_console = false;
-    let mut found_serilog_debug = false;
+    let mut serilog_id = None;
+    let mut serilog_console_id = None;
+    let mut serilog_debug_id = None;
 
-    for (_id, info) in graph.iter() {
+    for (id, info) in graph.iter() {
         match info {
             DependencyInfo::Package(_) => {
                 if info.name() == "Serilog" {
-                    found_serilog = true;
                     assert_eq!(info.version(), Some("4.0.0"));
+                    serilog_id = Some(id);
                 }
-                if info.name() == "Serilog.Sinks.Console" {
-                    found_serilog_console = true;
+                if info.name() == "Serilog.Sinks.Console" && info.version() == Some("6.1.1") {
+                    serilog_console_id = Some(id);
                 }
                 if info.name() == "Serilog.Sinks.Debug" {
-                    found_serilog_debug = true;
+                    serilog_debug_id = Some(id);
                 }
             }
             DependencyInfo::Project(_) => {}
@@ -39,32 +38,28 @@ fn test_parse_project_assets_json() {
     }
 
     assert!(
-        found_serilog,
+        serilog_id.is_some(),
         "Serilog package should be found (transitive dependency)"
     );
     assert!(
-        found_serilog_console,
+        serilog_console_id.is_some(),
         "Serilog.Sinks.Console should be found"
     );
-    assert!(found_serilog_debug, "Serilog.Sinks.Debug should be found");
-
-    // Check that Serilog.Sinks.Console has Serilog as a dependency
-    let serilog_console_id = DependencyId::PackageId(
-        "Serilog.Sinks.Console".to_string(),
-        Some("6.1.1".to_string()),
+    assert!(
+        serilog_debug_id.is_some(),
+        "Serilog.Sinks.Debug should be found"
     );
-    let serilog_id = DependencyId::PackageId("Serilog".to_string(), Some("4.0.0".to_string()));
 
     // Use net8.0 framework for testing
     let framework = Framework::new("net8.0".to_string());
 
     let deps: Vec<_> = graph
-        .get_direct_dependencies_in_framework(&serilog_console_id, &framework)
+        .get_direct_dependencies_in_framework(serilog_console_id.unwrap(), &framework)
         .unwrap()
         .collect();
 
     assert!(
-        deps.iter().any(|edge| edge.to() == &serilog_id),
+        deps.iter().any(|edge| edge.to() == serilog_id.unwrap()),
         "Serilog.Sinks.Console should depend on Serilog"
     );
 }

@@ -17,10 +17,10 @@ pub fn compute_node_cache(
     for id in visible_nodes.iter() {
         if let Some(&pos) = positions.get(id) {
             let screen_pos = ctx.transform(pos);
-            let text = node::get_display_text(graph.get(id).expect("Node should exist"));
+            let text = node::get_display_text(graph.get(*id).expect("Node should exist"));
             let rect = visualize::calculate_node_rect(text, screen_pos, zoom);
             cache.insert(
-                id.clone(),
+                *id,
                 CachedNodeData {
                     screen_pos,
                     rect,
@@ -177,18 +177,18 @@ fn draw_all_edges(
         if let Some(src_data) = cache.get(src_id) {
             let src_rect = src_data.rect;
 
-            let deps = graph.get_direct_dependencies_in_framework(src_id, framework);
+            let deps = graph.get_direct_dependencies_in_framework(*src_id, framework);
 
             if let Ok(edges) = deps {
                 for edge in edges {
                     let dst_id = edge.to();
 
                     // Only draw edges to visible nodes
-                    if !visible_nodes.contains(dst_id) {
+                    if !visible_nodes.contains(&dst_id) {
                         continue;
                     }
 
-                    if let Some(dst_data) = cache.get(dst_id) {
+                    if let Some(dst_data) = cache.get(&dst_id) {
                         let dst_rect = dst_data.rect;
                         visualize::draw_edge(painter, src_rect, dst_rect, zoom);
                     }
@@ -226,7 +226,7 @@ fn handle_node_drag(
     let node_response = ui.interact(rect, ui.id().with(id), Sense::drag());
 
     if node_response.drag_started() {
-        *state.dragging_node = Some(id.clone());
+        *state.dragging_node = Some(*id);
     }
 
     if node_response.dragged() && state.dragging_node.as_ref() == Some(id) {
