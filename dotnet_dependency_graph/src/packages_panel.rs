@@ -174,36 +174,37 @@ impl<'a> PackagesPanel<'a> {
                 groups.entry(name.to_string()).or_default().push((id, info));
             }
 
-            for (name, mut versions) in groups {
-                if !searcher.is_match(&name) {
-                    continue;
-                }
-
-                // Sort versions within each group
-                versions.sort_by(|a, b| a.1.version().cmp(&b.1.version()));
-
-                if versions.len() == 1 {
-                    // Single version - show as flat checkbox
-                    let (id, _) = versions[0];
-                    show_checkbox(ui, self.visible_nodes, id.clone(), &name, Some(&searcher));
-                } else {
-                    // Multiple versions - show as collapsing header with nested items
-                    egui::CollapsingHeader::new(rich_text_for_label(&name, &searcher))
-                        .default_open(false)
-                        .show(ui, |ui| {
-                            for (id, info) in versions {
-                                let version_label = info.version().unwrap_or("no version");
-                                show_checkbox(
-                                    ui,
-                                    self.visible_nodes,
-                                    id.clone(),
-                                    version_label,
-                                    None,
-                                );
-                            }
-                        });
-                }
-            }
+            groups
+                .into_iter()
+                .filter(|(name, _)| searcher.is_match(name))
+                .map(|(name, mut versions)| {
+                    // Sort versions within each group
+                    versions.sort_by(|a, b| a.1.version().cmp(&b.1.version()));
+                    (name, versions)
+                })
+                .for_each(|(name, versions)| {
+                    if versions.len() == 1 {
+                        // Single version - show as flat checkbox
+                        let (id, _) = versions[0];
+                        show_checkbox(ui, self.visible_nodes, id.clone(), &name, Some(&searcher));
+                    } else {
+                        // Multiple versions - show as collapsing header with nested items
+                        egui::CollapsingHeader::new(rich_text_for_label(&name, &searcher))
+                            .default_open(false)
+                            .show(ui, |ui| {
+                                for (id, info) in versions {
+                                    let version_label = info.version().unwrap_or("no version");
+                                    show_checkbox(
+                                        ui,
+                                        self.visible_nodes,
+                                        id.clone(),
+                                        version_label,
+                                        None,
+                                    );
+                                }
+                            });
+                    }
+                });
         });
     }
 }
