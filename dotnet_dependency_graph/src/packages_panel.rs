@@ -26,9 +26,12 @@ impl SearchOptions {
     }
 }
 
+/// Search kind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SearchKind {
+    /// Compare raw text.
     Text,
+    /// Use regex matching.
     Regex,
 }
 
@@ -101,10 +104,15 @@ impl Searcher {
     }
 }
 
+/// A panel widget for displaying and filtering dependency packages.  
 pub(crate) struct PackagesPanel<'a> {
+    // Dependency graph being the source of packages.
     graph: &'a DependencyGraph,
+    // Set with visible.
     visible_nodes: &'a mut HashSet<DependencyId>,
+    // Filter which dependencies are shown in the list.
     filter: &'a mut String,
+    // Additional search options.
     search_options: &'a mut SearchOptions,
 }
 
