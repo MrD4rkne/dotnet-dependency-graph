@@ -19,8 +19,8 @@ fn test_add_project() {
     // Verify we can retrieve the project
     let dep_info = graph.get(&id).expect("Project should exist");
     match dep_info {
-        DependencyInfo::Project(info) => {
-            assert_eq!(info.path, project_path);
+        DependencyInfo::Project(_) => {
+            assert_eq!(dep_info.name(), project_path);
         }
         _ => panic!("Expected Project dependency"),
     }
@@ -77,7 +77,7 @@ fn test_add_package_with_version() {
     match dep_info {
         DependencyInfo::Package(_) => {
             assert_eq!(dep_info.name(), package_name);
-            assert_eq!(dep_info.version(), version.as_ref());
+            assert_eq!(dep_info.version(), version.as_deref());
         }
         _ => panic!("Expected Package dependency"),
     }

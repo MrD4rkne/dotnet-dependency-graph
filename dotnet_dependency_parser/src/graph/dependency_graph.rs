@@ -14,8 +14,8 @@ pub trait DependencyWithId {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ProjectInfo {
-    pub path: String,
-    pub version: Option<String>,
+    path: String,
+    version: Option<String>,
 }
 
 impl ProjectInfo {
@@ -27,7 +27,7 @@ impl ProjectInfo {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PackageInfo {
     name: String,
-    pub version: Option<String>,
+    version: Option<String>,
 }
 
 impl PackageInfo {
@@ -63,10 +63,10 @@ impl DependencyInfo {
     }
 
     /// Get version of the dependency.
-    pub fn version(&self) -> Option<&String> {
+    pub fn version(&self) -> Option<&str> {
         match self {
-            DependencyInfo::Project(info) => info.version.as_ref(),
-            DependencyInfo::Package(info) => info.version.as_ref(),
+            DependencyInfo::Project(info) => info.version.as_deref(),
+            DependencyInfo::Package(info) => info.version.as_deref(),
         }
     }
 }
