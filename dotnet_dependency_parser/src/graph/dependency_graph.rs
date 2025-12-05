@@ -155,6 +155,17 @@ impl std::fmt::Display for DifferentDependencyType {
 
 impl std::error::Error for DifferentDependencyType {}
 
+#[derive(Debug, Clone)]
+pub struct GraphOperationError(String);
+
+impl std::fmt::Display for GraphOperationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl std::error::Error for GraphOperationError {}
+
 impl DependencyGraph {
     pub fn new() -> Self {
         Self::default()
@@ -248,10 +259,10 @@ impl DependencyGraph {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (DependencyId, &DependencyInfo)> {
-        self.graph.node_indices().map(move |ix| {
-            let id = DependencyId::new(ix);
-            let info = self.graph.node_weight(ix).expect("Node index should exist");
-            (id, info)
+        self.graph.node_indices().filter_map(move |ix| {
+            self.graph
+                .node_weight(ix)
+                .map(|info| (DependencyId::new(ix), info))
         })
     }
 
@@ -301,15 +312,21 @@ impl DependencyGraph {
         from: DependencyId,
         to: DependencyId,
         framework: Framework,
-    ) -> Result<(), DependencyNotFound> {
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         self.frameworks.insert(framework.clone());
         let edge = DepEdge::new(from, to, framework);
         self.graph
             .try_add_edge(from.ix, to.ix, edge)
             .map(|_| ())
-            .map_err(|err| match err {
-                petgraph::graph::GraphError::NodeMissed(_) => DependencyNotFound,
-                _ => todo!("add new error type"),
+            .map_err(|err| {
+                let boxed: Box<dyn std::error::Error + Send + Sync> = match err {
+                    petgraph::graph::GraphError::NodeMissed(_) => Box::new(DependencyNotFound),
+                    _ => Box::new(GraphOperationError(format!(
+                        "Graph operation failed: {:?}",
+                        err
+                    ))),
+                };
+                boxed
             })
     }
 
