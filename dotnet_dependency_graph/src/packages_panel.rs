@@ -199,7 +199,7 @@ impl<'a> PackagesPanel<'a> {
             if ui.button("Deselect All").clicked() {
                 for dep in dependencies_to_show {
                     dep.1.iter().for_each(|version| {
-                        _ = self.visible_nodes.remove(&version.0);
+                        self.visible_nodes.remove(&version.0);
                     });
                 }
             }
