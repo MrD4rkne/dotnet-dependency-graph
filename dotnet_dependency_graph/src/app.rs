@@ -11,17 +11,49 @@ use crate::dependency_panel::SearchOptions;
 use crate::graph_widget::{CachedNodeData, GraphWidget};
 use crate::session::Session;
 
-/// Handles menu bar rendering and interactions.
-struct MenuBarHandler<'a> {
-    file_dialog: &'a mut FileDialog,
+/// Handles file dialog operations.
+struct FileDialogHandler {
+    file_dialog: FileDialog,
 }
 
-impl<'a> MenuBarHandler<'a> {
-    fn new(file_dialog: &'a mut FileDialog) -> Self {
-        Self { file_dialog }
+impl FileDialogHandler {
+    fn new() -> Self {
+        Self {
+            file_dialog: FileDialog::new(),
+        }
+    }
+
+    fn handle(
+        &mut self,
+        app_state: &mut AppState,
+        cache_manager: &mut NodeCacheManager,
+        error_text: &mut Option<String>,
+    ) {
+        if let Some(path) = self.file_dialog.take_picked() {
+            let new_file = Session::load_from(path);
+            let new_session = match new_file {
+                Ok(loaded_file) => loaded_file,
+                Err(e) => {
+                    *error_text = Some(format!("Failed to load dgspec file: {}", e));
+                    return;
+                }
+            };
+
+            match app_state {
+                AppState::FileLoaded(session) => {
+                    dbg!("Now should merge");
+                }
+                AppState::NoFile => {
+                    *app_state = AppState::FileLoaded(Box::new(new_session));
+                    cache_manager.invalidate();
+                }
+            }
+        }
     }
 
     fn render(&mut self, ctx: &Context, app_state: &mut AppState) {
+        self.file_dialog.update(ctx);
+
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
@@ -54,40 +86,6 @@ impl<'a> MenuBarHandler<'a> {
                 });
             }
         });
-    }
-}
-
-/// Handles file dialog operations.
-struct FileDialogHandler<'a> {
-    file_dialog: &'a mut FileDialog,
-}
-
-impl<'a> FileDialogHandler<'a> {
-    fn new(file_dialog: &'a mut FileDialog) -> Self {
-        Self { file_dialog }
-    }
-
-    fn handle(
-        &mut self,
-        ctx: &Context,
-        app_state: &mut AppState,
-        cache_manager: &mut NodeCacheManager,
-        error_text: &mut Option<String>,
-    ) {
-        self.file_dialog.update(ctx);
-
-        if let Some(path) = self.file_dialog.take_picked() {
-            let new_file = Session::load_from(path);
-            match new_file {
-                Ok(loaded_file) => {
-                    *app_state = AppState::FileLoaded(Box::new(loaded_file));
-                    cache_manager.invalidate();
-                }
-                Err(e) => {
-                    *error_text = Some(format!("Failed to load dgspec file: {}", e));
-                }
-            }
-        }
     }
 }
 
@@ -312,7 +310,6 @@ impl FpsCounter {
 }
 
 pub struct DependencyApp {
-    file_dialog: FileDialog,
     app_state: AppState,
     pan_offset: egui::Vec2,
     zoom: f32,
@@ -323,12 +320,12 @@ pub struct DependencyApp {
     drag_happened: bool,
     package_filter: String,
     search_options: SearchOptions,
+    file_dialog_handler: FileDialogHandler,
 }
 
 impl DependencyApp {
     pub fn new() -> Self {
         Self {
-            file_dialog: FileDialog::new(),
             app_state: AppState::NoFile,
             pan_offset: egui::Vec2::ZERO,
             zoom: 1.0,
@@ -339,21 +336,8 @@ impl DependencyApp {
             drag_happened: false,
             package_filter: String::new(),
             search_options: SearchOptions::default(),
+            file_dialog_handler: FileDialogHandler::new(),
         }
-    }
-
-    fn render_menu_bar(&mut self, ctx: &Context) {
-        let mut handler = MenuBarHandler::new(&mut self.file_dialog);
-        handler.render(ctx, &mut self.app_state);
-    }
-    fn handle_file_dialog(&mut self, ctx: &Context) {
-        let mut handler = FileDialogHandler::new(&mut self.file_dialog);
-        handler.handle(
-            ctx,
-            &mut self.app_state,
-            &mut self.cache_manager,
-            &mut self.error_text,
-        );
     }
 
     fn render_central_panel(&mut self, ctx: &Context) {
@@ -382,8 +366,12 @@ impl DependencyApp {
 impl App for DependencyApp {
     fn update(&mut self, ctx: &Context, _: &mut eframe::Frame) {
         self.fps_counter.update();
-        self.render_menu_bar(ctx);
-        self.handle_file_dialog(ctx);
+        self.file_dialog_handler.render(ctx, &mut self.app_state);
+        self.file_dialog_handler.handle(
+            &mut self.app_state,
+            &mut self.cache_manager,
+            &mut self.error_text,
+        );
         if self.drag_happened {
             self.cache_manager.invalidate();
         }
