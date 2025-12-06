@@ -11,6 +11,229 @@ use crate::dependency_panel::SearchOptions;
 use crate::graph_widget::{CachedNodeData, GraphWidget};
 use crate::session::Session;
 
+/// Handles menu bar rendering and interactions.
+struct MenuBarHandler<'a> {
+    file_dialog: &'a mut FileDialog,
+}
+
+impl<'a> MenuBarHandler<'a> {
+    fn new(file_dialog: &'a mut FileDialog) -> Self {
+        Self { file_dialog }
+    }
+
+    fn render(&mut self, ctx: &Context, app_state: &mut AppState) {
+        egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
+            egui::MenuBar::new().ui(ui, |ui| {
+                ui.menu_button("File", |ui| {
+                    if ui.button("Open file").clicked() {
+                        self.file_dialog.pick_file();
+                    }
+
+                    if matches!(app_state, AppState::FileLoaded(_))
+                        && ui.button("Merge file").clicked()
+                    {
+                        self.file_dialog.pick_file();
+                    }
+                });
+            });
+
+            if let AppState::FileLoaded(file) = app_state {
+                ui.horizontal(|ui| {
+                    ui.label("Framework:");
+                    for fw in file.graph.iter_frameworks() {
+                        if ui
+                            .selectable_label(
+                                file.selected_framework.as_ref() == Some(fw),
+                                fw.name(),
+                            )
+                            .clicked()
+                        {
+                            file.selected_framework = Some(fw.clone());
+                        }
+                    }
+                });
+            }
+        });
+    }
+}
+
+/// Handles file dialog operations.
+struct FileDialogHandler<'a> {
+    file_dialog: &'a mut FileDialog,
+}
+
+impl<'a> FileDialogHandler<'a> {
+    fn new(file_dialog: &'a mut FileDialog) -> Self {
+        Self { file_dialog }
+    }
+
+    fn handle(
+        &mut self,
+        ctx: &Context,
+        app_state: &mut AppState,
+        cache_manager: &mut NodeCacheManager,
+        error_text: &mut Option<String>,
+    ) {
+        self.file_dialog.update(ctx);
+
+        if let Some(path) = self.file_dialog.take_picked() {
+            let new_file = Session::load_from(path);
+            match new_file {
+                Ok(loaded_file) => {
+                    *app_state = AppState::FileLoaded(Box::new(loaded_file));
+                    cache_manager.invalidate();
+                }
+                Err(e) => {
+                    *error_text = Some(format!("Failed to load dgspec file: {}", e));
+                }
+            }
+        }
+    }
+}
+
+/// Handles central panel rendering.
+struct CentralPanelRenderer<'a> {
+    pan_offset: &'a mut egui::Vec2,
+    zoom: &'a mut f32,
+    dragging_node: &'a mut Option<DependencyId>,
+    drag_happened: &'a mut bool,
+    fps_counter: &'a FpsCounter,
+    cache_manager: &'a mut NodeCacheManager,
+}
+
+impl<'a> CentralPanelRenderer<'a> {
+    fn new(
+        pan_offset: &'a mut egui::Vec2,
+        zoom: &'a mut f32,
+        dragging_node: &'a mut Option<DependencyId>,
+        drag_happened: &'a mut bool,
+        fps_counter: &'a FpsCounter,
+        cache_manager: &'a mut NodeCacheManager,
+    ) -> Self {
+        Self {
+            pan_offset,
+            zoom,
+            dragging_node,
+            drag_happened,
+            fps_counter,
+            cache_manager,
+        }
+    }
+
+    fn render(&mut self, ctx: &Context, app_state: &mut AppState) {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            if let AppState::FileLoaded(file) = app_state {
+                let node_cache = self.cache_manager.get_or_compute(
+                    &file.graph,
+                    &file.node_positions,
+                    &file.visible_nodes,
+                    *self.zoom,
+                    *self.pan_offset,
+                );
+
+                ui.label(format!(
+                    "File: {}",
+                    file.path.file_name().unwrap_or_default().to_string_lossy()
+                ));
+
+                ui.add(GraphWidget::new(
+                    crate::graph_widget::ViewState {
+                        pan_offset: self.pan_offset,
+                        zoom: self.zoom,
+                    },
+                    crate::graph_widget::InteractionState {
+                        dragging_node: self.dragging_node,
+                        node_positions: &mut file.node_positions,
+                        drag_happened: self.drag_happened,
+                    },
+                    crate::graph_widget::GraphData {
+                        graph: &file.graph,
+                        selected_framework: &file.selected_framework,
+                        visible_nodes: &file.visible_nodes,
+                    },
+                    node_cache,
+                ));
+
+                // Show controls
+                ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
+                    ui.label(format!(
+                        "Zoom: {:.1}x | Pan: ({:.0}, {:.0}) | FPS: {:.0}",
+                        self.zoom,
+                        self.pan_offset.x,
+                        self.pan_offset.y,
+                        self.fps_counter.fps()
+                    ));
+                    ui.label(
+                        "Mouse wheel to zoom | Drag background to pan | Drag nodes to move them",
+                    );
+                });
+            } else {
+                ui.label("Choose a file to visualize dependencies.");
+            }
+        });
+    }
+}
+
+/// Handles error window rendering.
+struct ErrorWindowRenderer<'a> {
+    error_text: &'a mut Option<String>,
+}
+
+impl<'a> ErrorWindowRenderer<'a> {
+    fn new(error_text: &'a mut Option<String>) -> Self {
+        Self { error_text }
+    }
+
+    fn render(&mut self, ctx: &Context) {
+        if let Some(error_message) = self.error_text.clone() {
+            egui::Window::new("Error").show(ctx, |ui| {
+                ui.label(&error_message);
+
+                if ui.button("Ok").clicked() {
+                    *self.error_text = None;
+                }
+            });
+        }
+    }
+}
+
+/// Handles packages view rendering.
+struct PackagesViewRenderer<'a> {
+    package_filter: &'a mut String,
+    search_options: &'a mut SearchOptions,
+}
+
+impl<'a> PackagesViewRenderer<'a> {
+    fn new(package_filter: &'a mut String, search_options: &'a mut SearchOptions) -> Self {
+        Self {
+            package_filter,
+            search_options,
+        }
+    }
+
+    fn render(&mut self, ctx: &Context, app_state: &mut AppState) {
+        if let AppState::FileLoaded(file) = app_state {
+            egui::SidePanel::left("nodes_panel").show(ctx, |ui| {
+                ui.add(DependencyPanel::new(
+                    &file.graph,
+                    &mut file.visible_nodes,
+                    self.package_filter,
+                    self.search_options,
+                ));
+            });
+        }
+    }
+}
+
+/// Represents the current state of the application.
+#[derive(Debug)]
+enum AppState {
+    /// No file is currently loaded.
+    NoFile,
+    /// A file is loaded and ready for visualization.
+    FileLoaded(Box<Session>),
+}
+
 struct NodeCacheManager {
     cache: Option<HashMap<DependencyId, CachedNodeData>>,
     old_zoom: f32,
@@ -90,7 +313,7 @@ impl FpsCounter {
 
 pub struct DependencyApp {
     file_dialog: FileDialog,
-    current_dgspec_file: Option<Session>,
+    app_state: AppState,
     pan_offset: egui::Vec2,
     zoom: f32,
     dragging_node: Option<DependencyId>,
@@ -106,7 +329,7 @@ impl DependencyApp {
     pub fn new() -> Self {
         Self {
             file_dialog: FileDialog::new(),
-            current_dgspec_file: None,
+            app_state: AppState::NoFile,
             pan_offset: egui::Vec2::ZERO,
             zoom: 1.0,
             dragging_node: None,
@@ -120,131 +343,40 @@ impl DependencyApp {
     }
 
     fn render_menu_bar(&mut self, ctx: &Context) {
-        egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
-            egui::MenuBar::new().ui(ui, |ui| {
-                ui.menu_button("File", |ui| {
-                    if ui.button("Open file").clicked() {
-                        self.file_dialog.pick_file();
-                    }
-
-                    if self.current_dgspec_file.is_some() && ui.button("Merge file").clicked() {
-                        self.file_dialog.pick_file();
-                    }
-                });
-            });
-
-            if let Some(file) = &mut self.current_dgspec_file {
-                ui.horizontal(|ui| {
-                    ui.label("Framework:");
-                    for fw in file.graph.iter_frameworks() {
-                        if ui
-                            .selectable_label(
-                                file.selected_framework.as_ref() == Some(fw),
-                                fw.name(),
-                            )
-                            .clicked()
-                        {
-                            file.selected_framework = Some(fw.clone());
-                        }
-                    }
-                });
-            }
-        });
+        let mut handler = MenuBarHandler::new(&mut self.file_dialog);
+        handler.render(ctx, &mut self.app_state);
     }
-
     fn handle_file_dialog(&mut self, ctx: &Context) {
-        self.file_dialog.update(ctx);
-
-        if let Some(path) = self.file_dialog.take_picked() {
-            let new_file = Session::load_from(path);
-            match new_file {
-                Ok(loaded_file) => {
-                    self.current_dgspec_file = Some(loaded_file);
-                    self.cache_manager.invalidate();
-                }
-                Err(e) => {
-                    self.error_text = Some(format!("Failed to load dgspec file: {}", e));
-                }
-            }
-        }
+        let mut handler = FileDialogHandler::new(&mut self.file_dialog);
+        handler.handle(
+            ctx,
+            &mut self.app_state,
+            &mut self.cache_manager,
+            &mut self.error_text,
+        );
     }
 
     fn render_central_panel(&mut self, ctx: &Context) {
-        egui::CentralPanel::default().show(ctx, |ui| {
-            if let Some(file) = &mut self.current_dgspec_file {
-                let node_cache = self.cache_manager.get_or_compute(
-                    &file.graph,
-                    &file.node_positions,
-                    &file.visible_nodes,
-                    self.zoom,
-                    self.pan_offset,
-                );
-
-                ui.label(format!(
-                    "File: {}",
-                    file.path.file_name().unwrap_or_default().to_string_lossy()
-                ));
-
-                ui.add(GraphWidget::new(
-                    crate::graph_widget::ViewState {
-                        pan_offset: &mut self.pan_offset,
-                        zoom: &mut self.zoom,
-                    },
-                    crate::graph_widget::InteractionState {
-                        dragging_node: &mut self.dragging_node,
-                        node_positions: &mut file.node_positions,
-                        drag_happened: &mut self.drag_happened,
-                    },
-                    crate::graph_widget::GraphData {
-                        graph: &file.graph,
-                        selected_framework: &file.selected_framework,
-                        visible_nodes: &file.visible_nodes,
-                    },
-                    node_cache,
-                ));
-
-                // Show controls
-                ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                    ui.label(format!(
-                        "Zoom: {:.1}x | Pan: ({:.0}, {:.0}) | FPS: {:.0}",
-                        self.zoom,
-                        self.pan_offset.x,
-                        self.pan_offset.y,
-                        self.fps_counter.fps()
-                    ));
-                    ui.label(
-                        "Mouse wheel to zoom | Drag background to pan | Drag nodes to move them",
-                    );
-                });
-            } else {
-                ui.label("Choose a file to visualize dependencies.");
-            }
-        });
+        let mut renderer = CentralPanelRenderer::new(
+            &mut self.pan_offset,
+            &mut self.zoom,
+            &mut self.dragging_node,
+            &mut self.drag_happened,
+            &self.fps_counter,
+            &mut self.cache_manager,
+        );
+        renderer.render(ctx, &mut self.app_state);
     }
 
     fn render_error_window(&mut self, ctx: &Context) {
-        if let Some(error_message) = self.error_text.clone() {
-            egui::Window::new("Error").show(ctx, |ui| {
-                ui.label(&error_message);
-
-                if ui.button("Ok").clicked() {
-                    self.error_text = None;
-                }
-            });
-        }
+        let mut renderer = ErrorWindowRenderer::new(&mut self.error_text);
+        renderer.render(ctx);
     }
 
     fn render_packages_view(&mut self, ctx: &Context) {
-        if let Some(file) = &mut self.current_dgspec_file {
-            egui::SidePanel::left("nodes_panel").show(ctx, |ui| {
-                ui.add(DependencyPanel::new(
-                    &file.graph,
-                    &mut file.visible_nodes,
-                    &mut self.package_filter,
-                    &mut self.search_options,
-                ));
-            });
-        }
+        let mut renderer =
+            PackagesViewRenderer::new(&mut self.package_filter, &mut self.search_options);
+        renderer.render(ctx, &mut self.app_state);
     }
 }
 impl App for DependencyApp {

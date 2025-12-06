@@ -7,6 +7,7 @@ use crate::parser;
 use crate::visualize;
 use dotnet_dependency_parser::graph::Layout;
 
+#[derive(Debug)]
 pub(crate) struct Session {
     pub path: PathBuf,
     pub graph: DependencyGraph,
