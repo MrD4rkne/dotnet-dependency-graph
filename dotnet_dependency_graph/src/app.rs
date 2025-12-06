@@ -15,12 +15,21 @@ use crate::session::Session;
 /// Handles file dialog operations.
 struct FileDialogHandler {
     file_dialog: FileDialog,
+    mode: OpenFileMode,
+}
+
+#[derive(PartialEq, Eq)]
+enum OpenFileMode {
+    Replace,
+    Merge,
+    None,
 }
 
 impl FileDialogHandler {
     fn new() -> Self {
         Self {
             file_dialog: FileDialog::new(),
+            mode: OpenFileMode::None,
         }
     }
 
@@ -30,14 +39,18 @@ impl FileDialogHandler {
         cache_manager: &mut NodeCacheManager,
         error_text: &mut Option<String>,
     ) {
+        if self.mode == OpenFileMode::None {
+            return;
+        }
+
         if let Some(path) = self.file_dialog.take_picked() {
             let new_graph = parser::parse_with_supported_parsers(&path).expect("todo");
 
-            match app_state {
-                AppState::FileLoaded(session) => {
+            match (&mut *app_state, &self.mode) {
+                (AppState::FileLoaded(session), OpenFileMode::Merge) => {
                     session.merge(new_graph).unwrap();
                 }
-                AppState::NoFile => {
+                _ => {
                     let session = Session::load_from(path, new_graph).unwrap();
                     *app_state = AppState::FileLoaded(Box::new(session));
                 }
@@ -53,13 +66,13 @@ impl FileDialogHandler {
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("Open file").clicked() {
-                        self.file_dialog.pick_file();
+                        self.open_for_replace();
                     }
 
                     if matches!(app_state, AppState::FileLoaded(_))
                         && ui.button("Merge file").clicked()
                     {
-                        self.file_dialog.pick_file();
+                        self.open_for_merge();
                     }
                 });
             });
@@ -81,6 +94,16 @@ impl FileDialogHandler {
                 });
             }
         });
+    }
+
+    fn open_for_replace(&mut self) {
+        self.mode = OpenFileMode::Replace;
+        self.file_dialog.pick_file();
+    }
+
+    fn open_for_merge(&mut self) {
+        self.mode = OpenFileMode::Merge;
+        self.file_dialog.pick_file();
     }
 }
 

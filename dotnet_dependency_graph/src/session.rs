@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-use crate::parser;
 use crate::visualize;
 use dotnet_dependency_parser::graph::DifferentDependencyType;
 use dotnet_dependency_parser::graph::Layout;
