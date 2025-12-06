@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 use crate::parser;
 use crate::visualize;
+use dotnet_dependency_parser::graph::DifferentDependencyType;
 use dotnet_dependency_parser::graph::Layout;
 
 #[derive(Debug)]
@@ -17,11 +18,25 @@ pub(crate) struct Session {
 }
 
 impl Session {
-    pub fn load_from(path: PathBuf) -> Result<Session, Box<dyn std::error::Error + Send + Sync>> {
-        let graph = parser::parse_with_supported_parsers(&path)?;
-        let layouts = calculate_layout(&graph);
-        let node_positions = visualize::join_layouts(layouts);
-        Ok(Session::new(path, graph, node_positions))
+    pub fn load_from(
+        path: PathBuf,
+        graph: DependencyGraph,
+    ) -> Result<Session, Box<dyn std::error::Error + Send + Sync>> {
+        let positions = Session::calculate_positions(&graph);
+        Ok(Session::new(path, graph, positions))
+    }
+
+    pub fn merge(
+        &mut self,
+        graph: DependencyGraph,
+    ) -> Result<(), Vec<(DependencyId, DifferentDependencyType)>> {
+        let result = self.graph.merge(graph); // todo: what on failure?
+
+        if result.is_ok() {
+            self.node_positions = Self::calculate_positions(&self.graph);
+        }
+
+        result
     }
 
     fn new(
@@ -37,6 +52,11 @@ impl Session {
             selected_framework: None,
             visible_nodes: all_dep_ids,
         }
+    }
+
+    fn calculate_positions(graph: &DependencyGraph) -> HashMap<DependencyId, (f32, f32)> {
+        let layouts = calculate_layout(&graph);
+        visualize::join_layouts(layouts)
     }
 }
 

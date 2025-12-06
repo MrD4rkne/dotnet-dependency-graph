@@ -9,6 +9,7 @@ use std::time::{Duration, Instant};
 use crate::dependency_panel::DependencyPanel;
 use crate::dependency_panel::SearchOptions;
 use crate::graph_widget::{CachedNodeData, GraphWidget};
+use crate::parser;
 use crate::session::Session;
 
 /// Handles file dialog operations.
@@ -30,24 +31,18 @@ impl FileDialogHandler {
         error_text: &mut Option<String>,
     ) {
         if let Some(path) = self.file_dialog.take_picked() {
-            let new_file = Session::load_from(path);
-            let new_session = match new_file {
-                Ok(loaded_file) => loaded_file,
-                Err(e) => {
-                    *error_text = Some(format!("Failed to load dgspec file: {}", e));
-                    return;
-                }
-            };
+            let new_graph = parser::parse_with_supported_parsers(&path).expect("todo");
 
             match app_state {
                 AppState::FileLoaded(session) => {
-                    dbg!("Now should merge");
+                    session.merge(new_graph).unwrap();
                 }
                 AppState::NoFile => {
-                    *app_state = AppState::FileLoaded(Box::new(new_session));
-                    cache_manager.invalidate();
+                    let session = Session::load_from(path, new_graph).unwrap();
+                    *app_state = AppState::FileLoaded(Box::new(session));
                 }
             }
+            cache_manager.invalidate();
         }
     }
 

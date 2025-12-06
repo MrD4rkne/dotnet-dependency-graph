@@ -359,7 +359,7 @@ impl DependencyGraph {
             .collect()
     }
 
-    fn merge(
+    pub fn merge(
         &mut self,
         graph: DependencyGraph,
     ) -> Result<(), Vec<(DependencyId, DifferentDependencyType)>> {
