@@ -1,6 +1,7 @@
 use petgraph::stable_graph::{NodeIndex, StableDiGraph};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
+use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct DependencyId {
@@ -105,7 +106,7 @@ impl DepEdge {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DependencyGraph {
     graph: StableDiGraph<DependencyInfo, DepEdge>,
     id_by_name: HashMap<String, Vec<DependencyId>>,
@@ -122,49 +123,20 @@ impl Default for DependencyGraph {
     }
 }
 
-#[derive(Debug, Default, Clone)]
-pub struct DependencyNotFound;
+#[derive(Error, Debug)]
+pub enum DependencyGraphError {
+    #[error("Dependency not found in the graph")]
+    DependencyNotFound,
 
-impl std::fmt::Display for DependencyNotFound {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Dependency not found in the graph")
-    }
+    #[error("Dependencies with same name but different types")]
+    DifferentDependencyType,
+
+    #[error("Graph operation failed: {message}")]
+    GraphOperation { message: String },
+
+    #[error("Merge failed for dependency '{name}': {reason}")]
+    MergeFailed { name: String, reason: String },
 }
-
-impl std::error::Error for DependencyNotFound {}
-
-#[derive(Debug, Default, Clone)]
-pub struct DependencyCycle;
-
-impl std::fmt::Display for DependencyCycle {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Dependency cycle detected")
-    }
-}
-
-impl std::error::Error for DependencyCycle {}
-
-#[derive(Debug, Default, Clone)]
-pub struct DifferentDependencyType;
-
-impl std::fmt::Display for DifferentDependencyType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Dependencies with same name but different types")
-    }
-}
-
-impl std::error::Error for DifferentDependencyType {}
-
-#[derive(Debug, Clone)]
-pub struct GraphOperationError(String);
-
-impl std::fmt::Display for GraphOperationError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl std::error::Error for GraphOperationError {}
 
 impl DependencyGraph {
     pub fn new() -> Self {
@@ -175,7 +147,7 @@ impl DependencyGraph {
         &mut self,
         path: String,
         version: Option<String>,
-    ) -> Result<DependencyId, DifferentDependencyType> {
+    ) -> Result<DependencyId, DependencyGraphError> {
         let project = DependencyInfo::Project(ProjectInfo::new(path, version));
         self.add_dependency(project)
     }
@@ -184,7 +156,7 @@ impl DependencyGraph {
         &mut self,
         name: String,
         version: Option<String>,
-    ) -> Result<DependencyId, DifferentDependencyType> {
+    ) -> Result<DependencyId, DependencyGraphError> {
         let lib = DependencyInfo::Package(PackageInfo::new(name, version));
         self.add_dependency(lib)
     }
@@ -195,14 +167,14 @@ impl DependencyGraph {
     fn add_dependency(
         &mut self,
         dependency: DependencyInfo,
-    ) -> Result<DependencyId, DifferentDependencyType> {
+    ) -> Result<DependencyId, DependencyGraphError> {
         let existing_versions = self.id_by_name.get(dependency.name());
         if let Some(vec) = existing_versions {
             if let Some(existing_id) = vec.first()
                 && let Some(existing_dep) = self.graph.node_weight(existing_id.ix)
                 && std::mem::discriminant(&dependency) != std::mem::discriminant(existing_dep)
             {
-                return Err(DifferentDependencyType);
+                return Err(DependencyGraphError::DifferentDependencyType);
             }
 
             if let Some(existing_id) = vec.iter().find(|dep| {
@@ -272,11 +244,11 @@ impl DependencyGraph {
     fn get_direct_dependencies(
         &self,
         id: DependencyId,
-    ) -> Result<impl Iterator<Item = &DepEdge>, DependencyNotFound> {
+    ) -> Result<impl Iterator<Item = &DepEdge>, DependencyGraphError> {
         if self.is_in_graph(id) {
             Ok(self.graph.edges(id.ix).map(|edge_ref| edge_ref.weight()))
         } else {
-            Err(DependencyNotFound)
+            Err(DependencyGraphError::DependencyNotFound)
         }
     }
 
@@ -284,7 +256,7 @@ impl DependencyGraph {
         &self,
         id: DependencyId,
         framework: &Framework,
-    ) -> Result<impl Iterator<Item = &DepEdge>, DependencyNotFound> {
+    ) -> Result<impl Iterator<Item = &DepEdge>, DependencyGraphError> {
         Ok(self
             .get_direct_dependencies(id)?
             .filter(move |edge| edge.framework() == framework))
@@ -296,14 +268,14 @@ impl DependencyGraph {
     pub fn get_direct_reverse_dependencies(
         &self,
         id: DependencyId,
-    ) -> Result<impl Iterator<Item = &DepEdge>, DependencyNotFound> {
+    ) -> Result<impl Iterator<Item = &DepEdge>, DependencyGraphError> {
         if self.is_in_graph(id) {
             Ok(self
                 .graph
                 .edges_directed(id.ix, petgraph::Direction::Incoming)
                 .map(|edge| edge.weight()))
         } else {
-            Err(DependencyNotFound)
+            Err(DependencyGraphError::DependencyNotFound)
         }
     }
 
@@ -312,21 +284,19 @@ impl DependencyGraph {
         from: DependencyId,
         to: DependencyId,
         framework: Framework,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<(), DependencyGraphError> {
         self.frameworks.insert(framework.clone());
         let edge = DepEdge::new(from, to, framework);
         self.graph
             .try_add_edge(from.ix, to.ix, edge)
             .map(|_| ())
-            .map_err(|err| {
-                let boxed: Box<dyn std::error::Error + Send + Sync> = match err {
-                    petgraph::graph::GraphError::NodeMissed(_) => Box::new(DependencyNotFound),
-                    _ => Box::new(GraphOperationError(format!(
-                        "Graph operation failed: {:?}",
-                        err
-                    ))),
-                };
-                boxed
+            .map_err(|err| match err {
+                petgraph::graph::GraphError::NodeMissed(_) => {
+                    DependencyGraphError::DependencyNotFound
+                }
+                _ => DependencyGraphError::GraphOperation {
+                    message: format!("{:?}", err),
+                },
             })
     }
 
@@ -357,6 +327,57 @@ impl DependencyGraph {
                 super::algo::Layout::new(map, layout.width, layout.height)
             })
             .collect()
+    }
+
+    /// Merge another graph into this one atomically.
+    pub fn merge(&mut self, graph: DependencyGraph) -> Result<(), DependencyGraphError> {
+        // Check for type conflicts before merging
+        let conflicting_name = graph.id_by_name.iter().find_map(|(name, other_ids)| {
+            self.id_by_name.get(name).and_then(|self_ids| {
+                other_ids
+                    .first()
+                    .zip(self_ids.first())
+                    .and_then(|(other_id, self_id)| {
+                        let other_dep = graph.graph.node_weight(other_id.ix)?;
+                        let self_dep = self.graph.node_weight(self_id.ix)?;
+                        (std::mem::discriminant(other_dep) != std::mem::discriminant(self_dep))
+                            .then_some(name)
+                    })
+            })
+        });
+
+        if let Some(name) = conflicting_name {
+            return Err(DependencyGraphError::MergeFailed {
+                name: name.clone(),
+                reason: "type conflict".to_string(),
+            });
+        }
+
+        // Map from graph's DependencyId to self's DependencyId
+        let mut id_map: HashMap<NodeIndex, DependencyId> = HashMap::new();
+
+        // Add all dependencies from graph to self
+        for (id, info) in graph.iter() {
+            let new_id = match info {
+                DependencyInfo::Project(proj) => self
+                    .add_project(proj.path.clone(), proj.version.clone())
+                    .unwrap(),
+                DependencyInfo::Package(pkg) => self
+                    .add_package(pkg.name.clone(), pkg.version.clone())
+                    .unwrap(),
+            };
+            id_map.insert(id.ix, new_id);
+        }
+
+        // Add all edges from graph to self
+        let (_, edges) = graph.graph.into_nodes_edges_iters();
+        for edge_ref in edges {
+            let from = id_map.get(&edge_ref.weight.from().ix).unwrap();
+            let to = id_map.get(&edge_ref.weight.to().ix).unwrap();
+            self.add_relation(*from, *to, edge_ref.weight.framework().clone())?;
+        }
+
+        Ok(())
     }
 }
 
@@ -1072,4 +1093,194 @@ fn test_get_nonexistent_dependency() {
     let fake_id = DependencyId::new(NodeIndex::new(5));
 
     assert!(graph.get(fake_id).is_none());
+}
+
+#[test]
+fn test_merge_graphs() {
+    let mut graph1 = DependencyGraph::new();
+    let mut graph2 = DependencyGraph::new();
+
+    // Add dependencies to first graph
+    let proj1 = graph1
+        .add_project("proj1.csproj".to_string(), None)
+        .unwrap();
+    let pkg1 = graph1
+        .add_package("Package1".to_string(), Some("1.0.0".to_string()))
+        .unwrap();
+
+    // Add dependencies to second graph
+    let proj2 = graph2
+        .add_project("proj2.csproj".to_string(), None)
+        .unwrap();
+    let pkg2 = graph2
+        .add_package("Package2".to_string(), Some("2.0.0".to_string()))
+        .unwrap();
+
+    // Add a relation in each graph
+    let framework = Framework::new("net8.0".to_string());
+    graph1.add_relation(proj1, pkg1, framework.clone()).unwrap();
+    graph2.add_relation(proj2, pkg2, framework.clone()).unwrap();
+
+    // Verify initial state
+    assert_eq!(graph1.iter().count(), 2); // proj1, pkg1
+    assert_eq!(graph2.iter().count(), 2); // proj2, pkg2
+
+    // Merge graph2 into graph1
+    graph1.merge(graph2).unwrap();
+
+    // Verify merged state - should have all 4 dependencies
+    assert_eq!(graph1.iter().count(), 4);
+
+    // Check that all dependencies are present
+    let deps: Vec<_> = graph1.iter().map(|(_, info)| info.name()).collect();
+    assert!(deps.contains(&"proj1.csproj"));
+    assert!(deps.contains(&"Package1"));
+    assert!(deps.contains(&"proj2.csproj"));
+    assert!(deps.contains(&"Package2"));
+
+    // Check that old ids for the original graph work.
+    assert!(
+        graph1
+            .get(proj1)
+            .expect("Id from old graph should work")
+            .name()
+            == "proj1.csproj"
+    );
+    assert!(
+        graph1
+            .get(proj1)
+            .expect("Id from old graph should work")
+            .version()
+            .is_none()
+    );
+    assert!(
+        graph1
+            .get(pkg1)
+            .expect("Id from old graph should work")
+            .name()
+            == "Package1"
+    );
+    assert!(
+        graph1
+            .get(pkg1)
+            .expect("Id from old graph should work")
+            .version()
+            == Some("1.0.0")
+    );
+}
+
+#[test]
+fn test_merge_graphs_with_common_dependencies() {
+    let mut graph1 = DependencyGraph::new();
+    let mut graph2 = DependencyGraph::new();
+
+    let proj1 = graph1
+        .add_project("proj1.csproj".to_string(), None)
+        .unwrap();
+    let pkg1 = graph1
+        .add_package("Package1".to_string(), Some("1.0.0".to_string()))
+        .unwrap();
+
+    let proj2 = graph2
+        .add_project("proj2.csproj".to_string(), None)
+        .unwrap();
+    let pkg2 = graph2
+        .add_package("Package1".to_string(), Some("1.0.0".to_string()))
+        .unwrap();
+
+    // Add a relation in each graph
+    let framework = Framework::new("net8.0".to_string());
+    graph1.add_relation(proj1, pkg1, framework.clone()).unwrap();
+    graph2.add_relation(proj2, pkg2, framework.clone()).unwrap();
+
+    // Verify initial state
+    assert_eq!(graph1.iter().count(), 2);
+    assert_eq!(graph2.iter().count(), 2);
+
+    // Merge graph2 into graph1
+    graph1.merge(graph2).unwrap();
+
+    assert_eq!(graph1.iter().count(), 3);
+
+    // Check that all dependencies are present
+    let deps: Vec<_> = graph1.iter().map(|(_, info)| info.name()).collect();
+    assert!(deps.contains(&"proj1.csproj"));
+    assert!(deps.contains(&"Package1"));
+    assert!(deps.contains(&"proj2.csproj"));
+
+    // Check if Package1 have reverse deps from both graphs.
+    // Find proj2 in the merged graph (should exist after merge)
+    let (proj2, _) = graph1
+        .iter()
+        .find(|x| x.1.name() == "proj2.csproj")
+        .unwrap();
+
+    // Both proj1 and proj2 should have reverse dependencies to pkg1 (with correct framework)
+    let reverse_edges: Vec<_> = graph1
+        .get_direct_reverse_dependencies(pkg1)
+        .unwrap()
+        .collect();
+
+    // There should be two reverse edges: from proj1 and proj2 to pkg1
+    assert_eq!(reverse_edges.len(), 2);
+
+    // Check that both expected edges exist (ignoring edge instance identity, but matching from, to, and framework)
+    let expected_sources: HashSet<_> = [proj1, proj2].into_iter().collect();
+    let actual_sources: HashSet<_> = reverse_edges.iter().map(|e| e.from()).collect();
+    assert_eq!(expected_sources, actual_sources);
+
+    for edge in &reverse_edges {
+        assert_eq!(edge.to(), pkg1);
+        assert_eq!(edge.framework(), &Framework::new("net8.0".to_string()));
+    }
+}
+
+#[test]
+fn test_merge_graphs_on_different_type_should_fail() {
+    let mut graph1 = DependencyGraph::new();
+    let mut graph2 = DependencyGraph::new();
+
+    // Add dependencies to first graph
+    let proj1 = graph1
+        .add_project("proj1.csproj".to_string(), None)
+        .unwrap();
+    let pkg1 = graph1
+        .add_package("Package1".to_string(), Some("1.0.0".to_string()))
+        .unwrap();
+
+    // Add dependencies to second graph
+    let proj2 = graph2
+        .add_package("proj1.csproj".to_string(), None)
+        .unwrap();
+    let pkg2 = graph2
+        .add_package("Package2".to_string(), Some("2.0.0".to_string()))
+        .unwrap();
+
+    // Add a relation in each graph
+    let framework = Framework::new("net8.0".to_string());
+    graph1.add_relation(proj1, pkg1, framework.clone()).unwrap();
+    graph2.add_relation(proj2, pkg2, framework.clone()).unwrap();
+
+    // Verify initial state
+    assert_eq!(graph1.iter().count(), 2); // proj1, pkg1
+    assert_eq!(graph2.iter().count(), 2); // proj2, pkg2
+
+    // Merge graph2 into graph1
+    let error = graph1.merge(graph2).unwrap_err();
+    match error {
+        DependencyGraphError::MergeFailed { reason, .. } => {
+            assert!(
+                reason.contains("type conflict"),
+                "Expected type conflict, got: {}",
+                reason
+            );
+        }
+        DependencyGraphError::DifferentDependencyType => {
+            // Acceptable, but MergeFailed is expected from merge
+        }
+        _ => panic!(
+            "Expected MergeFailed or DifferentDependencyType, got: {:?}",
+            error
+        ),
+    }
 }
