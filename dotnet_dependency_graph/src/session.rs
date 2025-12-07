@@ -1,10 +1,11 @@
-use dotnet_dependency_parser::graph::{DependencyGraph, DependencyId, Framework};
+use dotnet_dependency_parser::graph::{
+    DependencyGraph, DependencyGraphError, DependencyId, Framework,
+};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::PathBuf;
 
 use crate::visualize;
-use dotnet_dependency_parser::graph::DifferentDependencyType;
 use dotnet_dependency_parser::graph::Layout;
 
 #[derive(Debug)]
@@ -25,10 +26,7 @@ impl Session {
         Ok(Session::new(path, graph, positions))
     }
 
-    pub fn merge(
-        &mut self,
-        graph: DependencyGraph,
-    ) -> Result<(), Vec<(DependencyId, DifferentDependencyType)>> {
+    pub fn merge(&mut self, graph: DependencyGraph) -> Result<(), DependencyGraphError> {
         let result = self.graph.merge(graph); // todo: what on failure?
 
         if result.is_ok() {
@@ -54,7 +52,7 @@ impl Session {
     }
 
     fn calculate_positions(graph: &DependencyGraph) -> HashMap<DependencyId, (f32, f32)> {
-        let layouts = calculate_layout(&graph);
+        let layouts = calculate_layout(graph);
         visualize::join_layouts(layouts)
     }
 }

@@ -44,16 +44,30 @@ impl FileDialogHandler {
         }
 
         if let Some(path) = self.file_dialog.take_picked() {
-            let new_graph = parser::parse_with_supported_parsers(&path).expect("todo");
+            let new_graph = match parser::parse_with_supported_parsers(&path) {
+                Ok(graph) => graph,
+                Err(e) => {
+                    *error_text = Some(format!("Failed to parse file: {}", e));
+                    return;
+                }
+            };
 
             match (&mut *app_state, &self.mode) {
                 (AppState::FileLoaded(session), OpenFileMode::Merge) => {
-                    session.merge(new_graph).unwrap();
+                    if let Err(e) = session.merge(new_graph) {
+                        *error_text = Some(format!("Failed to merge: {}", e));
+                        return;
+                    }
                 }
-                _ => {
-                    let session = Session::load_from(path, new_graph).unwrap();
-                    *app_state = AppState::FileLoaded(Box::new(session));
-                }
+                _ => match Session::load_from(path, new_graph) {
+                    Ok(session) => {
+                        *app_state = AppState::FileLoaded(Box::new(session));
+                    }
+                    Err(e) => {
+                        *error_text = Some(format!("Failed to load session: {}", e));
+                        return;
+                    }
+                },
             }
             cache_manager.invalidate();
         }

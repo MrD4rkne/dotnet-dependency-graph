@@ -1,6 +1,7 @@
 use petgraph::stable_graph::{NodeIndex, StableDiGraph};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
+use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct DependencyId {
@@ -122,49 +123,23 @@ impl Default for DependencyGraph {
     }
 }
 
-#[derive(Debug, Default, Clone)]
-pub struct DependencyNotFound;
+#[derive(Error, Debug)]
+pub enum DependencyGraphError {
+    #[error("Dependency not found in the graph")]
+    DependencyNotFound,
 
-impl std::fmt::Display for DependencyNotFound {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Dependency not found in the graph")
-    }
+    #[error("Dependency cycle detected")]
+    DependencyCycle,
+
+    #[error("Dependencies with same name but different types")]
+    DifferentDependencyType,
+
+    #[error("Graph operation failed: {message}")]
+    GraphOperation { message: String },
+
+    #[error("Merge failed for dependency '{name}': {reason}")]
+    MergeFailed { name: String, reason: String },
 }
-
-impl std::error::Error for DependencyNotFound {}
-
-#[derive(Debug, Default, Clone)]
-pub struct DependencyCycle;
-
-impl std::fmt::Display for DependencyCycle {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Dependency cycle detected")
-    }
-}
-
-impl std::error::Error for DependencyCycle {}
-
-#[derive(Debug, Default, Clone)]
-pub struct DifferentDependencyType;
-
-impl std::fmt::Display for DifferentDependencyType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Dependencies with same name but different types")
-    }
-}
-
-impl std::error::Error for DifferentDependencyType {}
-
-#[derive(Debug, Clone)]
-pub struct GraphOperationError(String);
-
-impl std::fmt::Display for GraphOperationError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl std::error::Error for GraphOperationError {}
 
 impl DependencyGraph {
     pub fn new() -> Self {
@@ -175,7 +150,7 @@ impl DependencyGraph {
         &mut self,
         path: String,
         version: Option<String>,
-    ) -> Result<DependencyId, DifferentDependencyType> {
+    ) -> Result<DependencyId, DependencyGraphError> {
         let project = DependencyInfo::Project(ProjectInfo::new(path, version));
         self.add_dependency(project)
     }
@@ -184,7 +159,7 @@ impl DependencyGraph {
         &mut self,
         name: String,
         version: Option<String>,
-    ) -> Result<DependencyId, DifferentDependencyType> {
+    ) -> Result<DependencyId, DependencyGraphError> {
         let lib = DependencyInfo::Package(PackageInfo::new(name, version));
         self.add_dependency(lib)
     }
@@ -195,14 +170,14 @@ impl DependencyGraph {
     fn add_dependency(
         &mut self,
         dependency: DependencyInfo,
-    ) -> Result<DependencyId, DifferentDependencyType> {
+    ) -> Result<DependencyId, DependencyGraphError> {
         let existing_versions = self.id_by_name.get(dependency.name());
         if let Some(vec) = existing_versions {
             if let Some(existing_id) = vec.first()
                 && let Some(existing_dep) = self.graph.node_weight(existing_id.ix)
                 && std::mem::discriminant(&dependency) != std::mem::discriminant(existing_dep)
             {
-                return Err(DifferentDependencyType);
+                return Err(DependencyGraphError::DifferentDependencyType);
             }
 
             if let Some(existing_id) = vec.iter().find(|dep| {
@@ -272,11 +247,11 @@ impl DependencyGraph {
     fn get_direct_dependencies(
         &self,
         id: DependencyId,
-    ) -> Result<impl Iterator<Item = &DepEdge>, DependencyNotFound> {
+    ) -> Result<impl Iterator<Item = &DepEdge>, DependencyGraphError> {
         if self.is_in_graph(id) {
             Ok(self.graph.edges(id.ix).map(|edge_ref| edge_ref.weight()))
         } else {
-            Err(DependencyNotFound)
+            Err(DependencyGraphError::DependencyNotFound)
         }
     }
 
@@ -284,7 +259,7 @@ impl DependencyGraph {
         &self,
         id: DependencyId,
         framework: &Framework,
-    ) -> Result<impl Iterator<Item = &DepEdge>, DependencyNotFound> {
+    ) -> Result<impl Iterator<Item = &DepEdge>, DependencyGraphError> {
         Ok(self
             .get_direct_dependencies(id)?
             .filter(move |edge| edge.framework() == framework))
@@ -296,14 +271,14 @@ impl DependencyGraph {
     pub fn get_direct_reverse_dependencies(
         &self,
         id: DependencyId,
-    ) -> Result<impl Iterator<Item = &DepEdge>, DependencyNotFound> {
+    ) -> Result<impl Iterator<Item = &DepEdge>, DependencyGraphError> {
         if self.is_in_graph(id) {
             Ok(self
                 .graph
                 .edges_directed(id.ix, petgraph::Direction::Incoming)
                 .map(|edge| edge.weight()))
         } else {
-            Err(DependencyNotFound)
+            Err(DependencyGraphError::DependencyNotFound)
         }
     }
 
@@ -312,21 +287,19 @@ impl DependencyGraph {
         from: DependencyId,
         to: DependencyId,
         framework: Framework,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<(), DependencyGraphError> {
         self.frameworks.insert(framework.clone());
         let edge = DepEdge::new(from, to, framework);
         self.graph
             .try_add_edge(from.ix, to.ix, edge)
             .map(|_| ())
-            .map_err(|err| {
-                let boxed: Box<dyn std::error::Error + Send + Sync> = match err {
-                    petgraph::graph::GraphError::NodeMissed(_) => Box::new(DependencyNotFound),
-                    _ => Box::new(GraphOperationError(format!(
-                        "Graph operation failed: {:?}",
-                        err
-                    ))),
-                };
-                boxed
+            .map_err(|err| match err {
+                petgraph::graph::GraphError::NodeMissed(_) => {
+                    DependencyGraphError::DependencyNotFound
+                }
+                _ => DependencyGraphError::GraphOperation {
+                    message: format!("Graph operation failed: {:?}", err),
+                },
             })
     }
 
@@ -359,16 +332,13 @@ impl DependencyGraph {
             .collect()
     }
 
-    pub fn merge(
-        &mut self,
-        graph: DependencyGraph,
-    ) -> Result<(), Vec<(DependencyId, DifferentDependencyType)>> {
+    pub fn merge(&mut self, graph: DependencyGraph) -> Result<(), DependencyGraphError> {
         self.frameworks.extend(graph.frameworks);
 
         let (nodes, edges) = graph.graph.into_nodes_edges_iters();
 
         // Add all dependencies into the graph.
-        let mapping: Vec<(DependencyId, Result<DependencyId, DifferentDependencyType>)> = nodes
+        let mapping: Vec<(DependencyId, Result<DependencyId, DependencyGraphError>)> = nodes
             .into_iter()
             .map(|x| (DependencyId::new(x.index), self.add_dependency(x.weight)))
             .collect();
@@ -377,11 +347,27 @@ impl DependencyGraph {
             mapping.into_iter().partition(|(_, res)| res.is_err());
 
         if !errors.is_empty() {
-            let error_list = errors
+            let failed_count = errors.len();
+            let failed_names: Vec<String> = errors
                 .into_iter()
-                .map(|(id, res)| (id, res.unwrap_err()))
+                .filter_map(|(_, res)| {
+                    res.err().and_then(|err| match err {
+                        DependencyGraphError::DifferentDependencyType => {
+                            Some("type conflict".to_string())
+                        }
+                        _ => None,
+                    })
+                })
                 .collect();
-            return Err(error_list);
+            let reason = format!(
+                "Failed to merge {} dependencies due to type conflicts: {}",
+                failed_count,
+                failed_names.join(", ")
+            );
+            return Err(DependencyGraphError::MergeFailed {
+                name: "merge operation".to_string(),
+                reason,
+            });
         }
 
         let id_mapping: HashMap<DependencyId, DependencyId> = successes
