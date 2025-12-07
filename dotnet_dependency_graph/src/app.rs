@@ -1,3 +1,4 @@
+use anyhow::Error;
 use dotnet_dependency_parser::graph::DependencyId;
 use eframe::App;
 use egui::Context;
@@ -37,26 +38,23 @@ impl FileDialogHandler {
         &mut self,
         app_state: &mut AppState,
         cache_manager: &mut NodeCacheManager,
-        error_text: &mut Option<String>,
-    ) {
+    ) -> Result<(), Error> {
         if self.mode == OpenFileMode::None {
-            return;
+            return Ok(());
         }
 
         if let Some(path) = self.file_dialog.take_picked() {
             let new_graph = match parser::parse_with_supported_parsers(&path) {
                 Ok(graph) => graph,
                 Err(e) => {
-                    *error_text = Some(format!("Failed to parse file: {}", e));
-                    return;
+                    return Err(anyhow::anyhow!("Failed to parse file: {}", e));
                 }
             };
 
             match (&mut *app_state, &self.mode) {
                 (AppState::FileLoaded(session), OpenFileMode::Merge) => {
                     if let Err(e) = session.merge(new_graph) {
-                        *error_text = Some(format!("Failed to merge: {}", e));
-                        return;
+                        return Err(anyhow::anyhow!("Failed to merge: {}", e));
                     }
                 }
                 _ => match Session::load_from(path, new_graph) {
@@ -64,13 +62,14 @@ impl FileDialogHandler {
                         *app_state = AppState::FileLoaded(Box::new(session));
                     }
                     Err(e) => {
-                        *error_text = Some(format!("Failed to load session: {}", e));
-                        return;
+                        return Err(anyhow::anyhow!("Failed to load session: {}", e));
                     }
                 },
             }
             cache_manager.invalidate();
         }
+
+        Ok(())
     }
 
     fn render(&mut self, ctx: &Context, app_state: &mut AppState) {
@@ -399,11 +398,13 @@ impl App for DependencyApp {
     fn update(&mut self, ctx: &Context, _: &mut eframe::Frame) {
         self.fps_counter.update();
         self.file_dialog_handler.render(ctx, &mut self.app_state);
-        self.file_dialog_handler.handle(
-            &mut self.app_state,
-            &mut self.cache_manager,
-            &mut self.error_text,
-        );
+        if let Err(error) = self
+            .file_dialog_handler
+            .handle(&mut self.app_state, &mut self.cache_manager)
+        {
+            self.error_text = Some(error.to_string());
+        }
+
         if self.drag_happened {
             self.cache_manager.invalidate();
         }
