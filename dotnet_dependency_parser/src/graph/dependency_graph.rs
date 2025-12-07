@@ -1150,7 +1150,7 @@ fn test_merge_graphs() {
     assert_eq!(graph2.iter().count(), 2); // proj2, pkg2
 
     // Merge graph2 into graph1
-    graph1.merge(graph2, true).unwrap();
+    graph1.merge(graph2).unwrap();
 
     // Verify merged state - should have all 4 dependencies
     assert_eq!(graph1.iter().count(), 4);
@@ -1161,4 +1161,54 @@ fn test_merge_graphs() {
     assert!(deps.contains(&"Package1"));
     assert!(deps.contains(&"proj2.csproj"));
     assert!(deps.contains(&"Package2"));
+}
+
+#[test]
+fn test_merge_graphs_on_different_type_should_fail() {
+    let mut graph1 = DependencyGraph::new();
+    let mut graph2 = DependencyGraph::new();
+
+    // Add dependencies to first graph
+    let proj1 = graph1
+        .add_project("proj1.csproj".to_string(), None)
+        .unwrap();
+    let pkg1 = graph1
+        .add_package("Package1".to_string(), Some("1.0.0".to_string()))
+        .unwrap();
+
+    // Add dependencies to second graph
+    let proj2 = graph2
+        .add_package("proj1.csproj".to_string(), None)
+        .unwrap();
+    let pkg2 = graph2
+        .add_package("Package2".to_string(), Some("2.0.0".to_string()))
+        .unwrap();
+
+    // Add a relation in each graph
+    let framework = Framework::new("net8.0".to_string());
+    graph1.add_relation(proj1, pkg1, framework.clone()).unwrap();
+    graph2.add_relation(proj2, pkg2, framework.clone()).unwrap();
+
+    // Verify initial state
+    assert_eq!(graph1.iter().count(), 2); // proj1, pkg1
+    assert_eq!(graph2.iter().count(), 2); // proj2, pkg2
+
+    // Merge graph2 into graph1
+    let error = graph1.merge(graph2).unwrap_err();
+    match error {
+        DependencyGraphError::MergeFailed { reason, .. } => {
+            assert!(
+                reason.contains("type conflict"),
+                "Expected type conflict, got: {}",
+                reason
+            );
+        }
+        DependencyGraphError::DifferentDependencyType => {
+            // Acceptable, but MergeFailed is expected from merge
+        }
+        _ => panic!(
+            "Expected MergeFailed or DifferentDependencyType, got: {:?}",
+            error
+        ),
+    }
 }
