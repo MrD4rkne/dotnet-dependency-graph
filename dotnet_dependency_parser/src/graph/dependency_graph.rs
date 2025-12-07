@@ -1136,6 +1136,102 @@ fn test_merge_graphs() {
     assert!(deps.contains(&"Package1"));
     assert!(deps.contains(&"proj2.csproj"));
     assert!(deps.contains(&"Package2"));
+
+    // Check that old ids for the original graph work.
+    assert!(
+        graph1
+            .get(proj1)
+            .expect("Id from old graph should work")
+            .name()
+            == "proj1.csproj"
+    );
+    assert!(
+        graph1
+            .get(proj1)
+            .expect("Id from old graph should work")
+            .version()
+            .is_none()
+    );
+    assert!(
+        graph1
+            .get(pkg1)
+            .expect("Id from old graph should work")
+            .name()
+            == "Package1"
+    );
+    assert!(
+        graph1
+            .get(pkg1)
+            .expect("Id from old graph should work")
+            .version()
+            == Some("1.0.0")
+    );
+}
+
+#[test]
+fn test_merge_graphs_with_common_dependencies() {
+    let mut graph1 = DependencyGraph::new();
+    let mut graph2 = DependencyGraph::new();
+
+    let proj1 = graph1
+        .add_project("proj1.csproj".to_string(), None)
+        .unwrap();
+    let pkg1 = graph1
+        .add_package("Package1".to_string(), Some("1.0.0".to_string()))
+        .unwrap();
+
+    let proj2 = graph2
+        .add_project("proj2.csproj".to_string(), None)
+        .unwrap();
+    let pkg2 = graph2
+        .add_package("Package1".to_string(), Some("1.0.0".to_string()))
+        .unwrap();
+
+    // Add a relation in each graph
+    let framework = Framework::new("net8.0".to_string());
+    graph1.add_relation(proj1, pkg1, framework.clone()).unwrap();
+    graph2.add_relation(proj2, pkg2, framework.clone()).unwrap();
+
+    // Verify initial state
+    assert_eq!(graph1.iter().count(), 2);
+    assert_eq!(graph2.iter().count(), 2);
+
+    // Merge graph2 into graph1
+    graph1.merge(graph2).unwrap();
+
+    assert_eq!(graph1.iter().count(), 3);
+
+    // Check that all dependencies are present
+    let deps: Vec<_> = graph1.iter().map(|(_, info)| info.name()).collect();
+    assert!(deps.contains(&"proj1.csproj"));
+    assert!(deps.contains(&"Package1"));
+    assert!(deps.contains(&"proj2.csproj"));
+
+    // Check if Package1 have reverse deps from both graphs.
+    // Find proj2 in the merged graph (should exist after merge)
+    let (proj2, _) = graph1
+        .iter()
+        .find(|x| x.1.name() == "proj2.csproj")
+        .unwrap();
+
+    // Both proj1 and proj2 should have reverse dependencies to pkg1 (with correct framework)
+    let reverse_edges: Vec<_> = graph1
+        .get_direct_reverse_dependencies(pkg1)
+        .unwrap()
+        .collect();
+
+    // There should be two reverse edges: from proj1 and proj2 to pkg1
+    assert_eq!(reverse_edges.len(), 2);
+
+    // Check that both expected edges exist (ignoring edge instance identity, but matching from, to, and framework)
+    let expected_sources: HashSet<_> = [proj1, proj2].into_iter().collect();
+    let actual_sources: HashSet<_> = reverse_edges.iter().map(|e| e.from()).collect();
+    assert_eq!(expected_sources, actual_sources);
+
+    for edge in &reverse_edges {
+        assert_eq!(edge.to(), pkg1);
+        assert_eq!(edge.framework(), &Framework::new("net8.0".to_string()));
+    }
 }
 
 #[test]
