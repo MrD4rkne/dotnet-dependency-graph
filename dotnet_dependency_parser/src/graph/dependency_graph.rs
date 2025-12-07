@@ -128,9 +128,6 @@ pub enum DependencyGraphError {
     #[error("Dependency not found in the graph")]
     DependencyNotFound,
 
-    #[error("Dependency cycle detected")]
-    DependencyCycle,
-
     #[error("Dependencies with same name but different types")]
     DifferentDependencyType,
 
