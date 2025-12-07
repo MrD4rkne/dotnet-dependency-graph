@@ -295,7 +295,7 @@ impl DependencyGraph {
                     DependencyGraphError::DependencyNotFound
                 }
                 _ => DependencyGraphError::GraphOperation {
-                    message: format!("Graph operation failed: {:?}", err),
+                    message: format!("{:?}", err),
                 },
             })
     }
