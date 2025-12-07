@@ -396,6 +396,15 @@ impl DependencyGraph {
                     new_to.ix,
                     DepEdge::new(*new_from, *new_to, edge.weight.target_framework.clone()),
                 );
+            } else {
+                // All mappings should have been added to the map. If we reach this line, that sounds like a bug.
+                return Err(DependencyGraphError::MergeFailed {
+                    name: "merge operation".to_string(),
+                    reason: format!(
+                        "Edge references missing node mapping: from {:?} to {:?}",
+                        old_from, old_to
+                    ),
+                });
             }
         }
 
