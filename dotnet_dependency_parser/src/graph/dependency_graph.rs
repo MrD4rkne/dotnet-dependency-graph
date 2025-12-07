@@ -330,86 +330,52 @@ impl DependencyGraph {
     }
 
     /// Merge another graph into this one atomically.
-    ///
-    /// This method clones the graph first, ensuring that if the merge fails,
-    /// the original graph remains unchanged.
     pub fn merge(&mut self, graph: DependencyGraph) -> Result<(), DependencyGraphError> {
-        // Create a copy of self to perform the merge atomically
-        let mut merged_graph = self.clone();
-
-        merged_graph.frameworks.extend(graph.frameworks);
-
-        let (nodes, edges) = graph.graph.into_nodes_edges_iters();
-
-        // Add all dependencies into the merged graph.
-        let mapping: Vec<(DependencyId, Result<DependencyId, DependencyGraphError>)> = nodes
-            .into_iter()
-            .map(|x| {
-                (
-                    DependencyId::new(x.index),
-                    merged_graph.add_dependency(x.weight),
-                )
-            })
-            .collect();
-
-        let (errors, successes): (Vec<_>, Vec<_>) =
-            mapping.into_iter().partition(|(_, res)| res.is_err());
-
-        if !errors.is_empty() {
-            let failed_count = errors.len();
-            let failed_names: Vec<String> = errors
-                .into_iter()
-                .filter_map(|(_, res)| {
-                    res.err().and_then(|err| match err {
-                        DependencyGraphError::DifferentDependencyType => {
-                            Some("type conflict".to_string())
-                        }
-                        _ => None,
+        // Check for type conflicts before merging
+        let conflicting_name = graph.id_by_name.iter().find_map(|(name, other_ids)| {
+            self.id_by_name.get(name).and_then(|self_ids| {
+                other_ids
+                    .first()
+                    .zip(self_ids.first())
+                    .and_then(|(other_id, self_id)| {
+                        let other_dep = graph.graph.node_weight(other_id.ix)?;
+                        let self_dep = self.graph.node_weight(self_id.ix)?;
+                        (std::mem::discriminant(other_dep) != std::mem::discriminant(self_dep))
+                            .then_some(name)
                     })
-                })
-                .collect();
-            let reason = format!(
-                "Failed to merge {} dependencies due to type conflicts: {}",
-                failed_count,
-                failed_names.join(", ")
-            );
+            })
+        });
+
+        if let Some(name) = conflicting_name {
             return Err(DependencyGraphError::MergeFailed {
-                name: "merge operation".to_string(),
-                reason,
+                name: name.clone(),
+                reason: "type conflict".to_string(),
             });
         }
 
-        let id_mapping: HashMap<DependencyId, DependencyId> = successes
-            .into_iter()
-            .map(|(old_id, res)| (old_id, res.unwrap()))
-            .collect();
+        // Map from graph's DependencyId to self's DependencyId
+        let mut id_map: HashMap<NodeIndex, DependencyId> = HashMap::new();
 
-        // Now let's fill the missing edges.
-        for edge in edges {
-            let old_from = DependencyId::new(edge.source);
-            let old_to = DependencyId::new(edge.target);
-            if let (Some(new_from), Some(new_to)) =
-                (id_mapping.get(&old_from), id_mapping.get(&old_to))
-            {
-                merged_graph.graph.add_edge(
-                    new_from.ix,
-                    new_to.ix,
-                    DepEdge::new(*new_from, *new_to, edge.weight.target_framework.clone()),
-                );
-            } else {
-                // All mappings should have been added to the map. If we reach this line, that sounds like a bug.
-                return Err(DependencyGraphError::MergeFailed {
-                    name: "merge operation".to_string(),
-                    reason: format!(
-                        "Edge references missing node mapping: from {:?} to {:?}",
-                        old_from, old_to
-                    ),
-                });
-            }
+        // Add all dependencies from graph to self
+        for (id, info) in graph.iter() {
+            let new_id = match info {
+                DependencyInfo::Project(proj) => self
+                    .add_project(proj.path.clone(), proj.version.clone())
+                    .unwrap(),
+                DependencyInfo::Package(pkg) => self
+                    .add_package(pkg.name.clone(), pkg.version.clone())
+                    .unwrap(),
+            };
+            id_map.insert(id.ix, new_id);
         }
 
-        // Only replace self with the merged graph if everything succeeded
-        *self = merged_graph;
+        // Add all edges from graph to self
+        for edge_ref in graph.graph.into_nodes_edges_iters().1 {
+            let from = id_map.get(&edge_ref.weight.from().ix).unwrap();
+            let to = id_map.get(&edge_ref.weight.to().ix).unwrap();
+            self.add_relation(*from, *to, edge_ref.weight.framework().clone())?;
+        }
+
         Ok(())
     }
 }
