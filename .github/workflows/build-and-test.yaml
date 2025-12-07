@@ -44,6 +44,11 @@ jobs:
                       target
                   key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+            - name: Setup .NET
+              uses: actions/setup-dotnet@v5
+              with:
+                dotnet-version: "10.x"
+
             - name: Build binaries in "${{ matrix.BUILD_TARGET }}" mode
               run: cargo build --profile ${{ matrix.BUILD_TARGET }} --verbose
 
