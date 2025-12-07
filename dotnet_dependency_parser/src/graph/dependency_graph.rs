@@ -370,7 +370,8 @@ impl DependencyGraph {
         }
 
         // Add all edges from graph to self
-        for edge_ref in graph.graph.into_nodes_edges_iters().1 {
+        let (_, edges) = graph.graph.into_nodes_edges_iters();
+        for edge_ref in edges {
             let from = id_map.get(&edge_ref.weight.from().ix).unwrap();
             let to = id_map.get(&edge_ref.weight.to().ix).unwrap();
             self.add_relation(*from, *to, edge_ref.weight.framework().clone())?;
