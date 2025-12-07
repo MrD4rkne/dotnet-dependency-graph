@@ -66,7 +66,9 @@ impl FileDialogHandler {
                     }
                 },
             }
+
             cache_manager.invalidate();
+            self.mode = OpenFileMode::None;
         }
 
         Ok(())
