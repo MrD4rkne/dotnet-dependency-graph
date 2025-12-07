@@ -106,7 +106,7 @@ impl DepEdge {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DependencyGraph {
     graph: StableDiGraph<DependencyInfo, DepEdge>,
     id_by_name: HashMap<String, Vec<DependencyId>>,
@@ -329,15 +329,27 @@ impl DependencyGraph {
             .collect()
     }
 
+    /// Merge another graph into this one atomically.
+    ///
+    /// This method clones the graph first, ensuring that if the merge fails,
+    /// the original graph remains unchanged.
     pub fn merge(&mut self, graph: DependencyGraph) -> Result<(), DependencyGraphError> {
-        self.frameworks.extend(graph.frameworks);
+        // Create a copy of self to perform the merge atomically
+        let mut merged_graph = self.clone();
+
+        merged_graph.frameworks.extend(graph.frameworks);
 
         let (nodes, edges) = graph.graph.into_nodes_edges_iters();
 
-        // Add all dependencies into the graph.
+        // Add all dependencies into the merged graph.
         let mapping: Vec<(DependencyId, Result<DependencyId, DependencyGraphError>)> = nodes
             .into_iter()
-            .map(|x| (DependencyId::new(x.index), self.add_dependency(x.weight)))
+            .map(|x| {
+                (
+                    DependencyId::new(x.index),
+                    merged_graph.add_dependency(x.weight),
+                )
+            })
             .collect();
 
         let (errors, successes): (Vec<_>, Vec<_>) =
@@ -379,7 +391,7 @@ impl DependencyGraph {
             if let (Some(new_from), Some(new_to)) =
                 (id_mapping.get(&old_from), id_mapping.get(&old_to))
             {
-                self.graph.add_edge(
+                merged_graph.graph.add_edge(
                     new_from.ix,
                     new_to.ix,
                     DepEdge::new(*new_from, *new_to, edge.weight.target_framework.clone()),
@@ -387,6 +399,8 @@ impl DependencyGraph {
             }
         }
 
+        // Only replace self with the merged graph if everything succeeded
+        *self = merged_graph;
         Ok(())
     }
 }
@@ -1103,4 +1117,48 @@ fn test_get_nonexistent_dependency() {
     let fake_id = DependencyId::new(NodeIndex::new(5));
 
     assert!(graph.get(fake_id).is_none());
+}
+
+#[test]
+fn test_merge_graphs() {
+    let mut graph1 = DependencyGraph::new();
+    let mut graph2 = DependencyGraph::new();
+
+    // Add dependencies to first graph
+    let proj1 = graph1
+        .add_project("proj1.csproj".to_string(), None)
+        .unwrap();
+    let pkg1 = graph1
+        .add_package("Package1".to_string(), Some("1.0.0".to_string()))
+        .unwrap();
+
+    // Add dependencies to second graph
+    let proj2 = graph2
+        .add_project("proj2.csproj".to_string(), None)
+        .unwrap();
+    let pkg2 = graph2
+        .add_package("Package2".to_string(), Some("2.0.0".to_string()))
+        .unwrap();
+
+    // Add a relation in each graph
+    let framework = Framework::new("net8.0".to_string());
+    graph1.add_relation(proj1, pkg1, framework.clone()).unwrap();
+    graph2.add_relation(proj2, pkg2, framework.clone()).unwrap();
+
+    // Verify initial state
+    assert_eq!(graph1.iter().count(), 2); // proj1, pkg1
+    assert_eq!(graph2.iter().count(), 2); // proj2, pkg2
+
+    // Merge graph2 into graph1
+    graph1.merge(graph2, true).unwrap();
+
+    // Verify merged state - should have all 4 dependencies
+    assert_eq!(graph1.iter().count(), 4);
+
+    // Check that all dependencies are present
+    let deps: Vec<_> = graph1.iter().map(|(_, info)| info.name()).collect();
+    assert!(deps.contains(&"proj1.csproj"));
+    assert!(deps.contains(&"Package1"));
+    assert!(deps.contains(&"proj2.csproj"));
+    assert!(deps.contains(&"Package2"));
 }

@@ -27,13 +27,9 @@ impl Session {
     }
 
     pub fn merge(&mut self, graph: DependencyGraph) -> Result<(), DependencyGraphError> {
-        let result = self.graph.merge(graph); // todo: what on failure?
-
-        if result.is_ok() {
-            self.node_positions = Self::calculate_positions(&self.graph);
-        }
-
-        result
+        self.graph.merge(graph)?; // Use atomic merge for safety
+        self.node_positions = Self::calculate_positions(&self.graph);
+        Ok(())
     }
 
     fn new(
