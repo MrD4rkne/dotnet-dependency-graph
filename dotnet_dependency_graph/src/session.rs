@@ -53,6 +53,6 @@ impl Session {
     }
 }
 
-pub fn calculate_layout(graph: &DependencyGraph) -> Vec<Layout<DependencyId>> {
+pub(crate) fn calculate_layout(graph: &DependencyGraph) -> Vec<Layout<DependencyId>> {
     graph.layout(&visualize::calculate_size)
 }

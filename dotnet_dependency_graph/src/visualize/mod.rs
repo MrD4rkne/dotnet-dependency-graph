@@ -2,5 +2,5 @@ mod constants;
 mod draw;
 mod zoomed;
 
-pub use draw::*;
-pub use zoomed::Zoomed;
+pub(crate) use draw::*;
+pub(crate) use zoomed::Zoomed;

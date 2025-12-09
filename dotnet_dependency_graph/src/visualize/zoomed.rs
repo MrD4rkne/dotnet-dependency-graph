@@ -1,6 +1,6 @@
 /// A struct that wraps a value and applies zoom to all calculations
 #[derive(Debug, Clone, Copy)]
-pub struct Zoomed<T> {
+pub(crate) struct Zoomed<T> {
     value: T,
 }
 
