@@ -14,7 +14,7 @@ const ARROW_SIZE: f32 = 10.0;
 const ARROW_HEAD_WIDTH_FACTOR: f32 = 0.5;
 const LINE_HEIGHT: f32 = 20.0;
 
-pub fn calculate_dimensions_from_text(text: &str) -> (f32, f32) {
+pub(crate) fn calculate_dimensions_from_text(text: &str) -> (f32, f32) {
     let lines: Vec<&str> = text.lines().collect();
     let max_line_length = lines.iter().map(|line| line.len()).max().unwrap_or(0);
 
@@ -28,12 +28,12 @@ pub fn calculate_dimensions_from_text(text: &str) -> (f32, f32) {
     (width, height)
 }
 
-pub fn calculate_size(_id: &DependencyId, dep: &DependencyInfo) -> (f64, f64) {
+pub(crate) fn calculate_size(_id: &DependencyId, dep: &DependencyInfo) -> (f64, f64) {
     let (width, height) = calculate_dimensions_from_text(dep.name());
     (width as f64, height as f64)
 }
 
-pub fn draw_node(
+pub(crate) fn draw_node(
     _ui: &mut egui::Ui,
     text: &str,
     position: Pos2,
@@ -102,7 +102,9 @@ fn create_label(
     job
 }
 
-pub fn join_layouts(layouts: Vec<Layout<DependencyId>>) -> HashMap<DependencyId, (f32, f32)> {
+pub(crate) fn join_layouts(
+    layouts: Vec<Layout<DependencyId>>,
+) -> HashMap<DependencyId, (f32, f32)> {
     let mut result = HashMap::new();
     let mut offset_x = 0.0;
     for layout in layouts {
@@ -127,7 +129,7 @@ pub fn join_layouts(layouts: Vec<Layout<DependencyId>>) -> HashMap<DependencyId,
 }
 
 /// Calculate node rect for a given position and text
-pub fn calculate_node_rect(text: &str, position: Pos2, zoom: f32) -> Rect {
+pub(crate) fn calculate_node_rect(text: &str, position: Pos2, zoom: f32) -> Rect {
     let (unzoomed_width, unzoomed_height) = calculate_dimensions_from_text(text);
     let width = Zoomed::new(unzoomed_width, zoom);
     let height = Zoomed::new(unzoomed_height, zoom);
@@ -161,7 +163,7 @@ fn rect_edge_point(rect: Rect, direction: Vec2) -> Pos2 {
 }
 
 /// Draw a single edge with arrow from source to destination
-pub fn draw_edge(painter: &Painter, src_rect: Rect, dst_rect: Rect, zoom: f32) {
+pub(crate) fn draw_edge(painter: &Painter, src_rect: Rect, dst_rect: Rect, zoom: f32) {
     let src_center = src_rect.center();
     let dst_center = dst_rect.center();
 
