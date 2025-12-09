@@ -342,7 +342,7 @@ impl FpsCounter {
     }
 }
 
-pub struct DependencyApp {
+pub(crate) struct DependencyApp {
     app_state: AppState,
     pan_offset: egui::Vec2,
     zoom: f32,

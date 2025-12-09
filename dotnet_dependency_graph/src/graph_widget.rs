@@ -5,7 +5,7 @@ use std::collections::{HashMap, HashSet};
 use crate::node;
 use crate::visualize;
 
-pub fn compute_node_cache(
+pub(crate) fn compute_node_cache(
     graph: &DependencyGraph,
     positions: &HashMap<DependencyId, (f32, f32)>,
     visible_nodes: &HashSet<DependencyId>,
@@ -33,33 +33,33 @@ pub fn compute_node_cache(
 }
 
 // Cached data for node calculations per frame
-pub struct CachedNodeData {
+pub(crate) struct CachedNodeData {
     screen_pos: Pos2,
     rect: Rect,
     text: String,
 }
 
 // Grouped parameters for view state
-pub struct ViewState<'a> {
+pub(crate) struct ViewState<'a> {
     pub pan_offset: &'a mut Vec2,
     pub zoom: &'a mut f32,
 }
 
 // Grouped parameters for interaction state
-pub struct InteractionState<'a> {
+pub(crate) struct InteractionState<'a> {
     pub dragging_node: &'a mut Option<DependencyId>,
     pub node_positions: &'a mut HashMap<DependencyId, (f32, f32)>,
     pub drag_happened: &'a mut bool,
 }
 
 // Grouped parameters for graph data
-pub struct GraphData<'a> {
+pub(crate) struct GraphData<'a> {
     pub graph: &'a DependencyGraph,
     pub selected_framework: &'a Option<Framework>,
     pub visible_nodes: &'a HashSet<DependencyId>,
 }
 
-pub struct GraphWidget<'a> {
+pub(crate) struct GraphWidget<'a> {
     view_state: ViewState<'a>,
     interaction_state: InteractionState<'a>,
     graph_data: GraphData<'a>,

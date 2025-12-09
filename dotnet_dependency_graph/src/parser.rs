@@ -52,7 +52,7 @@ impl SupportedParser {
 }
 
 /// Tries to parse with the first parser that matches the file extension
-pub fn parse_with_supported_parsers(
+pub(crate) fn parse_with_supported_parsers(
     path: &std::path::Path,
 ) -> Result<DependencyGraph, Box<dyn std::error::Error + Send + Sync>> {
     let filename = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
