@@ -9,11 +9,11 @@ use crate::node::get_display_text;
 #[derive(Debug, Clone)]
 pub(crate) struct SearchOptions {
     /// The type of search to perform (text or regex).
-    pub(crate) kind: SearchKind,
+    kind: SearchKind,
     /// If true, only match complete words.
-    pub(crate) whole_word: bool,
+    whole_word: bool,
     /// If true, perform case-sensitive matching.
-    pub(crate) case_sensitive: bool,
+    case_sensitive: bool,
 }
 
 impl Default for SearchOptions {
