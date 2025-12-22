@@ -3,6 +3,7 @@ use egui::TextFormat;
 use egui::text::LayoutJob;
 use egui::{Color32, FontId, Painter, Pos2, Rect, Stroke, Vec2};
 use std::collections::HashMap;
+use std::f64::MAX;
 
 use super::Zoomed;
 use super::constants;
@@ -15,17 +16,29 @@ const ARROW_HEAD_WIDTH_FACTOR: f32 = 0.5;
 const LINE_HEIGHT: f32 = 20.0;
 
 pub(crate) fn calculate_dimensions_from_text(text: &str) -> (f32, f32) {
-    let lines: Vec<&str> = text.lines().collect();
-    let max_line_length = lines.iter().map(|line| line.len()).max().unwrap_or(0);
+    let (line_count, max_line_length) = get_lines_count_with_max_length(text);
 
     let text_width = (max_line_length as f64) * constants::CHAR_WIDTH + constants::TEXT_PADDING;
     let width = text_width.clamp(constants::MIN_WIDTH, constants::MAX_WIDTH) as f32;
 
-    let line_count = lines.len().max(1);
     let height = (LINE_HEIGHT * line_count as f32 + constants::NODE_PADDING * 2.0)
         .max(constants::NODE_HEIGHT);
 
     (width, height)
+}
+
+fn get_lines_count_with_max_length(text: &str) -> (usize, usize) {
+    let mut line_count = 0;
+    let mut max_line_length = 0;
+    text.lines().for_each(|line| {
+        line_count += 1;
+        max_line_length = if max_line_length > line.len() {
+            max_line_length
+        } else {
+            line.len()
+        };
+    });
+    (line_count, max_line_length)
 }
 
 pub(crate) fn calculate_size(_id: &DependencyId, dep: &DependencyInfo) -> (f64, f64) {
