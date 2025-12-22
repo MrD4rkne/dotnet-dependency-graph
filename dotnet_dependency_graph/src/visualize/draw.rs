@@ -3,7 +3,6 @@ use egui::TextFormat;
 use egui::text::LayoutJob;
 use egui::{Color32, FontId, Painter, Pos2, Rect, Stroke, Vec2};
 use std::collections::HashMap;
-use std::f64::MAX;
 
 use super::Zoomed;
 use super::constants;
