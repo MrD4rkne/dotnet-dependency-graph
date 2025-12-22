@@ -6,7 +6,7 @@ pub(crate) struct Zoomed<T> {
 
 impl<T> Zoomed<T> {
     /// Create a new Zoomed value from an original value and zoom factor
-    pub fn new(original: T, zoom: f32) -> Self
+    pub(crate) fn new(original: T, zoom: f32) -> Self
     where
         T: std::ops::Mul<f32, Output = T>,
     {
@@ -16,7 +16,7 @@ impl<T> Zoomed<T> {
     }
 
     /// Convert back to value
-    pub fn into_value(self) -> T {
+    pub(crate) fn into_value(self) -> T {
         self.value
     }
 }

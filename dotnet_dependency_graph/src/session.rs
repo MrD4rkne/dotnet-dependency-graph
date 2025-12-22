@@ -10,15 +10,15 @@ use dotnet_dependency_parser::graph::Layout;
 
 #[derive(Debug)]
 pub(crate) struct Session {
-    pub path: PathBuf,
-    pub graph: DependencyGraph,
-    pub node_positions: HashMap<DependencyId, (f32, f32)>,
-    pub selected_framework: Option<Framework>,
-    pub visible_nodes: HashSet<DependencyId>,
+    pub(crate) path: PathBuf,
+    pub(crate) graph: DependencyGraph,
+    pub(crate) node_positions: HashMap<DependencyId, (f32, f32)>,
+    pub(crate) selected_framework: Option<Framework>,
+    pub(crate) visible_nodes: HashSet<DependencyId>,
 }
 
 impl Session {
-    pub fn load_from(
+    pub(crate) fn load_from(
         path: PathBuf,
         graph: DependencyGraph,
     ) -> Result<Session, Box<dyn std::error::Error + Send + Sync>> {
@@ -26,7 +26,7 @@ impl Session {
         Ok(Session::new(path, graph, positions))
     }
 
-    pub fn merge(&mut self, graph: DependencyGraph) -> Result<(), DependencyGraphError> {
+    pub(crate) fn merge(&mut self, graph: DependencyGraph) -> Result<(), DependencyGraphError> {
         self.graph.merge(graph)?; // Use atomic merge for safety
         self.node_positions = Self::calculate_positions(&self.graph);
         Ok(())

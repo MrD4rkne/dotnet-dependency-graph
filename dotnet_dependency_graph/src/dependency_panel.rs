@@ -9,11 +9,11 @@ use crate::node::get_display_text;
 #[derive(Debug, Clone)]
 pub(crate) struct SearchOptions {
     /// The type of search to perform (text or regex).
-    pub kind: SearchKind,
+    pub(crate) kind: SearchKind,
     /// If true, only match complete words.
-    pub whole_word: bool,
+    pub(crate) whole_word: bool,
     /// If true, perform case-sensitive matching.
-    pub case_sensitive: bool,
+    pub(crate) case_sensitive: bool,
 }
 
 impl Default for SearchOptions {
@@ -118,7 +118,7 @@ pub(crate) struct DependencyPanel<'a> {
 }
 
 impl<'a> DependencyPanel<'a> {
-    pub fn new(
+    pub(crate) fn new(
         graph: &'a DependencyGraph,
         visible_nodes: &'a mut HashSet<DependencyId>,
         filter: &'a mut String,
