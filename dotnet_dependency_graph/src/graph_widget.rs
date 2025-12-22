@@ -41,22 +41,56 @@ pub(crate) struct CachedNodeData {
 
 // Grouped parameters for view state
 pub(crate) struct ViewState<'a> {
-    pub pan_offset: &'a mut Vec2,
-    pub zoom: &'a mut f32,
+    pan_offset: &'a mut Vec2,
+    zoom: &'a mut f32,
+}
+
+impl<'a> ViewState<'a> {
+    pub(crate) fn new(pan_offset: &'a mut Vec2, zoom: &'a mut f32) -> Self {
+        Self { pan_offset, zoom }
+    }
 }
 
 // Grouped parameters for interaction state
 pub(crate) struct InteractionState<'a> {
-    pub dragging_node: &'a mut Option<DependencyId>,
-    pub node_positions: &'a mut HashMap<DependencyId, (f32, f32)>,
-    pub drag_happened: &'a mut bool,
+    dragging_node: &'a mut Option<DependencyId>,
+    node_positions: &'a mut HashMap<DependencyId, (f32, f32)>,
+    drag_happened: &'a mut bool,
+}
+
+impl<'a> InteractionState<'a> {
+    pub(crate) fn new(
+        dragging_node: &'a mut Option<DependencyId>,
+        node_positions: &'a mut HashMap<DependencyId, (f32, f32)>,
+        drag_happened: &'a mut bool,
+    ) -> Self {
+        Self {
+            dragging_node,
+            node_positions,
+            drag_happened,
+        }
+    }
 }
 
 // Grouped parameters for graph data
 pub(crate) struct GraphData<'a> {
-    pub graph: &'a DependencyGraph,
-    pub selected_framework: &'a Option<Framework>,
-    pub visible_nodes: &'a HashSet<DependencyId>,
+    graph: &'a DependencyGraph,
+    selected_framework: &'a Option<Framework>,
+    visible_nodes: &'a HashSet<DependencyId>,
+}
+
+impl<'a> GraphData<'a> {
+    pub(crate) fn new(
+        graph: &'a DependencyGraph,
+        selected_framework: &'a Option<Framework>,
+        visible_nodes: &'a HashSet<DependencyId>,
+    ) -> Self {
+        Self {
+            graph,
+            selected_framework,
+            visible_nodes,
+        }
+    }
 }
 
 pub(crate) struct GraphWidget<'a> {
@@ -67,7 +101,7 @@ pub(crate) struct GraphWidget<'a> {
 }
 
 impl<'a> GraphWidget<'a> {
-    pub fn new(
+    pub(crate) fn new(
         view_state: ViewState<'a>,
         interaction_state: InteractionState<'a>,
         graph_data: GraphData<'a>,

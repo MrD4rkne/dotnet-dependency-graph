@@ -168,20 +168,17 @@ impl<'a> CentralPanelRenderer<'a> {
                 ));
 
                 ui.add(GraphWidget::new(
-                    crate::graph_widget::ViewState {
-                        pan_offset: self.pan_offset,
-                        zoom: self.zoom,
-                    },
-                    crate::graph_widget::InteractionState {
-                        dragging_node: self.dragging_node,
-                        node_positions: &mut file.node_positions,
-                        drag_happened: self.drag_happened,
-                    },
-                    crate::graph_widget::GraphData {
-                        graph: &file.graph,
-                        selected_framework: &file.selected_framework,
-                        visible_nodes: &file.visible_nodes,
-                    },
+                    crate::graph_widget::ViewState::new(self.pan_offset, self.zoom),
+                    crate::graph_widget::InteractionState::new(
+                        self.dragging_node,
+                        &mut file.node_positions,
+                        self.drag_happened,
+                    ),
+                    crate::graph_widget::GraphData::new(
+                        &file.graph,
+                        &file.selected_framework,
+                        &file.visible_nodes,
+                    ),
                     node_cache,
                 ));
 
