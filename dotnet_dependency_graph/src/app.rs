@@ -353,8 +353,8 @@ pub(crate) struct DependencyApp {
     file_dialog_handler: FileDialogHandler,
 }
 
-impl DependencyApp {
-    pub fn new() -> Self {
+impl Default for DependencyApp {
+    fn default() -> Self {
         Self {
             app_state: AppState::NoFile,
             pan_offset: egui::Vec2::ZERO,
@@ -369,7 +369,9 @@ impl DependencyApp {
             file_dialog_handler: FileDialogHandler::new(),
         }
     }
+}
 
+impl DependencyApp {
     fn render_central_panel(&mut self, ctx: &Context) {
         let mut renderer = CentralPanelRenderer::new(
             &mut self.pan_offset,

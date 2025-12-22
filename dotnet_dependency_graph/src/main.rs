@@ -15,6 +15,6 @@ fn main() -> Result<(), eframe::Error> {
     run_native(
         "Dotnet Dependency Viewer",
         native_options,
-        Box::new(move |_| Ok(Box::new(DependencyApp::new()))),
+        Box::new(move |_| Ok(Box::new(DependencyApp::default()))),
     )
 }
