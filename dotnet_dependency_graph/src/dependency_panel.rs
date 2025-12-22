@@ -63,7 +63,7 @@ impl Searcher {
             if options.whole_word {
                 regex_pattern.push_str("\\b");
             }
-            Regex::new(&regex_pattern).ok()
+            Some(Regex::new(&regex_pattern).unwrap())
         };
 
         Self {
