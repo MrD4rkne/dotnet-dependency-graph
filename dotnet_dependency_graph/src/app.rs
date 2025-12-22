@@ -43,33 +43,35 @@ impl FileDialogHandler {
             return Ok(());
         }
 
-        if let Some(path) = self.file_dialog.take_picked() {
-            let new_graph = match parser::parse_with_supported_parsers(&path) {
-                Ok(graph) => graph,
-                Err(e) => {
-                    return Err(anyhow::anyhow!("Failed to parse file: {}", e));
-                }
-            };
+        let Some(path) = self.file_dialog.take_picked() else {
+            return Ok(());
+        };
 
-            match (&mut *app_state, &self.mode) {
-                (AppState::FileLoaded(session), OpenFileMode::Merge) => {
-                    if let Err(e) = session.merge(new_graph) {
-                        return Err(anyhow::anyhow!("Failed to merge: {}", e));
-                    }
-                }
-                _ => match Session::load_from(path, new_graph) {
-                    Ok(session) => {
-                        *app_state = AppState::FileLoaded(Box::new(session));
-                    }
-                    Err(e) => {
-                        return Err(anyhow::anyhow!("Failed to load session: {}", e));
-                    }
-                },
+        let new_graph = match parser::parse_with_supported_parsers(&path) {
+            Ok(graph) => graph,
+            Err(e) => {
+                return Err(anyhow::anyhow!("Failed to parse file: {}", e));
             }
+        };
 
-            cache_manager.invalidate();
-            self.mode = OpenFileMode::None;
+        match (&mut *app_state, &self.mode) {
+            (AppState::FileLoaded(session), OpenFileMode::Merge) => {
+                if let Err(e) = session.merge(new_graph) {
+                    return Err(anyhow::anyhow!("Failed to merge: {}", e));
+                }
+            }
+            _ => match Session::load_from(path, new_graph) {
+                Ok(session) => {
+                    *app_state = AppState::FileLoaded(Box::new(session));
+                }
+                Err(e) => {
+                    return Err(anyhow::anyhow!("Failed to load session: {}", e));
+                }
+            },
         }
+
+        cache_manager.invalidate();
+        self.mode = OpenFileMode::None;
 
         Ok(())
     }
