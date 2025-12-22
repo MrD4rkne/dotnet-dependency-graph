@@ -124,21 +124,15 @@ pub(crate) fn join_layouts(
         let mut max_x: f64 = 0.0;
         for (id, (x, y)) in layout.positions {
             let new_x = x + offset_x;
-            result.insert(id, (new_x, y));
+            // Clamp here in one pass
+            let x_clamped = new_x.clamp(f32::MIN as f64, f32::MAX as f64) as f32;
+            let y_clamped = y.clamp(f32::MIN as f64, f32::MAX as f64) as f32;
+            result.insert(id, (x_clamped, y_clamped));
             max_x = max_x.max(new_x);
         }
         offset_x = max_x + constants::LAYOUT_SPACING;
     }
-
-    // In this context, layout coordinates are expected to be within reasonable bounds for UI rendering.
     result
-        .into_iter()
-        .map(|(key, (x, y))| {
-            let x_clamped = x.clamp(f32::MIN as f64, f32::MAX as f64) as f32;
-            let y_clamped = y.clamp(f32::MIN as f64, f32::MAX as f64) as f32;
-            (key, (x_clamped, y_clamped))
-        })
-        .collect()
 }
 
 /// Calculate node rect for a given position and text
