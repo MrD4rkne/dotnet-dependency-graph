@@ -27,17 +27,10 @@ pub(crate) fn calculate_dimensions_from_text(text: &str) -> (f32, f32) {
 }
 
 fn get_lines_count_with_max_length(text: &str) -> (usize, usize) {
-    let mut line_count = 0;
-    let mut max_line_length = 0;
-    text.lines().for_each(|line| {
-        line_count += 1;
-        max_line_length = if max_line_length > line.len() {
-            max_line_length
-        } else {
-            line.len()
-        };
-    });
-    (line_count, max_line_length)
+    text.lines()
+        .fold((0usize, 0usize), |(count, max_len), line| {
+            (count + 1, max_len.max(line.len()))
+        })
 }
 
 pub(crate) fn calculate_size(_id: &DependencyId, dep: &DependencyInfo) -> (f64, f64) {
