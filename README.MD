@@ -8,11 +8,13 @@ That's where this app comes to ease your pain.
 
 It generates interactive trees of your dotnet project dependencies, allowing you to merge multiple project / solutions.
 
+![Example of a dependency graph](/docs/example-graph.png)
+
 ## How to install it
 
 ### Git clone
 
-1. Clon e the repository:
+1. Clone the repository:
 
     ```bash
     git clone https://github.com/MrD4rkne/dotnet-dependency-graph.git
@@ -38,9 +40,25 @@ It generates interactive trees of your dotnet project dependencies, allowing you
 
 ## Basic usage
 
+### Open file
+
 App is a tool for visualizing dependencies of .NET projects and solutions.
 It parses `.dgspec.json` and `project.assets.json` files to build a dependency graph. You can either load a single file with `File -> Open file` menu option, which will load / replace the current graph.
+
+![Dropdown at the left top corner- File -> Open file](/docs/select-file.png)
+
+### Visualize edges
+
+To visualize the depenendencies, you need to select the framework you are interested in. They are displayed at the top left corner of the window.
+
+![Badges at the top left corner. Select the framework](/docs/select-framework.png)
+
+### Merge
+
 If you have an already loaded graph, you can merge another file into it using `File -> Merge file` menu option. This will try to combine the graphs, allowing you to visualize dependencies across multiple projects / solutions.
+
+![Dropdown at the left top corner- File -> Merge file](/docs/merge-files.png)
+
 
 ### Where to find the files
 
