@@ -34,14 +34,11 @@ jobs:
               with:
                   submodules: recursive
 
-            - name: Cache cargo registry
-              uses: actions/cache@v4
+            - uses: actions/setup-dotnet@v5
               with:
-                  path: |
-                      ~/.cargo/registry
-                      ~/.cargo/git
-                      target
-                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+                  dotnet-version: '10.x'
+
+            - uses: Leafwing-Studios/cargo-cache@v2
 
             - name: Build binaries in "${{ matrix.BUILD_TARGET }}" mode
               run: cargo build --profile ${{ matrix.BUILD_TARGET }} --verbose
