@@ -32,11 +32,19 @@ pub(crate) fn compute_node_cache(
     cache
 }
 
+struct GraphCache {
+    padding: Zoomed<f32>,
+    corner_radius: Zoomed<f32>,
+    border_width: Zoomed<f32>,
+    font_size: Zoomed<f32>,
+}
+
 // Cached data for node calculations per frame
 pub(crate) struct CachedNodeData {
     screen_pos: Pos2,
     rect: Rect,
-    text: String,
+    unzoomed_width: f32,
+    unzoomed_height: f32,
 }
 
 // Grouped parameters for view state
