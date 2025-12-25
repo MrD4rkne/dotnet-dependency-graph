@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use crate::dependency_panel::DependencyPanel;
 use crate::dependency_panel::SearchOptions;
-use crate::graph_widget::{CachedNodeData, GraphWidget};
+use crate::graph::graph_widget::{CachedNodeData, GraphWidget};
 use crate::parser;
 use crate::session::Session;
 
@@ -170,13 +170,13 @@ impl<'a> CentralPanelRenderer<'a> {
                 ));
 
                 ui.add(GraphWidget::new(
-                    crate::graph_widget::ViewState::new(self.pan_offset, self.zoom),
-                    crate::graph_widget::InteractionState::new(
+                    crate::graph::graph_widget::ViewState::new(self.pan_offset, self.zoom),
+                    crate::graph::graph_widget::InteractionState::new(
                         self.dragging_node,
                         &mut file.node_positions,
                         self.drag_happened,
                     ),
-                    crate::graph_widget::GraphData::new(
+                    crate::graph::graph_widget::GraphData::new(
                         &file.graph,
                         &file.selected_framework,
                         &file.visible_nodes,
@@ -296,7 +296,7 @@ impl NodeCacheManager {
             self.cache = None;
         }
         if self.cache.is_none() {
-            let cache = crate::graph_widget::compute_node_cache(
+            let cache = crate::graph::graph_widget::compute_node_cache(
                 graph,
                 positions,
                 visible_nodes,

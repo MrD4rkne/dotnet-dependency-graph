@@ -2,7 +2,7 @@ use eframe::run_native;
 
 mod app;
 mod dependency_panel;
-mod graph_widget;
+mod graph;
 mod node;
 mod parser;
 mod session;
