@@ -1,3 +1,4 @@
+use crate::graph::CachedNodeData;
 use dotnet_dependency_parser::graph::{DependencyId, DependencyInfo, Layout};
 use eframe::egui::TextFormat;
 use eframe::egui::text::LayoutJob;
@@ -26,6 +27,34 @@ pub(crate) fn calculate_dimensions_from_text(text: &str) -> (f32, f32) {
     (width, height)
 }
 
+pub(crate) struct State {
+    zoom: f32,
+    pan_offset: Vec2,
+}
+
+impl State {
+    pub(crate) fn new(zoom: f32, pan_offset: Vec2) -> Self {
+        Self { zoom, pan_offset }
+    }
+
+    pub(crate) fn transform(&self, pos: (f32, f32)) -> Pos2 {
+        transform_position(pos, self.zoom, self.pan_offset)
+    }
+
+    pub(crate) fn transform_pos(&self, pos: Pos2) -> Pos2 {
+        self.transform((pos.x, pos.y))
+    }
+
+    pub(crate) fn zoom(&self) -> f32 {
+        self.zoom
+    }
+}
+
+fn transform_position(pos: (f32, f32), zoom: f32, pan_offset: Vec2) -> Pos2 {
+    let pos_vec = Pos2::new(pos.0, pos.1);
+    (pos_vec.to_vec2() * zoom + pan_offset).to_pos2()
+}
+
 fn get_lines_count_with_max_length(text: &str) -> (usize, usize) {
     text.lines()
         .fold((0usize, 0usize), |(count, max_len), line| {
@@ -41,19 +70,19 @@ pub(crate) fn calculate_size(_id: &DependencyId, dep: &DependencyInfo) -> (f64, 
 pub(crate) fn draw_node(
     _ui: &mut eframe::egui::Ui,
     text: &str,
-    position: Pos2,
-    painter: &eframe::egui::Painter,
-    zoom: f32,
-) -> Rect {
-    let (unzoomed_width, unzoomed_height) = calculate_dimensions_from_text(text);
-    let width = Zoomed::new(unzoomed_width, zoom);
-    let height = Zoomed::new(unzoomed_height, zoom);
-    let padding = Zoomed::new(constants::NODE_PADDING, zoom);
-    let corner_radius = Zoomed::new(constants::NODE_CORNER_RADIUS, zoom);
-    let border_width = Zoomed::new(constants::NODE_BORDER_WIDTH, zoom);
-    let font_size = Zoomed::new(constants::FONT_SIZE, zoom);
+    painter: &egui::Painter,
+    cache: &mut CachedNodeData,
+    state: &State,
+) {
+    let width = Zoomed::new(cache.unzoomed_width, state.zoom());
+    let height = Zoomed::new(cache.unzoomed_height, state.zoom());
+    let padding = Zoomed::new(constants::NODE_PADDING, state.zoom());
+    let corner_radius = Zoomed::new(constants::NODE_CORNER_RADIUS, state.zoom());
+    let border_width = Zoomed::new(constants::NODE_BORDER_WIDTH, state.zoom());
+    let font_size = Zoomed::new(constants::FONT_SIZE, state.zoom());
     let max_text_width = width - padding;
 
+    let position = state.transform_pos(cache.initial_position);
     let rect = Rect::from_center_size(position, Vec2::new(width.into_value(), height.into_value()));
 
     // Draw rectangle background
@@ -82,7 +111,7 @@ pub(crate) fn draw_node(
 
     painter.galley(text_pos, galley, constants::TEXT_COLOR);
 
-    rect
+    cache.rect = rect;
 }
 
 fn create_label(
