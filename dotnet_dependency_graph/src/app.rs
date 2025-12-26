@@ -9,7 +9,8 @@ use std::time::{Duration, Instant};
 
 use crate::dependency_panel::DependencyPanel;
 use crate::dependency_panel::SearchOptions;
-use crate::graph::graph_widget::{CachedNodeData, GraphWidget};
+use crate::graph::CachedNodeData;
+use crate::graph::graph_widget::GraphWidget;
 use crate::parser;
 use crate::session::Session;
 
@@ -129,7 +130,6 @@ struct CentralPanelRenderer<'a> {
     pan_offset: &'a mut eframe::egui::Vec2,
     zoom: &'a mut f32,
     dragging_node: &'a mut Option<DependencyId>,
-    drag_happened: &'a mut bool,
     fps_counter: &'a FpsCounter,
     cache_manager: &'a mut NodeCacheManager,
 }
@@ -139,7 +139,6 @@ impl<'a> CentralPanelRenderer<'a> {
         pan_offset: &'a mut eframe::egui::Vec2,
         zoom: &'a mut f32,
         dragging_node: &'a mut Option<DependencyId>,
-        drag_happened: &'a mut bool,
         fps_counter: &'a FpsCounter,
         cache_manager: &'a mut NodeCacheManager,
     ) -> Self {
@@ -147,7 +146,6 @@ impl<'a> CentralPanelRenderer<'a> {
             pan_offset,
             zoom,
             dragging_node,
-            drag_happened,
             fps_counter,
             cache_manager,
         }
@@ -156,7 +154,7 @@ impl<'a> CentralPanelRenderer<'a> {
     fn render(&mut self, ctx: &Context, app_state: &mut AppState) {
         eframe::egui::CentralPanel::default().show(ctx, |ui| {
             if let AppState::FileLoaded(file) = app_state {
-                let node_cache = self.cache_manager.get_or_compute(
+                let mut node_cache = self.cache_manager.get_or_compute(
                     &file.graph,
                     &file.node_positions,
                     &file.visible_nodes,
@@ -171,17 +169,13 @@ impl<'a> CentralPanelRenderer<'a> {
 
                 ui.add(GraphWidget::new(
                     crate::graph::graph_widget::ViewState::new(self.pan_offset, self.zoom),
-                    crate::graph::graph_widget::InteractionState::new(
-                        self.dragging_node,
-                        &mut file.node_positions,
-                        self.drag_happened,
-                    ),
+                    crate::graph::graph_widget::InteractionState::new(self.dragging_node),
                     crate::graph::graph_widget::GraphData::new(
                         &file.graph,
                         &file.selected_framework,
                         &file.visible_nodes,
                     ),
-                    node_cache,
+                    &mut node_cache,
                 ));
 
                 // Show controls
@@ -269,17 +263,11 @@ enum AppState {
 
 struct NodeCacheManager {
     cache: Option<HashMap<DependencyId, CachedNodeData>>,
-    old_zoom: f32,
-    old_pan: eframe::egui::Vec2,
 }
 
 impl NodeCacheManager {
     fn new() -> Self {
-        Self {
-            cache: None,
-            old_zoom: 1.0,
-            old_pan: eframe::egui::Vec2::ZERO,
-        }
+        Self { cache: None }
     }
 
     fn get_or_compute(
@@ -288,15 +276,10 @@ impl NodeCacheManager {
         positions: &HashMap<DependencyId, (f32, f32)>,
         visible_nodes: &HashSet<DependencyId>,
         zoom: f32,
-        pan_offset: eframe::egui::Vec2,
-    ) -> &HashMap<DependencyId, CachedNodeData> {
-        let zoom_changed = zoom != self.old_zoom;
-        let pan_changed = pan_offset != self.old_pan;
-        if zoom_changed || pan_changed {
-            self.cache = None;
-        }
+        pan_offset: egui::Vec2,
+    ) -> &mut HashMap<DependencyId, CachedNodeData> {
         if self.cache.is_none() {
-            let cache = crate::graph::graph_widget::compute_node_cache(
+            let cache = crate::graph::graph_widget::compute_nodes_cache(
                 graph,
                 positions,
                 visible_nodes,
@@ -305,9 +288,7 @@ impl NodeCacheManager {
             );
             self.cache = Some(cache);
         }
-        self.old_zoom = zoom;
-        self.old_pan = pan_offset;
-        self.cache.as_ref().unwrap()
+        self.cache.as_mut().unwrap()
     }
 
     fn invalidate(&mut self) {
@@ -382,7 +363,6 @@ impl DependencyApp {
             &mut self.pan_offset,
             &mut self.zoom,
             &mut self.dragging_node,
-            &mut self.drag_happened,
             &self.fps_counter,
             &mut self.cache_manager,
         );
@@ -411,9 +391,6 @@ impl App for DependencyApp {
             self.error_text = Some(error.to_string());
         }
 
-        if self.drag_happened {
-            self.cache_manager.invalidate();
-        }
         self.drag_happened = false;
 
         // Render left side first not to overlay over central panel.

@@ -2,10 +2,12 @@ use dotnet_dependency_parser::graph::{DependencyGraph, DependencyId, Framework};
 use eframe::egui::{Painter, Pos2, Rect, Response, Sense, Ui, Vec2, Widget};
 use std::collections::{HashMap, HashSet};
 
+use crate::graph::node_cache::CachedNodeData;
 use crate::node;
 use crate::visualize;
+use crate::visualize::State;
 
-pub(crate) fn compute_node_cache(
+pub(crate) fn compute_nodes_cache(
     graph: &DependencyGraph,
     positions: &HashMap<DependencyId, (f32, f32)>,
     visible_nodes: &HashSet<DependencyId>,
@@ -13,38 +15,16 @@ pub(crate) fn compute_node_cache(
     pan_offset: Vec2,
 ) -> HashMap<DependencyId, CachedNodeData> {
     let mut cache = HashMap::new();
-    let ctx = State { zoom, pan_offset };
+    let ctx = State::new(zoom, pan_offset);
     for id in visible_nodes.iter() {
         if let Some(&pos) = positions.get(id) {
             let screen_pos = ctx.transform(pos);
             let text = node::get_display_text(graph.get(*id).expect("Node should exist"));
-            let rect = visualize::calculate_node_rect(text, screen_pos, zoom);
-            cache.insert(
-                *id,
-                CachedNodeData {
-                    screen_pos,
-                    rect,
-                    text: text.to_string(),
-                },
-            );
+            let (width, height) = visualize::calculate_dimensions_from_text(text);
+            cache.insert(*id, CachedNodeData::new(screen_pos, width, height));
         }
     }
     cache
-}
-
-struct GraphCache {
-    padding: Zoomed<f32>,
-    corner_radius: Zoomed<f32>,
-    border_width: Zoomed<f32>,
-    font_size: Zoomed<f32>,
-}
-
-// Cached data for node calculations per frame
-pub(crate) struct CachedNodeData {
-    screen_pos: Pos2,
-    rect: Rect,
-    unzoomed_width: f32,
-    unzoomed_height: f32,
 }
 
 // Grouped parameters for view state
@@ -62,21 +42,11 @@ impl<'a> ViewState<'a> {
 // Grouped parameters for interaction state
 pub(crate) struct InteractionState<'a> {
     dragging_node: &'a mut Option<DependencyId>,
-    node_positions: &'a mut HashMap<DependencyId, (f32, f32)>,
-    drag_happened: &'a mut bool,
 }
 
 impl<'a> InteractionState<'a> {
-    pub(crate) fn new(
-        dragging_node: &'a mut Option<DependencyId>,
-        node_positions: &'a mut HashMap<DependencyId, (f32, f32)>,
-        drag_happened: &'a mut bool,
-    ) -> Self {
-        Self {
-            dragging_node,
-            node_positions,
-            drag_happened,
-        }
+    pub(crate) fn new(dragging_node: &'a mut Option<DependencyId>) -> Self {
+        Self { dragging_node }
     }
 }
 
@@ -105,7 +75,7 @@ pub(crate) struct GraphWidget<'a> {
     view_state: ViewState<'a>,
     interaction_state: InteractionState<'a>,
     graph_data: GraphData<'a>,
-    node_cache: &'a HashMap<DependencyId, CachedNodeData>,
+    node_cache: &'a mut HashMap<DependencyId, CachedNodeData>,
 }
 
 impl<'a> GraphWidget<'a> {
@@ -113,7 +83,7 @@ impl<'a> GraphWidget<'a> {
         view_state: ViewState<'a>,
         interaction_state: InteractionState<'a>,
         graph_data: GraphData<'a>,
-        node_cache: &'a HashMap<DependencyId, CachedNodeData>,
+        node_cache: &'a mut HashMap<DependencyId, CachedNodeData>,
     ) -> Self {
         Self {
             view_state,
@@ -123,10 +93,10 @@ impl<'a> GraphWidget<'a> {
         }
     }
 
-    fn try_draw_edges(&self, painter: &Painter, cache: &HashMap<DependencyId, CachedNodeData>) {
+    fn try_draw_edges(&self, painter: &Painter) {
         if let Some(_framework) = self.graph_data.selected_framework {
             draw_all_edges(
-                cache,
+                self.node_cache,
                 painter,
                 self.graph_data.graph,
                 self.graph_data.selected_framework.as_ref().unwrap(),
@@ -136,25 +106,25 @@ impl<'a> GraphWidget<'a> {
         }
     }
 
-    fn draw_nodes(
-        &mut self,
-        ui: &mut Ui,
-        painter: &Painter,
-        cache: &HashMap<DependencyId, CachedNodeData>,
-    ) {
+    fn draw_nodes(&mut self, ui: &mut Ui, painter: &Painter) {
         for id in self.graph_data.visible_nodes.iter() {
-            if let Some(data) = cache.get(id) {
+            if let Some(data) = self.node_cache.get_mut(id) {
+                let dep = self
+                    .graph_data
+                    .graph
+                    .get(*id)
+                    .expect("Visible node should be in graph");
+
                 draw_single_node(
                     id,
                     data,
+                    dep.name(),
                     ui,
                     painter,
                     &mut NodeInteractionState {
                         dragging_node: self.interaction_state.dragging_node,
-                        node_positions: self.interaction_state.node_positions,
                     },
-                    *self.view_state.zoom,
-                    self.interaction_state.drag_happened,
+                    &State::new(*self.view_state.zoom, *self.view_state.pan_offset),
                 );
             }
         }
@@ -176,34 +146,17 @@ impl<'a> Widget for GraphWidget<'a> {
 
         self.handle_interactions(&response, ui);
 
-        self.try_draw_edges(&painter, self.node_cache);
+        self.draw_nodes(ui, &painter);
 
-        self.draw_nodes(ui, &painter, self.node_cache);
+        self.try_draw_edges(&painter);
 
         response
-    }
-}
-
-fn transform_position(pos: (f32, f32), zoom: f32, pan_offset: Vec2) -> Pos2 {
-    let pos_vec = Pos2::new(pos.0, pos.1);
-    (pos_vec.to_vec2() * zoom + pan_offset).to_pos2()
-}
-
-struct State {
-    zoom: f32,
-    pan_offset: Vec2,
-}
-
-impl State {
-    fn transform(&self, pos: (f32, f32)) -> Pos2 {
-        transform_position(pos, self.zoom, self.pan_offset)
     }
 }
 
 /// Mutable state for node interactions
 struct NodeInteractionState<'a> {
     dragging_node: &'a mut Option<DependencyId>,
-    node_positions: &'a mut HashMap<DependencyId, (f32, f32)>,
 }
 
 /// Draw all edges for the given framework
@@ -243,41 +196,35 @@ fn draw_all_edges(
 /// Draw a single node and handle its dragging interaction
 fn draw_single_node(
     id: &DependencyId,
-    data: &CachedNodeData,
+    cache: &mut CachedNodeData,
+    text: &str,
     ui: &mut Ui,
     painter: &Painter,
-    state: &mut NodeInteractionState,
-    zoom: f32,
-    drag_happened: &mut bool,
+    interaction_state: &mut NodeInteractionState,
+    state: &State,
 ) {
-    visualize::draw_node(ui, &data.text, data.screen_pos, painter, zoom);
-    handle_node_drag(id, data.rect, ui, state, zoom, &data.text, drag_happened);
+    visualize::draw_node(ui, text, painter, cache, state);
+    handle_node_drag(id, cache, ui, interaction_state, state.zoom(), text);
 }
 
 /// Handle dragging interaction for a single node
 fn handle_node_drag(
     id: &DependencyId,
-    rect: Rect,
+    data: &mut CachedNodeData,
     ui: &mut Ui,
     state: &mut NodeInteractionState,
     zoom: f32,
     text: &str,
-    drag_happened: &mut bool,
 ) {
-    let zoom_wrapper = visualize::Zoomed::new(1.0, zoom);
-    let node_response = ui.interact(rect, ui.id().with(id), Sense::drag());
+    let node_response = ui.interact(data.rect, ui.id().with(id), Sense::drag());
 
     if node_response.drag_started() {
         *state.dragging_node = Some(*id);
     }
 
     if node_response.dragged() && state.dragging_node.as_ref() == Some(id) {
-        let delta = node_response.drag_delta() / zoom_wrapper.into_value();
-        if let Some((x, y)) = state.node_positions.get_mut(id) {
-            *x += delta.x;
-            *y += delta.y;
-        }
-        *drag_happened = true;
+        let delta = node_response.drag_delta() / zoom;
+        data.initial_position += delta;
     }
 
     if node_response.drag_stopped() {
