@@ -276,7 +276,7 @@ impl NodeCacheManager {
         positions: &HashMap<DependencyId, (f32, f32)>,
         visible_nodes: &HashSet<DependencyId>,
         zoom: f32,
-        pan_offset: egui::Vec2,
+        pan_offset: eframe::egui::Vec2,
     ) -> &mut HashMap<DependencyId, CachedNodeData> {
         if self.cache.is_none() {
             let cache = crate::graph::graph_widget::compute_nodes_cache(

@@ -70,7 +70,7 @@ pub(crate) fn calculate_size(_id: &DependencyId, dep: &DependencyInfo) -> (f64, 
 pub(crate) fn draw_node(
     _ui: &mut eframe::egui::Ui,
     text: &str,
-    painter: &egui::Painter,
+    painter: &eframe::egui::Painter,
     cache: &mut CachedNodeData,
     state: &State,
 ) {

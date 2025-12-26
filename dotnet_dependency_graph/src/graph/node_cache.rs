@@ -1,9 +1,9 @@
 use crate::visualize::Zoomed;
 use crate::visualize::constants;
 
-use egui::Pos2;
-use egui::Rect;
-use egui::Vec2;
+use eframe::egui::Pos2;
+use eframe::egui::Rect;
+use eframe::egui::Vec2;
 
 pub(crate) struct GraphCache {
     padding: Zoomed<f32>,
