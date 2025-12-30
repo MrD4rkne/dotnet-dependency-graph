@@ -801,7 +801,6 @@ dependencies = [
  "anyhow",
  "dotnet_dependency_parser",
  "eframe",
- "egui",
  "egui-file-dialog",
  "regex",
 ]

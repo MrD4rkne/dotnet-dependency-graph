@@ -1,4 +1,4 @@
-use egui::Color32;
+use eframe::egui::Color32;
 
 // Node dimensions
 pub(crate) const NODE_HEIGHT: f32 = 60.0;
