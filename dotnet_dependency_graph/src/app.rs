@@ -1,7 +1,7 @@
 use anyhow::Error;
 use dotnet_dependency_parser::graph::DependencyId;
 use eframe::App;
-use egui::Context;
+use eframe::egui::Context;
 use egui_file_dialog::FileDialog;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -79,8 +79,8 @@ impl FileDialogHandler {
     fn render(&mut self, ctx: &Context, app_state: &mut AppState) {
         self.file_dialog.update(ctx);
 
-        egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
-            egui::MenuBar::new().ui(ui, |ui| {
+        eframe::egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
+            eframe::egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("Open file").clicked() {
                         self.open_for_replace();
@@ -126,7 +126,7 @@ impl FileDialogHandler {
 
 /// Handles central panel rendering.
 struct CentralPanelRenderer<'a> {
-    pan_offset: &'a mut egui::Vec2,
+    pan_offset: &'a mut eframe::egui::Vec2,
     zoom: &'a mut f32,
     dragging_node: &'a mut Option<DependencyId>,
     drag_happened: &'a mut bool,
@@ -136,7 +136,7 @@ struct CentralPanelRenderer<'a> {
 
 impl<'a> CentralPanelRenderer<'a> {
     fn new(
-        pan_offset: &'a mut egui::Vec2,
+        pan_offset: &'a mut eframe::egui::Vec2,
         zoom: &'a mut f32,
         dragging_node: &'a mut Option<DependencyId>,
         drag_happened: &'a mut bool,
@@ -154,7 +154,7 @@ impl<'a> CentralPanelRenderer<'a> {
     }
 
     fn render(&mut self, ctx: &Context, app_state: &mut AppState) {
-        egui::CentralPanel::default().show(ctx, |ui| {
+        eframe::egui::CentralPanel::default().show(ctx, |ui| {
             if let AppState::FileLoaded(file) = app_state {
                 let node_cache = self.cache_manager.get_or_compute(
                     &file.graph,
@@ -185,18 +185,21 @@ impl<'a> CentralPanelRenderer<'a> {
                 ));
 
                 // Show controls
-                ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                    ui.label(format!(
-                        "Zoom: {:.1}x | Pan: ({:.0}, {:.0}) | FPS: {:.0}",
-                        self.zoom,
-                        self.pan_offset.x,
-                        self.pan_offset.y,
-                        self.fps_counter.fps()
-                    ));
-                    ui.label(
+                ui.with_layout(
+                    eframe::egui::Layout::bottom_up(eframe::egui::Align::LEFT),
+                    |ui| {
+                        ui.label(format!(
+                            "Zoom: {:.1}x | Pan: ({:.0}, {:.0}) | FPS: {:.0}",
+                            self.zoom,
+                            self.pan_offset.x,
+                            self.pan_offset.y,
+                            self.fps_counter.fps()
+                        ));
+                        ui.label(
                         "Mouse wheel to zoom | Drag background to pan | Drag nodes to move them",
                     );
-                });
+                    },
+                );
             } else {
                 ui.label("Choose a file to visualize dependencies.");
             }
@@ -216,7 +219,7 @@ impl<'a> ErrorWindowRenderer<'a> {
 
     fn render(&mut self, ctx: &Context) {
         if let Some(error_message) = self.error_text.clone() {
-            egui::Window::new("Error").show(ctx, |ui| {
+            eframe::egui::Window::new("Error").show(ctx, |ui| {
                 ui.label(&error_message);
 
                 if ui.button("Ok").clicked() {
@@ -243,7 +246,7 @@ impl<'a> PackagesViewRenderer<'a> {
 
     fn render(&mut self, ctx: &Context, app_state: &mut AppState) {
         if let AppState::FileLoaded(file) = app_state {
-            egui::SidePanel::left("nodes_panel").show(ctx, |ui| {
+            eframe::egui::SidePanel::left("nodes_panel").show(ctx, |ui| {
                 ui.add(DependencyPanel::new(
                     &file.graph,
                     &mut file.visible_nodes,
@@ -267,7 +270,7 @@ enum AppState {
 struct NodeCacheManager {
     cache: Option<HashMap<DependencyId, CachedNodeData>>,
     old_zoom: f32,
-    old_pan: egui::Vec2,
+    old_pan: eframe::egui::Vec2,
 }
 
 impl NodeCacheManager {
@@ -275,7 +278,7 @@ impl NodeCacheManager {
         Self {
             cache: None,
             old_zoom: 1.0,
-            old_pan: egui::Vec2::ZERO,
+            old_pan: eframe::egui::Vec2::ZERO,
         }
     }
 
@@ -285,7 +288,7 @@ impl NodeCacheManager {
         positions: &HashMap<DependencyId, (f32, f32)>,
         visible_nodes: &HashSet<DependencyId>,
         zoom: f32,
-        pan_offset: egui::Vec2,
+        pan_offset: eframe::egui::Vec2,
     ) -> &HashMap<DependencyId, CachedNodeData> {
         let zoom_changed = zoom != self.old_zoom;
         let pan_changed = pan_offset != self.old_pan;
@@ -343,7 +346,7 @@ impl FpsCounter {
 
 pub(crate) struct DependencyApp {
     app_state: AppState,
-    pan_offset: egui::Vec2,
+    pan_offset: eframe::egui::Vec2,
     zoom: f32,
     dragging_node: Option<DependencyId>,
     error_text: Option<String>,
@@ -359,7 +362,7 @@ impl Default for DependencyApp {
     fn default() -> Self {
         Self {
             app_state: AppState::NoFile,
-            pan_offset: egui::Vec2::ZERO,
+            pan_offset: eframe::egui::Vec2::ZERO,
             zoom: 1.0,
             dragging_node: None,
             error_text: None,

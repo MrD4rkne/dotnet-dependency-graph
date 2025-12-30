@@ -1,7 +1,7 @@
 use dotnet_dependency_parser::graph::{DependencyId, DependencyInfo, Layout};
-use egui::TextFormat;
-use egui::text::LayoutJob;
-use egui::{Color32, FontId, Painter, Pos2, Rect, Stroke, Vec2};
+use eframe::egui::TextFormat;
+use eframe::egui::text::LayoutJob;
+use eframe::egui::{Color32, FontId, Painter, Pos2, Rect, Stroke, Vec2};
 use std::collections::HashMap;
 
 use super::Zoomed;
@@ -39,10 +39,10 @@ pub(crate) fn calculate_size(_id: &DependencyId, dep: &DependencyInfo) -> (f64, 
 }
 
 pub(crate) fn draw_node(
-    _ui: &mut egui::Ui,
+    _ui: &mut eframe::egui::Ui,
     text: &str,
     position: Pos2,
-    painter: &egui::Painter,
+    painter: &eframe::egui::Painter,
     zoom: f32,
 ) -> Rect {
     let (unzoomed_width, unzoomed_height) = calculate_dimensions_from_text(text);
@@ -68,7 +68,7 @@ pub(crate) fn draw_node(
         rect,
         corner_radius.into_value(),
         Stroke::new(border_width.into_value(), constants::NODE_BORDER_COLOR),
-        egui::epaint::StrokeKind::Middle,
+        eframe::egui::epaint::StrokeKind::Middle,
     );
 
     let label_job = create_label(text, font_size, height, padding, max_text_width);

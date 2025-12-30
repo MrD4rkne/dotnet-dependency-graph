@@ -1,5 +1,5 @@
 use dotnet_dependency_parser::graph::{DependencyGraph, DependencyId, DependencyInfo};
-use egui::{Response, Ui, Widget};
+use eframe::egui::{Response, Ui, Widget};
 use regex::Regex;
 use std::collections::{BTreeMap, HashSet};
 
@@ -155,13 +155,13 @@ impl<'a> DependencyPanel<'a> {
             ui.label("Filter:");
             let original_visuals = ui.visuals().clone();
             if !searcher.is_valid() {
-                ui.visuals_mut().override_text_color = Some(egui::Color32::RED);
+                ui.visuals_mut().override_text_color = Some(eframe::egui::Color32::RED);
                 ui.visuals_mut().widgets.inactive.bg_stroke =
-                    egui::Stroke::new(1.0, egui::Color32::RED);
+                    eframe::egui::Stroke::new(1.0, eframe::egui::Color32::RED);
                 ui.visuals_mut().widgets.hovered.bg_stroke =
-                    egui::Stroke::new(1.0, egui::Color32::RED);
+                    eframe::egui::Stroke::new(1.0, eframe::egui::Color32::RED);
                 ui.visuals_mut().widgets.active.bg_stroke =
-                    egui::Stroke::new(1.0, egui::Color32::RED);
+                    eframe::egui::Stroke::new(1.0, eframe::egui::Color32::RED);
             }
             ui.text_edit_singleline(self.filter);
             *ui.visuals_mut() = original_visuals;
@@ -231,7 +231,7 @@ impl<'a> DependencyPanel<'a> {
     ) {
         ui.separator();
 
-        egui::ScrollArea::vertical().show(ui, |ui| {
+        eframe::egui::ScrollArea::vertical().show(ui, |ui| {
             for (name, versions) in dependencies_to_show {
                 if versions.len() == 1 {
                     // Single version - show as flat checkbox
@@ -239,7 +239,7 @@ impl<'a> DependencyPanel<'a> {
                     show_checkbox(ui, self.visible_nodes, *id, name, Some(searcher));
                 } else {
                     // Multiple versions - show as collapsing header with nested items
-                    egui::CollapsingHeader::new(rich_text_for_label(name, searcher))
+                    eframe::egui::CollapsingHeader::new(rich_text_for_label(name, searcher))
                         .default_open(false)
                         .show(ui, |ui| {
                             for (id, info) in versions {
@@ -287,7 +287,7 @@ fn show_checkbox(
     let mut is_visible = visible_nodes.contains(&id);
     let label = match searcher {
         Some(s) => rich_text_for_label(label, s),
-        None => egui::WidgetText::Text(label.to_string()),
+        None => eframe::egui::WidgetText::Text(label.to_string()),
     };
 
     if ui.checkbox(&mut is_visible, label).changed() {
@@ -300,19 +300,19 @@ fn show_checkbox(
 }
 
 // Create WidgetText content, but highlight the sequence matched by the searcher.
-fn rich_text_for_label(label: &str, searcher: &Searcher) -> egui::WidgetText {
+fn rich_text_for_label(label: &str, searcher: &Searcher) -> eframe::egui::WidgetText {
     if let Some((start, end)) = searcher.match_range(label) {
-        let mut job = egui::text::LayoutJob::default();
-        job.append(&label[..start], 0.0, egui::TextFormat::default());
+        let mut job = eframe::egui::text::LayoutJob::default();
+        job.append(&label[..start], 0.0, eframe::egui::TextFormat::default());
         job.append(
             &label[start..end],
             0.0,
-            egui::TextFormat {
-                color: egui::Color32::YELLOW,
+            eframe::egui::TextFormat {
+                color: eframe::egui::Color32::YELLOW,
                 ..Default::default()
             },
         );
-        job.append(&label[end..], 0.0, egui::TextFormat::default());
+        job.append(&label[end..], 0.0, eframe::egui::TextFormat::default());
         job.into()
     } else {
         label.into()
