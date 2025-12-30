@@ -155,7 +155,7 @@ impl<'a> CentralPanelRenderer<'a> {
     fn render(&mut self, ctx: &Context, app_state: &mut AppState) {
         eframe::egui::CentralPanel::default().show(ctx, |ui| {
             if let AppState::FileLoaded(file) = app_state {
-                let mut node_cache = self.cache_manager.get_or_compute(
+                let node_cache = self.cache_manager.get_or_compute(
                     &file.graph,
                     &file.node_positions,
                     &file.visible_nodes,
@@ -176,7 +176,7 @@ impl<'a> CentralPanelRenderer<'a> {
                         &file.selected_framework,
                         &file.visible_nodes,
                     ),
-                    &mut node_cache,
+                    node_cache,
                 ));
 
                 // Show controls
