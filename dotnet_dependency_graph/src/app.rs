@@ -3,8 +3,7 @@ use dotnet_dependency_parser::graph::DependencyId;
 use eframe::App;
 use eframe::egui::Context;
 use egui_file_dialog::FileDialog;
-#[cfg(feature = "puffin-server")]
-use puffin::{GlobalFrameView, GlobalProfiler, profile_scope, set_scopes_on};
+use puffin::GlobalProfiler;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::time::{Duration, Instant};

@@ -1,9 +1,4 @@
-use crate::visualize::Zoomed;
-use crate::visualize::constants;
-
-use eframe::egui::Pos2;
-use eframe::egui::Rect;
-use eframe::egui::Vec2;
+use eframe::egui::{Pos2, Rect, Vec2};
 
 pub(crate) struct CachedNodeData {
     pub(crate) initial_position: Pos2,
