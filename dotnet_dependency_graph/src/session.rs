@@ -54,5 +54,6 @@ impl Session {
 }
 
 pub(crate) fn calculate_layout(graph: &DependencyGraph) -> Vec<Layout<DependencyId>> {
+    puffin::profile_scope!("calculate_layout");
     graph.layout(&visualize::calculate_size)
 }

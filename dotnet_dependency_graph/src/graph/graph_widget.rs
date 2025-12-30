@@ -14,6 +14,7 @@ pub(crate) fn compute_nodes_cache(
     zoom: f32,
     pan_offset: Vec2,
 ) -> HashMap<DependencyId, CachedNodeData> {
+    puffin::profile_scope!("compute_nodes_cache");
     let mut cache = HashMap::new();
     let ctx = State::new(zoom, pan_offset);
     for id in visible_nodes.iter() {
@@ -107,6 +108,7 @@ impl<'a> GraphWidget<'a> {
     }
 
     fn draw_nodes(&mut self, ui: &mut Ui, painter: &Painter) {
+        puffin::profile_scope!("draw_nodes");
         for id in self.graph_data.visible_nodes.iter() {
             if let Some(data) = self.node_cache.get_mut(id) {
                 let dep = self
@@ -168,6 +170,7 @@ fn draw_all_edges(
     visible_nodes: &HashSet<DependencyId>,
     zoom: f32,
 ) {
+    puffin::profile_scope!("draw_edges");
     for src_id in visible_nodes.iter() {
         if let Some(src_data) = cache.get(src_id) {
             let src_rect = src_data.rect;

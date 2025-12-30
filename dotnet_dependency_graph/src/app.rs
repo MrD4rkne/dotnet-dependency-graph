@@ -3,6 +3,8 @@ use dotnet_dependency_parser::graph::DependencyId;
 use eframe::App;
 use eframe::egui::Context;
 use egui_file_dialog::FileDialog;
+#[cfg(feature = "puffin-server")]
+use puffin::{GlobalFrameView, GlobalProfiler, profile_scope, set_scopes_on};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::time::{Duration, Instant};
@@ -375,6 +377,7 @@ impl DependencyApp {
     }
 
     fn render_packages_view(&mut self, ctx: &Context) {
+        puffin::profile_scope!("render_packages");
         let mut renderer =
             PackagesViewRenderer::new(&mut self.package_filter, &mut self.search_options);
         renderer.render(ctx, &mut self.app_state);
@@ -382,6 +385,8 @@ impl DependencyApp {
 }
 impl App for DependencyApp {
     fn update(&mut self, ctx: &Context, _: &mut eframe::Frame) {
+        GlobalProfiler::lock().new_frame();
+
         self.fps_counter.update();
         self.file_dialog_handler.render(ctx, &mut self.app_state);
         if let Err(error) = self
