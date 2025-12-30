@@ -398,6 +398,5 @@ impl App for DependencyApp {
         self.render_central_panel(ctx);
 
         self.render_error_window(ctx);
-        ctx.request_repaint();
     }
 }
