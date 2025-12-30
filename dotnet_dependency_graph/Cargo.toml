@@ -13,7 +13,5 @@ puffin = "0.19.1"
 puffin_http = { version = "0.16.1", optional = true }
 
 [features]
-# Enable the puffin HTTP server and collection. Build with:
-# cargo run --features puffin-server
 default = []
 puffin-server = [ "puffin_http" ]

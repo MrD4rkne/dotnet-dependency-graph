@@ -75,3 +75,20 @@ Example, if i have a project called `MyApp.csproj`, after running `dotnet restor
 │   ├── project.assets.json
 │   └── MyApp.csproj.nuget.dgspec.json
 ```
+
+## Profiling
+
+App uses `puffin` for profiling and `puffin_http` for exporting the data. To compile with profiling enabled, use the following command:
+
+```bash
+cargo build --release --features puffin-server
+```
+
+To visualize the profiling data, run the command that was logged in the console, for example:
+
+```bash
+puffin_viewer --url 127.0.0.1:8585
+```
+
+This will open a viewport where you can inspect the profiling data collected during the execution of the application.
+Note that this requires the `puffin_viewer` tool to be installed on your system.
