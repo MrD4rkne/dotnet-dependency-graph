@@ -139,6 +139,7 @@ fn create_label(
 pub(crate) fn join_layouts(
     layouts: Vec<Layout<DependencyId>>,
 ) -> HashMap<DependencyId, (f32, f32)> {
+    puffin::profile_scope!("join_layouts");
     let mut result = HashMap::new();
     let mut offset_x = 0.0;
     for layout in layouts {
