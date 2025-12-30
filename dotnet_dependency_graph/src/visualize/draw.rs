@@ -156,14 +156,6 @@ pub(crate) fn join_layouts(
     result
 }
 
-/// Calculate node rect for a given position and text
-pub(crate) fn calculate_node_rect(text: &str, position: Pos2, zoom: f32) -> Rect {
-    let (unzoomed_width, unzoomed_height) = calculate_dimensions_from_text(text);
-    let width = Zoomed::new(unzoomed_width, zoom);
-    let height = Zoomed::new(unzoomed_height, zoom);
-    Rect::from_center_size(position, Vec2::new(width.into_value(), height.into_value()))
-}
-
 /// Calculate the intersection point of a line from rect center in given direction with rect boundary
 fn rect_edge_point(rect: Rect, direction: Vec2) -> Pos2 {
     let center = rect.center();

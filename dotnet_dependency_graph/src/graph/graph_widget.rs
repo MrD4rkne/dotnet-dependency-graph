@@ -1,5 +1,5 @@
 use dotnet_dependency_parser::graph::{DependencyGraph, DependencyId, Framework};
-use eframe::egui::{Painter, Pos2, Response, Sense, Ui, Vec2, Widget};
+use eframe::egui::{Painter, Response, Sense, Ui, Vec2, Widget};
 use std::collections::{HashMap, HashSet};
 
 use crate::graph::node_cache::CachedNodeData;
