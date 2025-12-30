@@ -16,12 +16,12 @@ enum SupportedParser {
 
 impl SupportedParser {
     /// Returns all supported parsers
-    pub fn all() -> Vec<Self> {
+    pub(crate) fn all() -> Vec<Self> {
         vec![SupportedParser::Dgspec, SupportedParser::ProjectAssets]
     }
 
     /// Returns supported extensions for this parser
-    pub fn extensions(&self) -> Vec<&'static str> {
+    pub(crate) fn extensions(&self) -> Vec<&'static str> {
         match self {
             SupportedParser::Dgspec => DgspecParser::extensions(),
             SupportedParser::ProjectAssets => ProjectAssetsParser::extensions(),
@@ -29,12 +29,12 @@ impl SupportedParser {
     }
 
     /// Returns true if this parser supports the file
-    pub fn does_support_extension(&self, filename: &str) -> bool {
+    pub(crate) fn does_support_extension(&self, filename: &str) -> bool {
         self.extensions().iter().any(|ext| filename.ends_with(ext))
     }
 
     /// Tries to parse the file using this parser
-    pub fn parse(
+    pub(crate) fn parse(
         &self,
         path: &std::path::Path,
     ) -> Result<DependencyGraph, Box<dyn std::error::Error + Send + Sync>> {
