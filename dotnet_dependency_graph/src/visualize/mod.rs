@@ -1,4 +1,4 @@
-pub mod constants;
+pub(crate) mod constants;
 mod draw;
 mod zoomed;
 
