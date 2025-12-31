@@ -1,9 +1,9 @@
-use dotnet_dependency_parser::graph::{DependencyGraph, DependencyId, DependencyInfo};
+use dotnet_dependency_parser::graph::{DependencyGraph, DependencyId};
 use eframe::egui::{Response, Ui, Widget};
 use regex::Regex;
 use std::collections::{BTreeMap, HashSet};
 
-use crate::node::get_display_text;
+use crate::graph::GraphCache;
 
 /// Options for configuring search behavior in the packages panel.
 #[derive(Debug, Clone)]
@@ -63,7 +63,9 @@ impl Searcher {
             if options.whole_word {
                 regex_pattern.push_str("\\b");
             }
-            Some(Regex::new(&regex_pattern).unwrap())
+            // Compile regex; use `.ok()` to avoid panicking on invalid user-provided regex.
+            // `is_valid` will reflect failure to compile and UI will indicate invalid input.
+            Regex::new(&regex_pattern).ok()
         };
 
         Self {
@@ -105,30 +107,36 @@ impl Searcher {
     }
 }
 
+enum Action {
+    DeselectAll, // Desellect all visible deps
+    SelectAll,   // Select all visible deps
+}
+
 /// A panel widget for displaying and filtering dependency packages.  
 pub(crate) struct DependencyPanel<'a> {
-    /// Dependency graph being the source of packages.
-    graph: &'a DependencyGraph,
-    /// Set containing the IDs of visible dependency nodes.
-    visible_nodes: &'a mut HashSet<DependencyId>,
     /// Text pattern used to filter dependencies in the list.
     filter: &'a mut String,
     /// Additional search options.
     search_options: &'a mut SearchOptions,
+    graph: &'a DependencyGraph,
+    visible_nodes: &'a mut HashSet<DependencyId>,
+    cache: &'a mut GraphCache,
 }
 
 impl<'a> DependencyPanel<'a> {
     pub(crate) fn new(
-        graph: &'a DependencyGraph,
-        visible_nodes: &'a mut HashSet<DependencyId>,
         filter: &'a mut String,
         search_options: &'a mut SearchOptions,
+        graph: &'a DependencyGraph,
+        visible_nodes: &'a mut HashSet<DependencyId>,
+        cache: &'a mut GraphCache,
     ) -> Self {
         Self {
-            graph,
-            visible_nodes,
             filter,
             search_options,
+            graph,
+            visible_nodes,
+            cache,
         }
     }
 
@@ -141,13 +149,19 @@ impl<'a> DependencyPanel<'a> {
         self.show_search_box(ui, &searcher);
         self.show_mode_selection(ui);
 
-        let groups = Self::group_packages_by_name(self.graph);
-        let dependencies_to_show =
-            Self::compute_dependencies_to_show_from_groups(groups, &searcher);
+        let action = self.show_selection_buttons(ui);
+        // TODO: select / deselect all
 
-        self.show_selection_buttons(ui, &dependencies_to_show);
+        let tree = self.cache.dependency_tree();
+        let dependencies_to_show = Self::compute_dependencies_to_show_from_groups(tree, &searcher);
 
-        self.show_packages(ui, &dependencies_to_show, &searcher);
+        Self::show_packages(
+            ui,
+            self.graph,
+            self.visible_nodes,
+            dependencies_to_show,
+            &searcher,
+        );
     }
 
     fn show_search_box(&mut self, ui: &mut Ui, searcher: &Searcher) {
@@ -179,54 +193,39 @@ impl<'a> DependencyPanel<'a> {
         });
     }
 
-    fn compute_dependencies_to_show_from_groups(
-        groups: BTreeMap<String, Vec<(DependencyId, DependencyInfo)>>,
+    fn compute_dependencies_to_show_from_groups<'g>(
+        groups: &'g BTreeMap<String, Vec<DependencyId>>,
         searcher: &Searcher,
-    ) -> Vec<(String, Vec<(DependencyId, DependencyInfo)>)> {
-        groups
-            .into_iter()
-            .filter(|(name, _)| searcher.is_match(name))
-            .map(|(name, mut versions)| {
-                // Sort versions within each group
-                versions.sort_by(|a, b| a.1.version().cmp(&b.1.version()));
-                (name, versions)
-            })
-            .collect()
+    ) -> impl Iterator<Item = (&'g String, &'g Vec<DependencyId>)> {
+        groups.iter().filter(|(name, _)| searcher.is_match(name))
     }
 
-    fn show_selection_buttons(
-        &mut self,
-        ui: &mut Ui,
-        dependencies_to_show: &[(String, Vec<(DependencyId, DependencyInfo)>)],
-    ) {
+    fn show_selection_buttons(&mut self, ui: &mut Ui) -> Option<Action> {
         ui.separator();
+
+        let mut action = None;
 
         ui.horizontal(|ui| {
             if ui.button("Select All").clicked() {
-                for dep in dependencies_to_show {
-                    dep.1.iter().for_each(|version| {
-                        self.visible_nodes.insert(version.0);
-                    });
-                }
+                action = Some(Action::SelectAll);
             }
             if ui.button("Deselect All").clicked() {
-                for dep in dependencies_to_show {
-                    dep.1.iter().for_each(|version| {
-                        self.visible_nodes.remove(&version.0);
-                    });
-                }
+                action = Some(Action::DeselectAll);
             }
             if ui.button("Reset").clicked() {
-                *self.visible_nodes = self.graph.iter().map(|(id, _)| id).collect();
                 *self.filter = String::new();
+                *self.visible_nodes = self.graph.iter().map(|x| x.0).collect();
             }
         });
+
+        action
     }
 
-    fn show_packages(
-        &mut self,
+    fn show_packages<'g>(
         ui: &mut Ui,
-        dependencies_to_show: &[(String, Vec<(DependencyId, DependencyInfo)>)],
+        graph: &DependencyGraph,
+        visible_nodes: &mut HashSet<DependencyId>,
+        dependencies_to_show: impl Iterator<Item = (&'g String, &'g Vec<DependencyId>)>,
         searcher: &Searcher,
     ) {
         ui.separator();
@@ -235,35 +234,22 @@ impl<'a> DependencyPanel<'a> {
             for (name, versions) in dependencies_to_show {
                 if versions.len() == 1 {
                     // Single version - show as flat checkbox
-                    let (id, _) = &versions[0];
-                    show_checkbox(ui, self.visible_nodes, *id, name, Some(searcher));
+                    let id = versions[0];
+                    show_checkbox(ui, visible_nodes, id, name, Some(searcher));
                 } else {
                     // Multiple versions - show as collapsing header with nested items
                     eframe::egui::CollapsingHeader::new(rich_text_for_label(name, searcher))
                         .default_open(false)
                         .show(ui, |ui| {
-                            for (id, info) in versions {
+                            for id in versions {
+                                let info = graph.get(*id).unwrap();
                                 let version_label = info.version().unwrap_or("no version");
-                                show_checkbox(ui, self.visible_nodes, *id, version_label, None);
+                                show_checkbox(ui, visible_nodes, *id, version_label, None);
                             }
                         });
                 }
             }
         });
-    }
-
-    fn group_packages_by_name(
-        graph: &DependencyGraph,
-    ) -> BTreeMap<String, Vec<(DependencyId, DependencyInfo)>> {
-        let mut groups: BTreeMap<String, Vec<(DependencyId, DependencyInfo)>> = BTreeMap::new();
-        for (id, info) in graph.iter() {
-            let name = get_display_text(info);
-            groups
-                .entry(name.to_string())
-                .or_default()
-                .push((id, info.clone()));
-        }
-        groups
     }
 }
 

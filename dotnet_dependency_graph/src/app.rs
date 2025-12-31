@@ -8,7 +8,6 @@ use std::time::{Duration, Instant};
 
 use crate::dependency_panel::DependencyPanel;
 use crate::dependency_panel::SearchOptions;
-use crate::graph::NodeCacheManager;
 use crate::graph::graph_widget::GraphWidget;
 use crate::parser;
 use crate::session::Session;
@@ -34,11 +33,7 @@ impl FileDialogHandler {
         }
     }
 
-    fn handle(
-        &mut self,
-        app_state: &mut AppState,
-        cache_manager: &mut NodeCacheManager,
-    ) -> Result<(), Error> {
+    fn handle(&mut self, app_state: &mut AppState) -> Result<(), Error> {
         if self.mode == OpenFileMode::None {
             return Ok(());
         }
@@ -70,7 +65,6 @@ impl FileDialogHandler {
             },
         }
 
-        cache_manager.invalidate();
         self.mode = OpenFileMode::None;
 
         Ok(())
@@ -130,7 +124,6 @@ struct CentralPanelRenderer<'a> {
     zoom: &'a mut f32,
     dragging_node: &'a mut Option<DependencyId>,
     fps_counter: &'a FpsCounter,
-    cache_manager: &'a mut NodeCacheManager,
 }
 
 impl<'a> CentralPanelRenderer<'a> {
@@ -139,28 +132,18 @@ impl<'a> CentralPanelRenderer<'a> {
         zoom: &'a mut f32,
         dragging_node: &'a mut Option<DependencyId>,
         fps_counter: &'a FpsCounter,
-        cache_manager: &'a mut NodeCacheManager,
     ) -> Self {
         Self {
             pan_offset,
             zoom,
             dragging_node,
             fps_counter,
-            cache_manager,
         }
     }
 
     fn render(&mut self, ctx: &Context, app_state: &mut AppState) {
         eframe::egui::CentralPanel::default().show(ctx, |ui| {
             if let AppState::FileLoaded(file) = app_state {
-                let node_cache = self.cache_manager.get_or_compute(
-                    &file.graph,
-                    &file.node_positions,
-                    &file.visible_nodes,
-                    *self.zoom,
-                    *self.pan_offset,
-                );
-
                 ui.label(format!(
                     "File: {}",
                     file.path.file_name().unwrap_or_default().to_string_lossy()
@@ -174,7 +157,7 @@ impl<'a> CentralPanelRenderer<'a> {
                         &file.selected_framework,
                         &file.visible_nodes,
                     ),
-                    node_cache,
+                    &mut file.cache,
                 ));
 
                 // Show controls
@@ -241,10 +224,11 @@ impl<'a> PackagesViewRenderer<'a> {
         if let AppState::FileLoaded(file) = app_state {
             eframe::egui::SidePanel::left("nodes_panel").show(ctx, |ui| {
                 ui.add(DependencyPanel::new(
-                    &file.graph,
-                    &mut file.visible_nodes,
                     self.package_filter,
                     self.search_options,
+                    &file.graph,
+                    &mut file.visible_nodes,
+                    &mut file.cache,
                 ));
             });
         }
@@ -296,7 +280,6 @@ pub(crate) struct DependencyApp {
     dragging_node: Option<DependencyId>,
     error_text: Option<String>,
     fps_counter: FpsCounter,
-    cache_manager: NodeCacheManager,
     drag_happened: bool,
     package_filter: String,
     search_options: SearchOptions,
@@ -312,7 +295,6 @@ impl Default for DependencyApp {
             dragging_node: None,
             error_text: None,
             fps_counter: FpsCounter::new(),
-            cache_manager: NodeCacheManager::default(),
             drag_happened: false,
             package_filter: String::new(),
             search_options: SearchOptions::default(),
@@ -328,7 +310,6 @@ impl DependencyApp {
             &mut self.zoom,
             &mut self.dragging_node,
             &self.fps_counter,
-            &mut self.cache_manager,
         );
         renderer.render(ctx, &mut self.app_state);
     }
@@ -351,10 +332,7 @@ impl App for DependencyApp {
 
         self.fps_counter.update();
         self.file_dialog_handler.render(ctx, &mut self.app_state);
-        if let Err(error) = self
-            .file_dialog_handler
-            .handle(&mut self.app_state, &mut self.cache_manager)
-        {
+        if let Err(error) = self.file_dialog_handler.handle(&mut self.app_state) {
             self.error_text = Some(error.to_string());
         }
 

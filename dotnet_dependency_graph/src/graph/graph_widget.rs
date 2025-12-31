@@ -3,30 +3,9 @@ use eframe::egui::{Painter, Response, Sense, Ui, Vec2, Widget};
 use std::collections::{HashMap, HashSet};
 
 use crate::graph::node_cache::CachedNodeData;
-use crate::node;
+use crate::graph::node_cache::GraphCache;
 use crate::visualize;
 use crate::visualize::State;
-
-pub(crate) fn compute_nodes_cache(
-    graph: &DependencyGraph,
-    positions: &HashMap<DependencyId, (f32, f32)>,
-    visible_nodes: &HashSet<DependencyId>,
-    zoom: f32,
-    pan_offset: Vec2,
-) -> HashMap<DependencyId, CachedNodeData> {
-    puffin::profile_scope!("compute_nodes_cache");
-    let mut cache = HashMap::new();
-    let ctx = State::new(zoom, pan_offset);
-    for id in visible_nodes.iter() {
-        if let Some(&pos) = positions.get(id) {
-            let screen_pos = ctx.transform(pos);
-            let text = node::get_display_text(graph.get(*id).expect("Node should exist"));
-            let (width, height) = visualize::calculate_dimensions_from_text(text);
-            cache.insert(*id, CachedNodeData::new(screen_pos, width, height));
-        }
-    }
-    cache
-}
 
 // Grouped parameters for view state
 pub(crate) struct ViewState<'a> {
@@ -76,7 +55,7 @@ pub(crate) struct GraphWidget<'a> {
     view_state: ViewState<'a>,
     interaction_state: InteractionState<'a>,
     graph_data: GraphData<'a>,
-    node_cache: &'a mut HashMap<DependencyId, CachedNodeData>,
+    node_cache: &'a mut GraphCache,
 }
 
 impl<'a> GraphWidget<'a> {
@@ -84,7 +63,7 @@ impl<'a> GraphWidget<'a> {
         view_state: ViewState<'a>,
         interaction_state: InteractionState<'a>,
         graph_data: GraphData<'a>,
-        node_cache: &'a mut HashMap<DependencyId, CachedNodeData>,
+        node_cache: &'a mut GraphCache,
     ) -> Self {
         Self {
             view_state,
@@ -94,10 +73,10 @@ impl<'a> GraphWidget<'a> {
         }
     }
 
-    fn try_draw_edges(&self, painter: &Painter) {
+    fn try_draw_edges(&mut self, painter: &Painter) {
         if let Some(_framework) = self.graph_data.selected_framework {
             draw_all_edges(
-                self.node_cache,
+                self.node_cache.node_cache_mut(),
                 painter,
                 self.graph_data.graph,
                 self.graph_data.selected_framework.as_ref().unwrap(),
@@ -110,7 +89,7 @@ impl<'a> GraphWidget<'a> {
     fn draw_nodes(&mut self, ui: &mut Ui, painter: &Painter) {
         puffin::profile_scope!("draw_nodes");
         for id in self.graph_data.visible_nodes.iter() {
-            if let Some(data) = self.node_cache.get_mut(id) {
+            if let Some(data) = self.node_cache.node_cache_mut().get_mut(id) {
                 let dep = self
                     .graph_data
                     .graph
