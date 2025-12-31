@@ -165,6 +165,7 @@ impl<'a> DependencyPanel<'a> {
     }
 
     fn show_search_box(&mut self, ui: &mut Ui, searcher: &Searcher) {
+        puffin::profile_scope!("show_search_box");
         ui.horizontal(|ui| {
             ui.label("Filter:");
             let original_visuals = ui.visuals().clone();
@@ -197,6 +198,7 @@ impl<'a> DependencyPanel<'a> {
         groups: &'g BTreeMap<String, Vec<DependencyId>>,
         searcher: &Searcher,
     ) -> impl Iterator<Item = (&'g String, &'g Vec<DependencyId>)> {
+        puffin::profile_scope!("compute_dependencies_to_show_from_groups");
         groups.iter().filter(|(name, _)| searcher.is_match(name))
     }
 
@@ -228,12 +230,15 @@ impl<'a> DependencyPanel<'a> {
         dependencies_to_show: impl Iterator<Item = (&'g String, &'g Vec<DependencyId>)>,
         searcher: &Searcher,
     ) {
+        puffin::profile_scope!("show_packages");
         ui.separator();
 
         eframe::egui::ScrollArea::vertical().show(ui, |ui| {
             for (name, versions) in dependencies_to_show {
+                puffin::profile_scope!("show_package_entry");
                 if versions.len() == 1 {
                     // Single version - show as flat checkbox
+                    puffin::profile_scope!("show_package_single");
                     let id = versions[0];
                     show_checkbox(ui, visible_nodes, id, name, Some(searcher));
                 } else {
@@ -241,6 +246,7 @@ impl<'a> DependencyPanel<'a> {
                     eframe::egui::CollapsingHeader::new(rich_text_for_label(name, searcher))
                         .default_open(false)
                         .show(ui, |ui| {
+                            puffin::profile_scope!("show_package_multiple");
                             for id in versions {
                                 let info = graph.get(*id).unwrap();
                                 let version_label = info.version().unwrap_or("no version");
