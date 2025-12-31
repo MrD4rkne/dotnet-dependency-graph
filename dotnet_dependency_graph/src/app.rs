@@ -4,13 +4,11 @@ use eframe::App;
 use eframe::egui::Context;
 use egui_file_dialog::FileDialog;
 use puffin::GlobalProfiler;
-use std::collections::HashMap;
-use std::collections::HashSet;
 use std::time::{Duration, Instant};
 
 use crate::dependency_panel::DependencyPanel;
 use crate::dependency_panel::SearchOptions;
-use crate::graph::CachedNodeData;
+use crate::graph::NodeCacheManager;
 use crate::graph::graph_widget::GraphWidget;
 use crate::parser;
 use crate::session::Session;
@@ -262,41 +260,6 @@ enum AppState {
     FileLoaded(Box<Session>),
 }
 
-struct NodeCacheManager {
-    cache: Option<HashMap<DependencyId, CachedNodeData>>,
-}
-
-impl NodeCacheManager {
-    fn new() -> Self {
-        Self { cache: None }
-    }
-
-    fn get_or_compute(
-        &mut self,
-        graph: &dotnet_dependency_parser::graph::DependencyGraph,
-        positions: &HashMap<DependencyId, (f32, f32)>,
-        visible_nodes: &HashSet<DependencyId>,
-        zoom: f32,
-        pan_offset: eframe::egui::Vec2,
-    ) -> &mut HashMap<DependencyId, CachedNodeData> {
-        if self.cache.is_none() {
-            let cache = crate::graph::graph_widget::compute_nodes_cache(
-                graph,
-                positions,
-                visible_nodes,
-                zoom,
-                pan_offset,
-            );
-            self.cache = Some(cache);
-        }
-        self.cache.as_mut().unwrap()
-    }
-
-    fn invalidate(&mut self) {
-        self.cache = None;
-    }
-}
-
 struct FpsCounter {
     last_update: Instant,
     frames_since_last: u32,
@@ -349,7 +312,7 @@ impl Default for DependencyApp {
             dragging_node: None,
             error_text: None,
             fps_counter: FpsCounter::new(),
-            cache_manager: NodeCacheManager::new(),
+            cache_manager: NodeCacheManager::default(),
             drag_happened: false,
             package_filter: String::new(),
             search_options: SearchOptions::default(),
