@@ -102,16 +102,18 @@ pub(crate) fn draw_node(
         eframe::egui::epaint::StrokeKind::Middle,
     );
 
-    puffin::profile_scope!("label");
     let label_job = create_label(text, font_size, height, padding, max_text_width);
+    puffin::profile_scope!("painter_layout_job");
     let galley = painter.layout_job(label_job);
 
+    puffin::profile_scope!("calculate_test_pos");
     // Center the text in the node
     let text_pos = Pos2::new(
         rect.center().x - galley.size().x / 2.0,
         rect.center().y - galley.size().y / 2.0,
     );
 
+    puffin::profile_scope!("galley");
     painter.galley(text_pos, galley, constants::TEXT_COLOR);
 
     cache.rect = rect;
@@ -124,6 +126,7 @@ fn create_label(
     padding: Zoomed<f32>,
     max_text_width: Zoomed<f32>,
 ) -> LayoutJob {
+    puffin::profile_scope!("create_label");
     let font_id = FontId::proportional(font_size.into_value());
     let max_text_height = height - padding;
 
