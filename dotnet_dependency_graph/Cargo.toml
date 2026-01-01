@@ -13,6 +13,6 @@ puffin = "0.19.1"
 puffin_http = { version = "0.16.1", optional = true }
 
 [features]
-default = []
+default = ["wgpu"]
 puffin-server = [ "puffin_http" ]
 wgpu = []
