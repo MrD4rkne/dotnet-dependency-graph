@@ -21,9 +21,6 @@ fn main() -> std::result::Result<(), eframe::Error> {
             .with_inner_size([1280.0, 1024.0])
             .with_drag_and_drop(true),
 
-        #[cfg(feature = "wgpu")]
-        renderer: eframe::Renderer::Wgpu,
-
         ..Default::default()
     };
 
