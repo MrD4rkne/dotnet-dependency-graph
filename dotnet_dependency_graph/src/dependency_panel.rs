@@ -150,17 +150,16 @@ impl<'a> DependencyPanel<'a> {
         self.show_mode_selection(ui);
 
         let action = self.show_selection_buttons(ui);
-        // TODO: select / deselect all
-
         let tree = self.cache.dependency_tree();
         let dependencies_to_show = Self::compute_dependencies_to_show_from_groups(tree, &searcher);
 
-        Self::show_packages(
+        Self::show_packages_and_update_visibility(
             ui,
             self.graph,
             self.visible_nodes,
             dependencies_to_show,
             &searcher,
+            action,
         );
     }
 
@@ -223,12 +222,13 @@ impl<'a> DependencyPanel<'a> {
         action
     }
 
-    fn show_packages<'g>(
+    fn show_packages_and_update_visibility<'g>(
         ui: &mut Ui,
         graph: &DependencyGraph,
         visible_nodes: &mut HashSet<DependencyId>,
         dependencies_to_show: impl Iterator<Item = (&'g String, &'g Vec<DependencyId>)>,
         searcher: &Searcher,
+        action: Option<Action>,
     ) {
         puffin::profile_scope!("show_packages");
         ui.separator();
@@ -241,6 +241,7 @@ impl<'a> DependencyPanel<'a> {
                     puffin::profile_scope!("show_package_single");
                     let id = versions[0];
                     show_checkbox(ui, visible_nodes, id, name, Some(searcher));
+                    handle_action(visible_nodes, &id, &action);
                 } else {
                     // Multiple versions - show as collapsing header with nested items
                     eframe::egui::CollapsingHeader::new(rich_text_for_label(name, searcher))
@@ -253,10 +254,30 @@ impl<'a> DependencyPanel<'a> {
                                 show_checkbox(ui, visible_nodes, *id, version_label, None);
                             }
                         });
+                    // Handle action here so when this code will be invoked even if the header is collapsed.
+                    for id in versions {
+                        handle_action(visible_nodes, id, &action);
+                    }
                 }
             }
         });
     }
+}
+
+fn handle_action(
+    visible_nodes: &mut HashSet<DependencyId>,
+    id: &DependencyId,
+    action: &Option<Action>,
+) {
+    match action {
+        Some(Action::SelectAll) => {
+            visible_nodes.insert(*id);
+        }
+        Some(Action::DeselectAll) => {
+            visible_nodes.remove(id);
+        }
+        None => {}
+    };
 }
 
 impl<'a> Widget for DependencyPanel<'a> {
