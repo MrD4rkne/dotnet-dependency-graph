@@ -74,6 +74,7 @@ pub(crate) fn draw_node(
     cache: &mut CachedNodeData,
     state: &State,
 ) {
+    puffin::profile_scope!("draw_node");
     let width = Zoomed::new(cache.unzoomed_width, state.zoom());
     let height = Zoomed::new(cache.unzoomed_height, state.zoom());
     let padding = Zoomed::new(constants::NODE_PADDING, state.zoom());
@@ -85,6 +86,7 @@ pub(crate) fn draw_node(
     let position = state.transform_pos(cache.initial_position);
     let rect = Rect::from_center_size(position, Vec2::new(width.into_value(), height.into_value()));
 
+    puffin::profile_scope!("paint");
     // Draw rectangle background
     painter.rect_filled(
         rect,
@@ -100,6 +102,7 @@ pub(crate) fn draw_node(
         eframe::egui::epaint::StrokeKind::Middle,
     );
 
+    puffin::profile_scope!("label");
     let label_job = create_label(text, font_size, height, padding, max_text_width);
     let galley = painter.layout_job(label_job);
 

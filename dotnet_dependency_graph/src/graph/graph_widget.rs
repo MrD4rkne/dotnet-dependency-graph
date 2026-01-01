@@ -89,7 +89,9 @@ impl<'a> GraphWidget<'a> {
     fn draw_nodes(&mut self, ui: &mut Ui, painter: &Painter) {
         puffin::profile_scope!("draw_nodes");
         for id in self.graph_data.visible_nodes.iter() {
+            puffin::profile_scope!("per_visible_node");
             if let Some(data) = self.node_cache.node_cache_mut().get_mut(id) {
+                puffin::profile_scope!("node_after_cache");
                 let dep = self
                     .graph_data
                     .graph
@@ -185,6 +187,7 @@ fn draw_single_node(
     interaction_state: &mut NodeInteractionState,
     state: &State,
 ) {
+    puffin::profile_scope!("draw_single_node");
     visualize::draw_node(ui, text, painter, cache, state);
     handle_node_drag(id, cache, ui, interaction_state, state.zoom(), text);
 }
