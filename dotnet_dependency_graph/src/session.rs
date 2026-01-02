@@ -31,7 +31,7 @@ impl Session {
         node_positions: HashMap<DependencyId, (f32, f32)>,
         visible_nodes: HashSet<DependencyId>,
     ) -> Session {
-        let cache = GraphCache::new(&graph, &node_positions, &visible_nodes);
+        let cache = GraphCache::new(&graph, &node_positions);
         Self {
             path,
             graph,
@@ -54,7 +54,7 @@ impl Session {
         node_positions: HashMap<DependencyId, (f32, f32)>,
     ) -> Self {
         let all_dep_ids = graph.iter().map(|(id, _)| id).collect();
-        let cache = GraphCache::new(&graph, &node_positions, &all_dep_ids);
+        let cache = GraphCache::new(&graph, &node_positions);
         Self {
             path,
             graph,

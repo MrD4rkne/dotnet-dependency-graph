@@ -90,26 +90,30 @@ impl<'a> GraphWidget<'a> {
         puffin::profile_scope!("draw_nodes");
         for id in self.graph_data.visible_nodes.iter() {
             puffin::profile_scope!("per_visible_node");
-            if let Some(data) = self.node_cache.node_cache_mut().get_mut(id) {
-                puffin::profile_scope!("node_after_cache");
-                let dep = self
-                    .graph_data
-                    .graph
-                    .get(*id)
-                    .expect("Visible node should be in graph");
 
-                draw_single_node(
-                    id,
-                    data,
-                    dep.name(),
-                    ui,
-                    painter,
-                    &mut NodeInteractionState {
-                        dragging_node: self.interaction_state.dragging_node,
-                    },
-                    &State::new(*self.view_state.zoom, *self.view_state.pan_offset),
-                );
-            }
+            let cache = self
+                .node_cache
+                .node_cache_mut()
+                .get_mut(id)
+                .expect("All nodes should have cache");
+            puffin::profile_scope!("node_after_cache");
+            let dep = self
+                .graph_data
+                .graph
+                .get(*id)
+                .expect("Visible node should be in graph");
+
+            draw_single_node(
+                id,
+                cache,
+                dep.name(),
+                ui,
+                painter,
+                &mut NodeInteractionState {
+                    dragging_node: self.interaction_state.dragging_node,
+                },
+                &State::new(*self.view_state.zoom, *self.view_state.pan_offset),
+            );
         }
     }
 
