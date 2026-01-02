@@ -156,7 +156,7 @@ fn draw_all_edges(
 ) {
     puffin::profile_function!();
     for src_id in visible_nodes.iter() {
-        puffin::profile_scope!("Per edge");
+        puffin::profile_scope!("per_edge");
         if let Some(src_data) = cache.get(src_id) {
             let src_rect = src_data.rect;
 
