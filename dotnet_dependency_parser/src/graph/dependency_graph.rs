@@ -144,7 +144,7 @@ impl DependencyGraph {
         if let Some(metadata_map) = &metadata {
             let nonexisting_ids: Vec<_> = metadata_map
                 .iter()
-                .filter(|(id, _)| self.is_in_graph(**id))
+                .filter(|(id, _)| !self.is_in_graph(**id))
                 .map(|(id, _)| *id)
                 .collect();
             if !nonexisting_ids.is_empty() {

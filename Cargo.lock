@@ -829,6 +829,7 @@ dependencies = [
  "puffin",
  "puffin_http",
  "regex",
+ "serde_json",
 ]
 
 [[package]]
