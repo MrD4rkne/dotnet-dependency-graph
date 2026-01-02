@@ -146,6 +146,7 @@ impl FileDialogHandler {
     }
 
     fn render(&mut self, ctx: &Context, app_state: &mut AppState) {
+        puffin::profile_function!();
         self.file_dialog.update(ctx);
 
         eframe::egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
@@ -418,7 +419,7 @@ impl DependencyApp {
     }
 
     fn render_packages_view(&mut self, ctx: &Context) {
-        puffin::profile_scope!("render_packages");
+        puffin::profile_function!();
         let mut renderer =
             PackagesViewRenderer::new(&mut self.package_filter, &mut self.search_options);
         renderer.render(ctx, &mut self.app_state);

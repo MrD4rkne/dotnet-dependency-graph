@@ -72,6 +72,6 @@ fn calculate_positions(graph: &DependencyGraph) -> HashMap<DependencyId, (f32, f
 }
 
 pub(crate) fn calculate_layout(graph: &DependencyGraph) -> Vec<Layout<DependencyId>> {
-    puffin::profile_scope!("calculate_layout");
+    puffin::profile_function!();
     graph.layout(&visualize::calculate_size)
 }
