@@ -86,7 +86,7 @@ impl<'a> GraphWidget<'a> {
                     .get(&sel)
                     .expect("All nodes should be in cache");
                 let size = self.view_state.scene_rect.size();
-                *self.view_state.scene_rect = Rect::from_center_size(cache.position, size);
+                *self.view_state.scene_rect = Rect::from_center_size(*cache.position(), size);
             }
             self.node_cache.set_last_selected(current_selected);
         }
@@ -161,7 +161,7 @@ fn draw_all_edges(
         let src_data = cache
             .get(src_id)
             .expect("All nodes data should be in the cache.");
-        let src_rect = src_data.rect;
+        let src_rect = src_data.rect();
 
         let deps = graph
             .get_direct_dependencies_in_framework(*src_id, framework)
@@ -178,7 +178,7 @@ fn draw_all_edges(
             let dst_rect = cache
                 .get(&dst_id)
                 .expect("All nodes data should be in the cache.")
-                .rect;
+                .rect();
             // Highlight edges adjacent to selected dependency
             let highlight = match *selected_dependency {
                 Some(sel) => sel == *src_id || sel == dst_id,
@@ -212,7 +212,7 @@ fn handle_node_drag(
     state: &mut InteractionState,
     text: &str,
 ) {
-    let node_response = ui.interact(data.rect, ui.id().with(id), Sense::drag());
+    let node_response = ui.interact(data.rect(), ui.id().with(id), Sense::drag());
 
     if node_response.drag_started() {
         *state.dragging_node = Some(*id);
@@ -220,7 +220,7 @@ fn handle_node_drag(
 
     if node_response.dragged() && state.dragging_node.as_ref() == Some(id) {
         let delta = node_response.drag_delta();
-        data.position += delta;
+        data.move_by(delta);
     }
 
     if node_response.drag_stopped() {

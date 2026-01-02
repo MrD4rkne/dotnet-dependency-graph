@@ -79,7 +79,7 @@ impl FileDialogHandler {
                     *id,
                     (
                         session.visible_nodes.contains(id),
-                        (cache.position.x, cache.position.y),
+                        (cache.position().x, cache.position().y),
                     ),
                 )
             })

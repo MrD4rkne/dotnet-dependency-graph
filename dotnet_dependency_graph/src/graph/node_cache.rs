@@ -6,10 +6,9 @@ use std::collections::{BTreeMap, HashMap};
 
 #[derive(Debug)]
 pub(crate) struct CachedNodeData {
-    pub(crate) position: Pos2,
-    pub(crate) width: f32,
-    pub(crate) height: f32,
-    pub(crate) rect: Rect,
+    position: Pos2,
+    width: f32,
+    height: f32,
 }
 
 impl CachedNodeData {
@@ -18,8 +17,27 @@ impl CachedNodeData {
             position: screen_pos,
             width,
             height,
-            rect: Rect::from_center_size(Pos2::ZERO, Vec2::new(width, height)),
         }
+    }
+
+    pub(crate) fn position(&self) -> &Pos2 {
+        &self.position
+    }
+
+    pub(crate) fn move_by(&mut self, delta: Vec2) {
+        self.position += delta;
+    }
+
+    pub(crate) fn rect(&self) -> Rect {
+        Rect::from_center_size(self.position, Vec2::new(self.width, self.height))
+    }
+
+    pub(crate) fn width(&self) -> f32 {
+        self.width
+    }
+
+    pub(crate) fn height(&self) -> f32 {
+        self.height
     }
 }
 
