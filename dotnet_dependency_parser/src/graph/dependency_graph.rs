@@ -121,8 +121,6 @@ pub struct SerializableGraph<T> {
     pub node_metadata: Option<HashMap<usize, T>>,
 }
 
-use itertools::Itertools;
-
 #[derive(Error, Debug)]
 pub enum SerializableGraphError<T> {
     #[error("Dependency not found in the graph")]
@@ -185,61 +183,68 @@ impl DependencyGraph {
     }
 }
 
+type NodeMetadata<T> = Option<HashMap<DependencyId, T>>;
+
 impl<T> SerializableGraph<T> {
     /// Recreate a `DependencyGraph` from a `SerializableGraph`.
     pub fn from_serializable(
         self,
-    ) -> Result<(DependencyGraph, Option<HashMap<DependencyId, T>>), SerializableGraphError<T>>
-    {
+    ) -> Result<(DependencyGraph, NodeMetadata<T>), SerializableGraphError<T>> {
+        type NodeMapping = HashMap<usize, DependencyId>;
+
         let mut graph = DependencyGraph::new();
 
+        // Collect valid node ids
         let ids: HashSet<usize> = self.nodes.iter().map(|(id, _)| *id).collect();
-        let invalid_ids_from_metadata = self
+
+        // Find invalid ids referenced by metadata or edges
+        let invalid_ids: Vec<usize> = self
             .node_metadata
             .iter()
-            .flat_map(|x| x.iter())
-            .filter(|(id, _)| !ids.contains(id))
-            .map(|(id, _)| *id);
-        let invalid_ids_from_edges_from = self
-            .edges
-            .iter()
-            .filter(|(from, _, _)| !ids.contains(from))
-            .map(|(from, _, _)| *from);
-        let invalid_ids_from_edges_to = self
-            .edges
-            .iter()
-            .filter(|(_, to, _)| !ids.contains(to))
-            .map(|(_, to, _)| *to);
-        let invalid_ids: Vec<_> = invalid_ids_from_metadata
-            .merge(invalid_ids_from_edges_from)
-            .merge(invalid_ids_from_edges_to)
+            .flat_map(|m| m.keys().copied())
+            .chain(self.edges.iter().map(|(from, _, _)| *from))
+            .chain(self.edges.iter().map(|(_, to, _)| *to))
+            .filter(|id| !ids.contains(id))
             .collect();
+
         if !invalid_ids.is_empty() {
             return Err(SerializableGraphError::InvalidIds(invalid_ids, self));
         }
 
-        let (mapping, errors): (HashMap<usize, DependencyId>, Vec<_>) = self
-            .nodes
-            .into_iter()
-            .map(|(index, info)| graph.add_dependency(info).map(|id| (index, id)))
-            .partition_result();
+        // Add nodes, collecting mapping from original usize id to new DependencyId.
+        let mut mapping: NodeMapping = HashMap::new();
+        let mut errors: Vec<DependencyGraphError> = Vec::new();
+
+        for (index, info) in self.nodes {
+            match graph.add_dependency(info) {
+                Ok(id) => {
+                    mapping.insert(index, id);
+                }
+                Err(e) => {
+                    errors.push(e);
+                }
+            }
+        }
+
         if !errors.is_empty() {
             return Err(SerializableGraphError::CouldntAddDeps(errors));
         }
 
-        // Now we're sure that all mappings are correct, we can safely assume that all DependencyId and id (usize) are in the mapping.
-        self.edges.into_iter().for_each(|(from, to, framework)| {
+        // Add edges using the mapping (mapping must contain all referenced ids).
+        for (from, to, framework) in self.edges {
+            let from_id = *mapping
+                .get(&from)
+                .expect("Validated ids missing from mapping");
+            let to_id = *mapping
+                .get(&to)
+                .expect("Validated ids missing from mapping");
             graph
-                .add_relation(
-                    *mapping.get(&from).unwrap(),
-                    *mapping.get(&to).unwrap(),
-                    framework,
-                )
+                .add_relation(from_id, to_id, framework)
                 .expect("Ids have been validated in the previous steps.");
-        });
+        }
 
-        // Now update the metadata.
-        let metadata = self.node_metadata.map(|met| {
+        // Re-map metadata to use DependencyId keys.
+        let metadata: NodeMetadata<T> = self.node_metadata.map(|met| {
             met.into_iter()
                 .map(|(id, value)| (*mapping.get(&id).unwrap(), value))
                 .collect()
