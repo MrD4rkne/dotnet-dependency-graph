@@ -74,7 +74,7 @@ impl<'a> GraphWidget<'a> {
 }
 
 impl<'a> Widget for GraphWidget<'a> {
-    fn ui(self, ui: &mut Ui) -> Response {
+    fn ui(mut self, ui: &mut Ui) -> Response {
         let scene = Scene::new().zoom_range(ZOOM_MIN..=ZOOM_MAX);
 
         let inner = scene.show(ui, self.view_state.scene_rect, |ui| {
@@ -94,15 +94,7 @@ impl<'a> Widget for GraphWidget<'a> {
                     .get(*id)
                     .expect("Visible node should be in graph");
 
-                draw_single_node(
-                    id,
-                    cache,
-                    dep.name(),
-                    ui,
-                    &mut NodeInteractionState {
-                        dragging_node: self.interaction_state.dragging_node,
-                    },
-                );
+                draw_single_node(id, cache, dep.name(), ui, &mut self.interaction_state);
             }
 
             if let Some(framework) = self.graph_data.selected_framework.as_ref() {
@@ -117,11 +109,6 @@ impl<'a> Widget for GraphWidget<'a> {
         });
         inner.response
     }
-}
-
-/// Mutable state for node interactions
-struct NodeInteractionState<'a> {
-    dragging_node: &'a mut Option<DependencyId>,
 }
 
 /// Draw all edges for the given framework
@@ -168,7 +155,7 @@ fn draw_single_node(
     cache: &mut CachedNodeData,
     text: &str,
     ui: &mut Ui,
-    interaction_state: &mut NodeInteractionState,
+    interaction_state: &mut InteractionState,
 ) {
     puffin::profile_function!();
     visualize::draw_node(text, ui.painter(), cache);
@@ -180,7 +167,7 @@ fn handle_node_drag(
     id: &DependencyId,
     data: &mut CachedNodeData,
     ui: &mut Ui,
-    state: &mut NodeInteractionState,
+    state: &mut InteractionState,
     text: &str,
 ) {
     let node_response = ui.interact(data.rect, ui.id().with(id), Sense::drag());
