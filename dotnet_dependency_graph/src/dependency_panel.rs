@@ -3,7 +3,7 @@ use eframe::egui::{Response, Ui, Widget};
 use regex::Regex;
 use std::collections::{BTreeMap, HashSet};
 
-use crate::graph::GraphCache;
+use crate::{graph::GraphCache, session::InteractionState};
 
 /// Options for configuring search behavior in the packages panel.
 #[derive(Debug, Clone)]
@@ -121,7 +121,7 @@ pub(crate) struct DependencyPanel<'a> {
     graph: &'a DependencyGraph,
     visible_nodes: &'a mut HashSet<DependencyId>,
     cache: &'a mut GraphCache,
-    selected_dependency: &'a mut Option<DependencyId>,
+    interaction_state: &'a mut InteractionState,
 }
 
 impl<'a> DependencyPanel<'a> {
@@ -131,7 +131,7 @@ impl<'a> DependencyPanel<'a> {
         graph: &'a DependencyGraph,
         visible_nodes: &'a mut HashSet<DependencyId>,
         cache: &'a mut GraphCache,
-        selected_dependency: &'a mut Option<DependencyId>,
+        interaction_state: &'a mut InteractionState,
     ) -> Self {
         Self {
             filter,
@@ -139,7 +139,7 @@ impl<'a> DependencyPanel<'a> {
             graph,
             visible_nodes,
             cache,
-            selected_dependency,
+            interaction_state,
         }
     }
 
@@ -164,7 +164,7 @@ impl<'a> DependencyPanel<'a> {
             dependencies_to_show,
             &searcher,
             action,
-            self.selected_dependency,
+            self.interaction_state,
         );
     }
 
@@ -234,7 +234,7 @@ impl<'a> DependencyPanel<'a> {
         dependencies_to_show: impl Iterator<Item = (&'g String, &'g Vec<DependencyId>)>,
         searcher: &Searcher,
         action: Option<Action>,
-        selected_dependency: &mut Option<DependencyId>,
+        interaction_state: &'g mut InteractionState,
     ) {
         puffin::profile_function!();
         ui.separator();
@@ -251,7 +251,7 @@ impl<'a> DependencyPanel<'a> {
                         id,
                         name,
                         Some(searcher),
-                        selected_dependency,
+                        interaction_state,
                     );
                     handle_action(visible_nodes, &id, &action);
                 } else {
@@ -270,7 +270,7 @@ impl<'a> DependencyPanel<'a> {
                                     *id,
                                     version_label,
                                     None,
-                                    selected_dependency,
+                                    interaction_state,
                                 );
                             }
                         });
@@ -317,7 +317,7 @@ fn show_checkbox(
     id: DependencyId,
     label: &str,
     searcher: Option<&Searcher>,
-    selected_dependency: &mut Option<DependencyId>,
+    interaction_state: &mut InteractionState,
 ) {
     let mut is_visible = visible_nodes.contains(&id);
     let label = match searcher {
@@ -334,16 +334,9 @@ fn show_checkbox(
             }
         }
 
-        if ui
-            .selectable_label(selected_dependency.as_ref() == Some(&id), label)
-            .clicked()
-        {
-            // Toggle selection
-            if selected_dependency.as_ref() == Some(&id) {
-                *selected_dependency = None;
-            } else {
-                *selected_dependency = Some(id);
-            }
+        let checked = interaction_state.selected_dependency() == Some(id);
+        if ui.selectable_label(checked, label).clicked() {
+            interaction_state.select_dependency(id);
         }
     });
 }

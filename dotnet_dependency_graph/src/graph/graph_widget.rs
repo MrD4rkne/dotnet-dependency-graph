@@ -21,34 +21,38 @@ impl<'a> ViewState<'a> {
 // Grouped parameters for interaction state
 pub(crate) struct InteractionState<'a> {
     dragging_node: &'a mut Option<DependencyId>,
+    selected_dependency: &'a Option<DependencyId>,
+    selected_framework: &'a Option<&'a Framework>,
 }
 
 impl<'a> InteractionState<'a> {
-    pub(crate) fn new(dragging_node: &'a mut Option<DependencyId>) -> Self {
-        Self { dragging_node }
+    pub(crate) fn new(
+        dragging_node: &'a mut Option<DependencyId>,
+        selected_node: &'a Option<DependencyId>,
+        selected_framework: &'a Option<&Framework>,
+    ) -> Self {
+        Self {
+            dragging_node,
+            selected_dependency: selected_node,
+            selected_framework,
+        }
     }
 }
 
 // Grouped parameters for graph data
 pub(crate) struct GraphData<'a> {
     graph: &'a DependencyGraph,
-    selected_framework: &'a Option<Framework>,
     visible_nodes: &'a HashSet<DependencyId>,
-    selected_dependency: &'a Option<DependencyId>,
 }
 
 impl<'a> GraphData<'a> {
     pub(crate) fn new(
         graph: &'a DependencyGraph,
-        selected_framework: &'a Option<Framework>,
         visible_nodes: &'a HashSet<DependencyId>,
-        selected_dependency: &'a Option<DependencyId>,
     ) -> Self {
         Self {
             graph,
-            selected_framework,
             visible_nodes,
-            selected_dependency,
         }
     }
 }
@@ -76,7 +80,7 @@ impl<'a> GraphWidget<'a> {
     }
 
     fn handle_dependency_selection(&mut self) {
-        let current_selected = *self.graph_data.selected_dependency;
+        let current_selected = *self.interaction_state.selected_dependency;
         let last_selected = self.node_cache.last_selected();
         if current_selected != last_selected {
             if let Some(sel) = current_selected {
@@ -115,7 +119,7 @@ impl<'a> Widget for GraphWidget<'a> {
                     .get(*id)
                     .expect("Visible node should be in graph");
 
-                let is_selected = match *self.graph_data.selected_dependency {
+                let is_selected = match *self.interaction_state.selected_dependency {
                     Some(sel) => sel == *id,
                     None => false,
                 };
@@ -130,14 +134,14 @@ impl<'a> Widget for GraphWidget<'a> {
                 );
             }
 
-            if let Some(framework) = self.graph_data.selected_framework.as_ref() {
+            if let Some(framework) = self.interaction_state.selected_framework {
                 draw_all_edges(
                     self.node_cache.node_cache(),
                     ui.painter(),
                     self.graph_data.graph,
                     framework,
                     self.graph_data.visible_nodes,
-                    self.graph_data.selected_dependency,
+                    self.interaction_state.selected_dependency,
                 );
             }
         });

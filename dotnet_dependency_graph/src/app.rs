@@ -182,12 +182,12 @@ impl FileDialogHandler {
                     for fw in file.graph.iter_frameworks() {
                         if ui
                             .selectable_label(
-                                file.selected_framework.as_ref() == Some(fw),
+                                file.interaction_state.selected_framework() == Some(fw),
                                 fw.name(),
                             )
                             .clicked()
                         {
-                            file.selected_framework = Some(fw.clone());
+                            file.interaction_state.select_framework(fw.clone());
                         }
                     }
                 });
@@ -246,12 +246,10 @@ impl<'a> CentralPanelRenderer<'a> {
 
                 ui.add(GraphWidget::new(
                     crate::graph::graph_widget::ViewState::new(self.scene_rect),
-                    crate::graph::graph_widget::InteractionState::new(self.dragging_node),
+                    crate::graph::graph_widget::InteractionState::new(self.dragging_node, &file.interaction_state.selected_dependency(), &file.interaction_state.selected_framework()),
                     crate::graph::graph_widget::GraphData::new(
                         &file.graph,
-                        &file.selected_framework,
                         &file.visible_nodes,
-                        &file.selected_dependency,
                     ),
                     &mut file.cache,
                 ));
@@ -317,7 +315,7 @@ impl<'a> PackagesViewRenderer<'a> {
                     &file.graph,
                     &mut file.visible_nodes,
                     &mut file.cache,
-                    &mut file.selected_dependency,
+                    &mut file.interaction_state,
                 ));
             });
         }
