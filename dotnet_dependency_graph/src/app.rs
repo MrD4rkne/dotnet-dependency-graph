@@ -219,19 +219,13 @@ impl FileDialogHandler {
 /// Handles central panel rendering.
 struct CentralPanelRenderer<'a> {
     scene_rect: &'a mut eframe::egui::Rect,
-    dragging_node: &'a mut Option<DependencyId>,
     fps_counter: &'a FpsCounter,
 }
 
 impl<'a> CentralPanelRenderer<'a> {
-    fn new(
-        scene_rect: &'a mut eframe::egui::Rect,
-        dragging_node: &'a mut Option<DependencyId>,
-        fps_counter: &'a FpsCounter,
-    ) -> Self {
+    fn new(scene_rect: &'a mut eframe::egui::Rect, fps_counter: &'a FpsCounter) -> Self {
         Self {
             scene_rect,
-            dragging_node,
             fps_counter,
         }
     }
@@ -246,7 +240,7 @@ impl<'a> CentralPanelRenderer<'a> {
 
                 ui.add(GraphWidget::new(
                     crate::graph::graph_widget::ViewState::new(self.scene_rect),
-                    crate::graph::graph_widget::InteractionState::new(self.dragging_node, &file.interaction_state.selected_dependency(), &file.interaction_state.selected_framework()),
+                    &mut file.interaction_state,
                     crate::graph::graph_widget::GraphData::new(
                         &file.graph,
                         &file.visible_nodes,
@@ -363,10 +357,8 @@ impl FpsCounter {
 pub(crate) struct DependencyApp {
     app_state: AppState,
     scene_rect: eframe::egui::Rect,
-    dragging_node: Option<DependencyId>,
     error_text: Option<String>,
     fps_counter: FpsCounter,
-    drag_happened: bool,
     package_filter: String,
     search_options: SearchOptions,
     file_dialog_handler: FileDialogHandler,
@@ -380,10 +372,8 @@ impl Default for DependencyApp {
                 eframe::egui::Pos2::ZERO,
                 eframe::egui::Vec2::splat(1000.0),
             ),
-            dragging_node: None,
             error_text: None,
             fps_counter: FpsCounter::new(),
-            drag_happened: false,
             package_filter: String::new(),
             search_options: SearchOptions::default(),
             file_dialog_handler: FileDialogHandler::new(),
@@ -393,11 +383,7 @@ impl Default for DependencyApp {
 
 impl DependencyApp {
     fn render_central_panel(&mut self, ctx: &Context) {
-        let mut renderer = CentralPanelRenderer::new(
-            &mut self.scene_rect,
-            &mut self.dragging_node,
-            &self.fps_counter,
-        );
+        let mut renderer = CentralPanelRenderer::new(&mut self.scene_rect, &self.fps_counter);
         renderer.render(ctx, &mut self.app_state);
     }
 
@@ -422,8 +408,6 @@ impl App for DependencyApp {
         if let Err(error) = self.file_dialog_handler.handle(&mut self.app_state) {
             self.error_text = Some(error.to_string());
         }
-
-        self.drag_happened = false;
 
         // Render left side first not to overlay over central panel.
         self.render_packages_view(ctx);
