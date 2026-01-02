@@ -251,6 +251,7 @@ impl<'a> CentralPanelRenderer<'a> {
                         &file.graph,
                         &file.selected_framework,
                         &file.visible_nodes,
+                        &file.selected_dependency,
                     ),
                     &mut file.cache,
                 ));
@@ -316,6 +317,7 @@ impl<'a> PackagesViewRenderer<'a> {
                     &file.graph,
                     &mut file.visible_nodes,
                     &mut file.cache,
+                    &mut file.selected_dependency,
                 ));
             });
         }

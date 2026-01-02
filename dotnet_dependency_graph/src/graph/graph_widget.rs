@@ -34,6 +34,7 @@ pub(crate) struct GraphData<'a> {
     graph: &'a DependencyGraph,
     selected_framework: &'a Option<Framework>,
     visible_nodes: &'a HashSet<DependencyId>,
+    selected_dependency: &'a Option<DependencyId>,
 }
 
 impl<'a> GraphData<'a> {
@@ -41,11 +42,13 @@ impl<'a> GraphData<'a> {
         graph: &'a DependencyGraph,
         selected_framework: &'a Option<Framework>,
         visible_nodes: &'a HashSet<DependencyId>,
+        selected_dependency: &'a Option<DependencyId>,
     ) -> Self {
         Self {
             graph,
             selected_framework,
             visible_nodes,
+            selected_dependency,
         }
     }
 }
@@ -94,7 +97,19 @@ impl<'a> Widget for GraphWidget<'a> {
                     .get(*id)
                     .expect("Visible node should be in graph");
 
-                draw_single_node(id, cache, dep.name(), ui, &mut self.interaction_state);
+                let is_selected = match *self.graph_data.selected_dependency {
+                    Some(sel) => sel == *id,
+                    None => false,
+                };
+
+                draw_single_node(
+                    id,
+                    cache,
+                    dep.name(),
+                    ui,
+                    &mut self.interaction_state,
+                    is_selected,
+                );
             }
 
             if let Some(framework) = self.graph_data.selected_framework.as_ref() {
@@ -104,6 +119,7 @@ impl<'a> Widget for GraphWidget<'a> {
                     self.graph_data.graph,
                     framework,
                     self.graph_data.visible_nodes,
+                    self.graph_data.selected_dependency,
                 );
             }
         });
@@ -118,6 +134,7 @@ fn draw_all_edges(
     graph: &DependencyGraph,
     framework: &Framework,
     visible_nodes: &HashSet<DependencyId>,
+    selected_dependency: &Option<DependencyId>,
 ) {
     puffin::profile_function!();
     for src_id in visible_nodes.iter() {
@@ -144,7 +161,13 @@ fn draw_all_edges(
                 .get(&dst_id)
                 .expect("All nodes data should be in the cache.")
                 .rect;
-            visualize::draw_edge(painter, src_rect, dst_rect);
+            // Highlight edges adjacent to selected dependency
+            let highlight = match *selected_dependency {
+                Some(sel) => sel == *src_id || sel == dst_id,
+                None => false,
+            };
+
+            visualize::draw_edge(painter, src_rect, dst_rect, highlight);
         }
     }
 }
@@ -156,9 +179,10 @@ fn draw_single_node(
     text: &str,
     ui: &mut Ui,
     interaction_state: &mut InteractionState,
+    selected: bool,
 ) {
     puffin::profile_function!();
-    visualize::draw_node(text, ui.painter(), cache);
+    visualize::draw_node(text, ui.painter(), cache, selected);
     handle_node_drag(id, cache, ui, interaction_state, text);
 }
 
