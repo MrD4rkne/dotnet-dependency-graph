@@ -16,4 +16,4 @@ serde_json = "1.0"
 [features]
 default = ["wgpu"]
 puffin-server = [ "puffin_http" ]
-wgpu = []
+wgpu = ["eframe/wgpu"]
