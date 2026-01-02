@@ -1,21 +1,20 @@
 use dotnet_dependency_parser::graph::{DependencyGraph, DependencyId, Framework};
-use eframe::egui::{Painter, Response, Sense, Ui, Vec2, Widget};
+use eframe::egui::{Painter, Rect, Response, Sense, Ui, Widget, containers::Scene};
 use std::collections::{HashMap, HashSet};
 
 use crate::graph::node_cache::CachedNodeData;
 use crate::graph::node_cache::GraphCache;
 use crate::visualize;
-use crate::visualize::State;
 
 // Grouped parameters for view state
 pub(crate) struct ViewState<'a> {
-    pan_offset: &'a mut Vec2,
-    zoom: &'a mut f32,
+    /// Scene rect stored in app state; mutated by Scene::show to reflect pan/zoom.
+    scene_rect: &'a mut Rect,
 }
 
 impl<'a> ViewState<'a> {
-    pub(crate) fn new(pan_offset: &'a mut Vec2, zoom: &'a mut f32) -> Self {
-        Self { pan_offset, zoom }
+    pub(crate) fn new(scene_rect: &'a mut Rect) -> Self {
+        Self { scene_rect }
     }
 }
 
@@ -72,71 +71,57 @@ impl<'a> GraphWidget<'a> {
             node_cache,
         }
     }
-
-    fn try_draw_edges(&mut self, painter: &Painter) {
-        if let Some(_framework) = self.graph_data.selected_framework {
-            draw_all_edges(
-                self.node_cache.node_cache_mut(),
-                painter,
-                self.graph_data.graph,
-                self.graph_data.selected_framework.as_ref().unwrap(),
-                self.graph_data.visible_nodes,
-                *self.view_state.zoom,
-            );
-        }
-    }
-
-    fn draw_nodes(&mut self, ui: &mut Ui, painter: &Painter) {
-        puffin::profile_function!();
-        for id in self.graph_data.visible_nodes.iter() {
-            puffin::profile_scope!("per_visible_node");
-
-            let cache = self
-                .node_cache
-                .node_cache_mut()
-                .get_mut(id)
-                .expect("All nodes should have cache");
-            let dep = self
-                .graph_data
-                .graph
-                .get(*id)
-                .expect("Visible node should be in graph");
-
-            draw_single_node(
-                id,
-                cache,
-                dep.name(),
-                ui,
-                painter,
-                &mut NodeInteractionState {
-                    dragging_node: self.interaction_state.dragging_node,
-                },
-                &State::new(*self.view_state.zoom, *self.view_state.pan_offset),
-            );
-        }
-    }
-
-    fn handle_interactions(&mut self, response: &Response, ui: &Ui) {
-        handle_panning(
-            response,
-            self.view_state.pan_offset,
-            self.interaction_state.dragging_node,
-        );
-        handle_zoom(response, ui, self.view_state.zoom);
-    }
 }
 
 impl<'a> Widget for GraphWidget<'a> {
     fn ui(mut self, ui: &mut Ui) -> Response {
-        let (response, painter) = ui.allocate_painter(ui.available_size(), Sense::click_and_drag());
+        // Use a Scene container to handle pan & zoom. Store the scene rect in
+        // the application state (via ViewState) so the Scene can mutate it.
+        let scene = Scene::new().zoom_range(ZOOM_MIN..=ZOOM_MAX);
+        let node_cache = &mut *self.node_cache;
+        let graph_data = &self.graph_data;
+        let interaction_state = &mut self.interaction_state;
+        let scene_rect = self.view_state.scene_rect;
 
-        self.handle_interactions(&response, ui);
+        let inner = scene.show(ui, scene_rect, |ui| {
+            // Draw nodes in scene coordinates.
+            puffin::profile_function!();
+            for id in graph_data.visible_nodes.iter() {
+                puffin::profile_scope!("per_visible_node");
 
-        self.draw_nodes(ui, &painter);
+                let cache = node_cache
+                    .node_cache_mut()
+                    .get_mut(id)
+                    .expect("All nodes should have cache");
+                let dep = graph_data
+                    .graph
+                    .get(*id)
+                    .expect("Visible node should be in graph");
 
-        self.try_draw_edges(&painter);
+                draw_single_node(
+                    id,
+                    cache,
+                    dep.name(),
+                    ui,
+                    &mut NodeInteractionState {
+                        dragging_node: interaction_state.dragging_node,
+                    },
+                );
+            }
 
-        response
+            if let Some(framework) = graph_data.selected_framework.as_ref() {
+                draw_all_edges(
+                    node_cache.node_cache(),
+                    ui.painter(),
+                    graph_data.graph,
+                    framework,
+                    graph_data.visible_nodes,
+                );
+            }
+        });
+
+        // Return the response of the inner scene UI so upstream can react to interactions.
+        inner.response
     }
 }
 
@@ -152,7 +137,6 @@ fn draw_all_edges(
     graph: &DependencyGraph,
     framework: &Framework,
     visible_nodes: &HashSet<DependencyId>,
-    zoom: f32,
 ) {
     puffin::profile_function!();
     for src_id in visible_nodes.iter() {
@@ -173,7 +157,7 @@ fn draw_all_edges(
 
                     if let Some(dst_data) = cache.get(&dst_id) {
                         let dst_rect = dst_data.rect;
-                        visualize::draw_edge(painter, src_rect, dst_rect, zoom);
+                        visualize::draw_edge(painter, src_rect, dst_rect);
                     }
                 }
             }
@@ -187,13 +171,11 @@ fn draw_single_node(
     cache: &mut CachedNodeData,
     text: &str,
     ui: &mut Ui,
-    painter: &Painter,
     interaction_state: &mut NodeInteractionState,
-    state: &State,
 ) {
     puffin::profile_function!();
-    visualize::draw_node(ui, text, painter, cache, state);
-    handle_node_drag(id, cache, ui, interaction_state, state.zoom(), text);
+    visualize::draw_node(text, ui.painter(), cache);
+    handle_node_drag(id, cache, ui, interaction_state, text);
 }
 
 /// Handle dragging interaction for a single node
@@ -202,7 +184,6 @@ fn handle_node_drag(
     data: &mut CachedNodeData,
     ui: &mut Ui,
     state: &mut NodeInteractionState,
-    zoom: f32,
     text: &str,
 ) {
     let node_response = ui.interact(data.rect, ui.id().with(id), Sense::drag());
@@ -212,7 +193,8 @@ fn handle_node_drag(
     }
 
     if node_response.dragged() && state.dragging_node.as_ref() == Some(id) {
-        let delta = node_response.drag_delta() / zoom;
+        // In scene coordinates, drag_delta() is the delta in world-space already.
+        let delta = node_response.drag_delta();
         data.position += delta;
     }
 
@@ -223,29 +205,8 @@ fn handle_node_drag(
     node_response.on_hover_text(text);
 }
 
-/// Handle panning of the graph view
-fn handle_panning(
-    response: &Response,
-    pan_offset: &mut Vec2,
-    dragging_node: &Option<DependencyId>,
-) {
-    if response.dragged() && dragging_node.is_none() {
-        *pan_offset += response.drag_delta();
-    }
-}
+// Panning is now handled by Scene::register_pan_and_zoom.
 
 const ZOOM_MIN: f32 = 0.1;
 const ZOOM_MAX: f32 = 3.0;
-const ZOOM_SENSITIVITY: f32 = 0.001;
-const SCROLL_THRESHOLD: f32 = 0.1;
-
-/// Handle zoom with mouse wheel
-fn handle_zoom(response: &Response, ui: &Ui, zoom: &mut f32) {
-    if response.hovered() {
-        let scroll = ui.input(|i| i.smooth_scroll_delta.y);
-        if scroll.abs() > SCROLL_THRESHOLD {
-            *zoom *= 1.0 + scroll * ZOOM_SENSITIVITY;
-            *zoom = zoom.clamp(ZOOM_MIN, ZOOM_MAX);
-        }
-    }
-}
+// Zooming/panning behavior is supplied by `Scene`.
