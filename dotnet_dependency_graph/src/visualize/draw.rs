@@ -5,7 +5,6 @@ use eframe::egui::text::LayoutJob;
 use eframe::egui::{Color32, FontId, Painter, Pos2, Rect, Stroke, Vec2};
 use std::collections::HashMap;
 
-use super::Zoomed;
 use super::constants;
 
 // Edge drawing constants
@@ -27,34 +26,6 @@ pub(crate) fn calculate_dimensions_from_text(text: &str) -> (f32, f32) {
     (width, height)
 }
 
-pub(crate) struct State {
-    zoom: f32,
-    pan_offset: Vec2,
-}
-
-impl State {
-    pub(crate) fn new(zoom: f32, pan_offset: Vec2) -> Self {
-        Self { zoom, pan_offset }
-    }
-
-    pub(crate) fn transform(&self, pos: (f32, f32)) -> Pos2 {
-        transform_position(pos, self.zoom, self.pan_offset)
-    }
-
-    pub(crate) fn transform_pos(&self, pos: Pos2) -> Pos2 {
-        self.transform((pos.x, pos.y))
-    }
-
-    pub(crate) fn zoom(&self) -> f32 {
-        self.zoom
-    }
-}
-
-fn transform_position(pos: (f32, f32), zoom: f32, pan_offset: Vec2) -> Pos2 {
-    let pos_vec = Pos2::new(pos.0, pos.1);
-    (pos_vec.to_vec2() * zoom + pan_offset).to_pos2()
-}
-
 fn get_lines_count_with_max_length(text: &str) -> (usize, usize) {
     text.lines()
         .fold((0usize, 0usize), |(count, max_len), line| {
@@ -67,39 +38,31 @@ pub(crate) fn calculate_size(_id: &DependencyId, dep: &DependencyInfo) -> (f64, 
     (width as f64, height as f64)
 }
 
-pub(crate) fn draw_node(
-    _ui: &mut eframe::egui::Ui,
-    text: &str,
-    painter: &eframe::egui::Painter,
-    cache: &mut CachedNodeData,
-    state: &State,
-) {
+pub(crate) fn draw_node(text: &str, painter: &eframe::egui::Painter, cache: &mut CachedNodeData) {
     puffin::profile_function!();
-    let width = Zoomed::new(cache.unzoomed_width, state.zoom());
-    let height = Zoomed::new(cache.unzoomed_height, state.zoom());
-    let padding = Zoomed::new(constants::NODE_PADDING, state.zoom());
-    let corner_radius = Zoomed::new(constants::NODE_CORNER_RADIUS, state.zoom());
-    let border_width = Zoomed::new(constants::NODE_BORDER_WIDTH, state.zoom());
-    let font_size = Zoomed::new(constants::FONT_SIZE, state.zoom());
+    // Sizes and positions are in scene (unzoomed) coordinates. The Scene container
+    // will apply the current zoom/translation automatically.
+    let width = cache.unzoomed_width;
+    let height = cache.unzoomed_height;
+    let padding = constants::NODE_PADDING;
+    let corner_radius = constants::NODE_CORNER_RADIUS;
+    let border_width = constants::NODE_BORDER_WIDTH;
+    let font_size = constants::FONT_SIZE;
     let max_text_width = width - padding;
 
-    let position = state.transform_pos(cache.position);
-    let rect = Rect::from_center_size(position, Vec2::new(width.into_value(), height.into_value()));
+    let position = cache.position;
+    let rect = Rect::from_center_size(position, Vec2::new(width, height));
 
     {
         puffin::profile_scope!("paint");
         // Draw rectangle background
-        painter.rect_filled(
-            rect,
-            corner_radius.into_value(),
-            constants::NODE_BACKGROUND_COLOR,
-        );
+        painter.rect_filled(rect, corner_radius, constants::NODE_BACKGROUND_COLOR);
 
         // Draw rectangle border
         painter.rect_stroke(
             rect,
-            corner_radius.into_value(),
-            Stroke::new(border_width.into_value(), constants::NODE_BORDER_COLOR),
+            corner_radius,
+            Stroke::new(border_width, constants::NODE_BORDER_COLOR),
             eframe::egui::epaint::StrokeKind::Middle,
         );
     }
@@ -126,13 +89,13 @@ pub(crate) fn draw_node(
 
 fn create_label(
     text: &str,
-    font_size: Zoomed<f32>,
-    height: Zoomed<f32>,
-    padding: Zoomed<f32>,
-    max_text_width: Zoomed<f32>,
+    font_size: f32,
+    height: f32,
+    padding: f32,
+    max_text_width: f32,
 ) -> LayoutJob {
     puffin::profile_function!();
-    let font_id = FontId::proportional(font_size.into_value());
+    let font_id = FontId::proportional(font_size);
     let max_text_height = height - padding;
 
     let mut job = LayoutJob::default();
@@ -141,8 +104,8 @@ fn create_label(
         0.0,
         TextFormat::simple(font_id, constants::TEXT_COLOR),
     );
-    job.wrap.max_rows = ((max_text_height / font_size).into_value().floor() as usize).max(1);
-    job.wrap.max_width = max_text_width.into_value();
+    job.wrap.max_rows = ((max_text_height / font_size).floor() as usize).max(1);
+    job.wrap.max_width = max_text_width;
 
     job
 }
@@ -195,7 +158,7 @@ fn rect_edge_point(rect: Rect, direction: Vec2) -> Pos2 {
 }
 
 /// Draw a single edge with arrow from source to destination
-pub(crate) fn draw_edge(painter: &Painter, src_rect: Rect, dst_rect: Rect, zoom: f32) {
+pub(crate) fn draw_edge(painter: &Painter, src_rect: Rect, dst_rect: Rect) {
     let src_center = src_rect.center();
     let dst_center = dst_rect.center();
 
@@ -214,7 +177,7 @@ pub(crate) fn draw_edge(painter: &Painter, src_rect: Rect, dst_rect: Rect, zoom:
 
     // Draw arrow head at destination edge
     let perp = Vec2::new(-dir.y, dir.x);
-    let arrow_size = Zoomed::new(ARROW_SIZE, zoom).into_value();
+    let arrow_size = ARROW_SIZE;
 
     // Two sides of the arrow
     painter.line_segment(

@@ -218,22 +218,19 @@ impl FileDialogHandler {
 
 /// Handles central panel rendering.
 struct CentralPanelRenderer<'a> {
-    pan_offset: &'a mut eframe::egui::Vec2,
-    zoom: &'a mut f32,
+    scene_rect: &'a mut eframe::egui::Rect,
     dragging_node: &'a mut Option<DependencyId>,
     fps_counter: &'a FpsCounter,
 }
 
 impl<'a> CentralPanelRenderer<'a> {
     fn new(
-        pan_offset: &'a mut eframe::egui::Vec2,
-        zoom: &'a mut f32,
+        scene_rect: &'a mut eframe::egui::Rect,
         dragging_node: &'a mut Option<DependencyId>,
         fps_counter: &'a FpsCounter,
     ) -> Self {
         Self {
-            pan_offset,
-            zoom,
+            scene_rect,
             dragging_node,
             fps_counter,
         }
@@ -248,7 +245,7 @@ impl<'a> CentralPanelRenderer<'a> {
                 ));
 
                 ui.add(GraphWidget::new(
-                    crate::graph::graph_widget::ViewState::new(self.pan_offset, self.zoom),
+                    crate::graph::graph_widget::ViewState::new(self.scene_rect),
                     crate::graph::graph_widget::InteractionState::new(self.dragging_node),
                     crate::graph::graph_widget::GraphData::new(
                         &file.graph,
@@ -262,16 +259,8 @@ impl<'a> CentralPanelRenderer<'a> {
                 ui.with_layout(
                     eframe::egui::Layout::bottom_up(eframe::egui::Align::LEFT),
                     |ui| {
-                        ui.label(format!(
-                            "Zoom: {:.1}x | Pan: ({:.0}, {:.0}) | FPS: {:.0}",
-                            self.zoom,
-                            self.pan_offset.x,
-                            self.pan_offset.y,
-                            self.fps_counter.fps()
-                        ));
-                        ui.label(
-                        "Mouse wheel to zoom | Drag background to pan | Drag nodes to move them",
-                    );
+                        ui.label(format!("FPS: {:.0}", self.fps_counter.fps()));
+                        ui.label("Ctrl + Mouse wheel to zoom | Drag background to pan | Drag nodes to move them");
                     },
                 );
             } else {
@@ -373,8 +362,7 @@ impl FpsCounter {
 
 pub(crate) struct DependencyApp {
     app_state: AppState,
-    pan_offset: eframe::egui::Vec2,
-    zoom: f32,
+    scene_rect: eframe::egui::Rect,
     dragging_node: Option<DependencyId>,
     error_text: Option<String>,
     fps_counter: FpsCounter,
@@ -388,8 +376,10 @@ impl Default for DependencyApp {
     fn default() -> Self {
         Self {
             app_state: AppState::NoFile,
-            pan_offset: eframe::egui::Vec2::ZERO,
-            zoom: 1.0,
+            scene_rect: eframe::egui::Rect::from_min_size(
+                eframe::egui::Pos2::ZERO,
+                eframe::egui::Vec2::splat(1000.0),
+            ),
             dragging_node: None,
             error_text: None,
             fps_counter: FpsCounter::new(),
@@ -404,8 +394,7 @@ impl Default for DependencyApp {
 impl DependencyApp {
     fn render_central_panel(&mut self, ctx: &Context) {
         let mut renderer = CentralPanelRenderer::new(
-            &mut self.pan_offset,
-            &mut self.zoom,
+            &mut self.scene_rect,
             &mut self.dragging_node,
             &self.fps_counter,
         );
