@@ -64,14 +64,8 @@ fn compute_nodes_cache(
     for (id, info) in graph.iter() {
         let text = node::get_display_text(info);
         let (width, height) = visualize::calculate_dimensions_from_text(text);
-        let (x, y) = positions
-            .get(&id)
-            .copied()
-            .unwrap_or((0.0_f32, 0.0_f32));
-        cache.insert(
-            id,
-            CachedNodeData::new(Pos2::new(x, y), width, height),
-        );
+        let (x, y) = positions.get(&id).copied().unwrap_or((0.0_f32, 0.0_f32));
+        cache.insert(id, CachedNodeData::new(Pos2::new(x, y), width, height));
     }
     cache
 }
