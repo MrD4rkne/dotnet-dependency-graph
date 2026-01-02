@@ -2,17 +2,40 @@ use crate::graph::CachedNodeData;
 use dotnet_dependency_parser::graph::{DependencyId, DependencyInfo, Layout};
 use eframe::egui::TextFormat;
 use eframe::egui::text::LayoutJob;
-use eframe::egui::{Color32, FontId, Painter, Pos2, Rect, Stroke, Vec2};
+use eframe::egui::{FontId, Painter, Pos2, Rect, Stroke, Vec2};
 use std::collections::HashMap;
 
-use super::constants;
+mod constants {
+    use eframe::egui::Color32;
 
-// Edge drawing constants
-const EDGE_STROKE_WIDTH: f32 = 2.0;
-const EDGE_COLOR: Color32 = Color32::from_rgb(100, 100, 100);
-const ARROW_SIZE: f32 = 10.0;
-const ARROW_HEAD_WIDTH_FACTOR: f32 = 0.5;
-const LINE_HEIGHT: f32 = 20.0;
+    // Node dimensions
+    pub(crate) const NODE_HEIGHT: f32 = 60.0;
+    pub(crate) const NODE_PADDING: f32 = 16.0;
+    pub(crate) const NODE_CORNER_RADIUS: f32 = 4.0;
+    pub(crate) const NODE_BORDER_WIDTH: f32 = 2.5;
+
+    // Edge dimentions
+    pub(crate) const EDGE_STROKE_WIDTH: f32 = 2.0;
+    pub(crate) const ARROW_SIZE: f32 = 10.0;
+    pub(crate) const ARROW_HEAD_WIDTH_FACTOR: f32 = 0.5;
+
+    // Text sizing constants
+    pub(crate) const CHAR_WIDTH: f64 = 8.0;
+    pub(crate) const TEXT_PADDING: f64 = 32.0;
+    pub(crate) const MIN_WIDTH: f64 = 120.0;
+    pub(crate) const MAX_WIDTH: f64 = 300.0;
+    pub(crate) const FONT_SIZE: f32 = 16.0;
+    pub(crate) const LINE_HEIGHT: f32 = 20.0;
+
+    // Colors
+    pub(crate) const NODE_BACKGROUND_COLOR: Color32 = Color32::from_rgb(70, 130, 180);
+    pub(crate) const NODE_BORDER_COLOR: Color32 = Color32::from_rgb(30, 60, 100);
+    pub(crate) const TEXT_COLOR: Color32 = Color32::WHITE;
+    pub(crate) const EDGE_COLOR: Color32 = Color32::from_rgb(100, 100, 100);
+
+    // Layout constants
+    pub(crate) const LAYOUT_SPACING: f64 = 100.0;
+}
 
 pub(crate) fn calculate_dimensions_from_text(text: &str) -> (f32, f32) {
     let (line_count, max_line_length) = get_lines_count_with_max_length(text);
@@ -20,7 +43,7 @@ pub(crate) fn calculate_dimensions_from_text(text: &str) -> (f32, f32) {
     let text_width = (max_line_length as f64) * constants::CHAR_WIDTH + constants::TEXT_PADDING;
     let width = text_width.clamp(constants::MIN_WIDTH, constants::MAX_WIDTH) as f32;
 
-    let height = (LINE_HEIGHT * line_count as f32 + constants::NODE_PADDING * 2.0)
+    let height = (constants::LINE_HEIGHT * line_count as f32 + constants::NODE_PADDING * 2.0)
         .max(constants::NODE_HEIGHT);
 
     (width, height)
@@ -173,26 +196,26 @@ pub(crate) fn draw_edge(painter: &Painter, src_rect: Rect, dst_rect: Rect) {
     // Draw line from edge to edge
     painter.line_segment(
         [src_edge, dst_edge],
-        Stroke::new(EDGE_STROKE_WIDTH, EDGE_COLOR),
+        Stroke::new(constants::EDGE_STROKE_WIDTH, constants::EDGE_COLOR),
     );
 
     // Draw arrow head at destination edge
     let perp = Vec2::new(-dir.y, dir.x);
-    let arrow_size = ARROW_SIZE;
+    let arrow_size = constants::ARROW_SIZE;
 
     // Two sides of the arrow
     painter.line_segment(
         [
             dst_edge,
-            dst_edge - dir * arrow_size + perp * arrow_size * ARROW_HEAD_WIDTH_FACTOR,
+            dst_edge - dir * arrow_size + perp * arrow_size * constants::ARROW_HEAD_WIDTH_FACTOR,
         ],
-        Stroke::new(EDGE_STROKE_WIDTH, EDGE_COLOR),
+        Stroke::new(constants::EDGE_STROKE_WIDTH, constants::EDGE_COLOR),
     );
     painter.line_segment(
         [
             dst_edge,
-            dst_edge - dir * arrow_size - perp * arrow_size * ARROW_HEAD_WIDTH_FACTOR,
+            dst_edge - dir * arrow_size - perp * arrow_size * constants::ARROW_HEAD_WIDTH_FACTOR,
         ],
-        Stroke::new(EDGE_STROKE_WIDTH, EDGE_COLOR),
+        Stroke::new(constants::EDGE_STROKE_WIDTH, constants::EDGE_COLOR),
     );
 }
