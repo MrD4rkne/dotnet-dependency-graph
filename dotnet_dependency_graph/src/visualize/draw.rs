@@ -183,6 +183,7 @@ fn rect_edge_point(rect: Rect, direction: Vec2) -> Pos2 {
 
 /// Draw a single edge with arrow from source to destination
 pub(crate) fn draw_edge(painter: &Painter, src_rect: Rect, dst_rect: Rect) {
+    puffin::profile_function!();
     let src_center = src_rect.center();
     let dst_center = dst_rect.center();
 
