@@ -62,14 +62,16 @@ fn compute_nodes_cache(
     puffin::profile_scope!("compute_nodes_cache");
     let mut cache = HashMap::new();
     for (id, info) in graph.iter() {
-        if let Some(&pos) = positions.get(&id) {
-            let text = node::get_display_text(info);
-            let (width, height) = visualize::calculate_dimensions_from_text(text);
-            cache.insert(
-                id,
-                CachedNodeData::new(Pos2::new(pos.0, pos.1), width, height),
-            );
-        }
+        let text = node::get_display_text(info);
+        let (width, height) = visualize::calculate_dimensions_from_text(text);
+        let (x, y) = positions
+            .get(&id)
+            .copied()
+            .unwrap_or((0.0_f32, 0.0_f32));
+        cache.insert(
+            id,
+            CachedNodeData::new(Pos2::new(x, y), width, height),
+        );
     }
     cache
 }
