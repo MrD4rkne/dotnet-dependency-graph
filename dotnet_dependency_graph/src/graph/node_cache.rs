@@ -2,7 +2,7 @@ use crate::node;
 use crate::visualize;
 use dotnet_dependency_parser::graph::{DependencyGraph, DependencyId};
 use eframe::egui::{Pos2, Rect, Vec2};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap};
 
 #[derive(Debug)]
 pub(crate) struct CachedNodeData {
@@ -33,9 +33,8 @@ impl GraphCache {
     pub(crate) fn new(
         graph: &dotnet_dependency_parser::graph::DependencyGraph,
         positions: &HashMap<DependencyId, (f32, f32)>,
-        visible_nodes: &HashSet<DependencyId>,
     ) -> Self {
-        let node_cache = compute_nodes_cache(graph, positions, visible_nodes);
+        let node_cache = compute_nodes_cache(graph, positions);
         let dependency_tree = group_packages_by_name(graph);
         Self {
             node_cache,
@@ -59,16 +58,15 @@ impl GraphCache {
 fn compute_nodes_cache(
     graph: &DependencyGraph,
     positions: &HashMap<DependencyId, (f32, f32)>,
-    visible_nodes: &HashSet<DependencyId>,
 ) -> HashMap<DependencyId, CachedNodeData> {
     puffin::profile_scope!("compute_nodes_cache");
     let mut cache = HashMap::new();
-    for id in visible_nodes.iter() {
-        if let Some(&pos) = positions.get(id) {
-            let text = node::get_display_text(graph.get(*id).expect("Node should exist"));
+    for (id, info) in graph.iter() {
+        if let Some(&pos) = positions.get(&id) {
+            let text = node::get_display_text(info);
             let (width, height) = visualize::calculate_dimensions_from_text(text);
             cache.insert(
-                *id,
+                id,
                 CachedNodeData::new(Pos2::new(pos.0, pos.1), width, height),
             );
         }
