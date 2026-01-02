@@ -74,11 +74,29 @@ impl<'a> GraphWidget<'a> {
             node_cache,
         }
     }
+
+    fn handle_dependency_selection(&mut self) {
+        let current_selected = *self.graph_data.selected_dependency;
+        let last_selected = self.node_cache.last_selected();
+        if current_selected != last_selected {
+            if let Some(sel) = current_selected {
+                let cache = self
+                    .node_cache
+                    .node_cache()
+                    .get(&sel)
+                    .expect("All nodes should be in cache");
+                let size = self.view_state.scene_rect.size();
+                *self.view_state.scene_rect = Rect::from_center_size(cache.position, size);
+            }
+            self.node_cache.set_last_selected(current_selected);
+        }
+    }
 }
 
 impl<'a> Widget for GraphWidget<'a> {
     fn ui(mut self, ui: &mut Ui) -> Response {
         let scene = Scene::new().zoom_range(ZOOM_MIN..=ZOOM_MAX);
+        self.handle_dependency_selection();
 
         let inner = scene.show(ui, self.view_state.scene_rect, |ui| {
             // Draw nodes in scene coordinates.
