@@ -260,7 +260,7 @@ impl<'a> CentralPanelRenderer<'a> {
                     eframe::egui::Layout::bottom_up(eframe::egui::Align::LEFT),
                     |ui| {
                         ui.label(format!("FPS: {:.0}", self.fps_counter.fps()));
-                        ui.label("Ctrl + Mouse wheel to zoom | Drag background to pan | Drag nodes to move them");
+                        ui.label("Ctrl + mouse wheel to zoom | Drag background to pan | Drag nodes to move them");
                     },
                 );
             } else {
