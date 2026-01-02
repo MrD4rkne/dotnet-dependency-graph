@@ -20,12 +20,26 @@ pub(crate) struct Session {
 }
 
 impl Session {
-    pub(crate) fn load_from(
+    pub(crate) fn load_from(path: PathBuf, graph: DependencyGraph) -> Session {
+        let positions = calculate_positions(&graph);
+        Session::new(path, graph, positions)
+    }
+
+    pub(crate) fn load_from_saved(
         path: PathBuf,
         graph: DependencyGraph,
-    ) -> Result<Session, Box<dyn std::error::Error + Send + Sync>> {
-        let positions = calculate_positions(&graph);
-        Ok(Session::new(path, graph, positions))
+        node_positions: HashMap<DependencyId, (f32, f32)>,
+        visible_nodes: HashSet<DependencyId>,
+    ) -> Session {
+        let cache = GraphCache::new(&graph, &node_positions, &visible_nodes);
+        Self {
+            path,
+            graph,
+            node_positions,
+            selected_framework: None,
+            visible_nodes,
+            cache,
+        }
     }
 
     pub(crate) fn merge(&mut self, graph: DependencyGraph) -> Result<(), DependencyGraphError> {

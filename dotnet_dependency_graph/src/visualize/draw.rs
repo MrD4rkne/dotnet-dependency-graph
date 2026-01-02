@@ -83,7 +83,7 @@ pub(crate) fn draw_node(
     let font_size = Zoomed::new(constants::FONT_SIZE, state.zoom());
     let max_text_width = width - padding;
 
-    let position = state.transform_pos(cache.initial_position);
+    let position = state.transform_pos(cache.position);
     let rect = Rect::from_center_size(position, Vec2::new(width.into_value(), height.into_value()));
 
     puffin::profile_scope!("paint");
