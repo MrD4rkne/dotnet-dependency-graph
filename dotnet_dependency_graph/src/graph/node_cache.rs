@@ -5,13 +5,13 @@ use eframe::egui::{Pos2, Rect, Vec2};
 use std::collections::{BTreeMap, HashMap};
 
 #[derive(Debug)]
-pub(crate) struct CachedNodeData {
+pub(crate) struct NodeData {
     position: Pos2,
     width: f32,
     height: f32,
 }
 
-impl CachedNodeData {
+impl NodeData {
     pub(crate) fn new(screen_pos: Pos2, width: f32, height: f32) -> Self {
         Self {
             position: screen_pos,
@@ -43,7 +43,7 @@ impl CachedNodeData {
 
 #[derive(Debug)]
 pub(crate) struct GraphCache {
-    node_cache: HashMap<DependencyId, CachedNodeData>,
+    node_cache: HashMap<DependencyId, NodeData>,
     dependency_tree: BTreeMap<String, Vec<DependencyId>>,
     // Keep track of the last selected dependency so UI can react to selection changes
     last_selected_dependency: Option<DependencyId>,
@@ -67,11 +67,11 @@ impl GraphCache {
         &self.dependency_tree
     }
 
-    pub(crate) fn node_cache_mut(&mut self) -> &mut HashMap<DependencyId, CachedNodeData> {
+    pub(crate) fn node_cache_mut(&mut self) -> &mut HashMap<DependencyId, NodeData> {
         &mut self.node_cache
     }
 
-    pub(crate) fn node_cache(&self) -> &HashMap<DependencyId, CachedNodeData> {
+    pub(crate) fn node_cache(&self) -> &HashMap<DependencyId, NodeData> {
         &self.node_cache
     }
 
@@ -87,14 +87,14 @@ impl GraphCache {
 fn compute_nodes_cache(
     graph: &DependencyGraph,
     positions: &HashMap<DependencyId, (f32, f32)>,
-) -> HashMap<DependencyId, CachedNodeData> {
+) -> HashMap<DependencyId, NodeData> {
     puffin::profile_scope!("compute_nodes_cache");
     let mut cache = HashMap::new();
     for (id, info) in graph.iter() {
         let text = node::get_display_text(info);
         let (width, height) = visualize::calculate_dimensions_from_text(text);
         let (x, y) = positions.get(&id).copied().unwrap_or((0.0_f32, 0.0_f32));
-        cache.insert(id, CachedNodeData::new(Pos2::new(x, y), width, height));
+        cache.insert(id, NodeData::new(Pos2::new(x, y), width, height));
     }
     cache
 }
