@@ -24,8 +24,8 @@ impl InteractionState {
         self.selected_framework.as_ref()
     }
 
-    pub(crate) fn select_dependency(&mut self, id: DependencyId) {
-        self.selected_dependency = Some(id);
+    pub(crate) fn select_dependency(&mut self, id: Option<DependencyId>) {
+        self.selected_dependency = id;
     }
 
     pub(crate) fn select_framework(&mut self, framework: Framework) {
