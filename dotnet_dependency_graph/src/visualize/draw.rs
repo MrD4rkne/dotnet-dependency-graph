@@ -115,8 +115,10 @@ pub(crate) fn draw_node(
             rect.center().y - galley.size().y / 2.0,
         );
 
-        puffin::profile_scope!("galley");
-        painter.galley(text_pos, galley, constants::TEXT_COLOR);
+        {
+            puffin::profile_scope!("galley");
+            painter.galley(text_pos, galley, constants::TEXT_COLOR);
+        }
     }
 
     cache.rect = rect;
