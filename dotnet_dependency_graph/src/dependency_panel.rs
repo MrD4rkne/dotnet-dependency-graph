@@ -121,6 +121,7 @@ pub(crate) struct DependencyPanel<'a> {
     graph: &'a DependencyGraph,
     visible_nodes: &'a mut HashSet<DependencyId>,
     cache: &'a mut GraphCache,
+    selected_dependency: &'a mut Option<DependencyId>,
 }
 
 impl<'a> DependencyPanel<'a> {
@@ -130,6 +131,7 @@ impl<'a> DependencyPanel<'a> {
         graph: &'a DependencyGraph,
         visible_nodes: &'a mut HashSet<DependencyId>,
         cache: &'a mut GraphCache,
+        selected_dependency: &'a mut Option<DependencyId>,
     ) -> Self {
         Self {
             filter,
@@ -137,6 +139,7 @@ impl<'a> DependencyPanel<'a> {
             graph,
             visible_nodes,
             cache,
+            selected_dependency,
         }
     }
 
@@ -161,6 +164,7 @@ impl<'a> DependencyPanel<'a> {
             dependencies_to_show,
             &searcher,
             action,
+            self.selected_dependency,
         );
     }
 
@@ -230,6 +234,7 @@ impl<'a> DependencyPanel<'a> {
         dependencies_to_show: impl Iterator<Item = (&'g String, &'g Vec<DependencyId>)>,
         searcher: &Searcher,
         action: Option<Action>,
+        selected_dependency: &mut Option<DependencyId>,
     ) {
         puffin::profile_function!();
         ui.separator();
@@ -240,7 +245,14 @@ impl<'a> DependencyPanel<'a> {
                     // Single version - show as flat checkbox
                     puffin::profile_scope!("show_package_single");
                     let id = versions[0];
-                    show_checkbox(ui, visible_nodes, id, name, Some(searcher));
+                    show_checkbox(
+                        ui,
+                        visible_nodes,
+                        id,
+                        name,
+                        Some(searcher),
+                        selected_dependency,
+                    );
                     handle_action(visible_nodes, &id, &action);
                 } else {
                     puffin::profile_scope!("show_package_multiple");
@@ -252,7 +264,14 @@ impl<'a> DependencyPanel<'a> {
                                 puffin::profile_scope!("show_package");
                                 let info = graph.get(*id).unwrap();
                                 let version_label = info.version().unwrap_or("no version");
-                                show_checkbox(ui, visible_nodes, *id, version_label, None);
+                                show_checkbox(
+                                    ui,
+                                    visible_nodes,
+                                    *id,
+                                    version_label,
+                                    None,
+                                    selected_dependency,
+                                );
                             }
                         });
                     puffin::profile_scope!("handle_action");
@@ -298,6 +317,7 @@ fn show_checkbox(
     id: DependencyId,
     label: &str,
     searcher: Option<&Searcher>,
+    selected_dependency: &mut Option<DependencyId>,
 ) {
     let mut is_visible = visible_nodes.contains(&id);
     let label = match searcher {
@@ -305,13 +325,27 @@ fn show_checkbox(
         None => eframe::egui::WidgetText::Text(label.to_string()),
     };
 
-    if ui.checkbox(&mut is_visible, label).changed() {
-        if is_visible {
-            visible_nodes.insert(id);
-        } else {
-            visible_nodes.remove(&id);
+    ui.horizontal(|ui| {
+        if ui.checkbox(&mut is_visible, "").changed() {
+            if is_visible {
+                visible_nodes.insert(id);
+            } else {
+                visible_nodes.remove(&id);
+            }
         }
-    }
+
+        if ui
+            .selectable_label(selected_dependency.as_ref() == Some(&id), label)
+            .clicked()
+        {
+            // Toggle selection
+            if selected_dependency.as_ref() == Some(&id) {
+                *selected_dependency = None;
+            } else {
+                *selected_dependency = Some(id);
+            }
+        }
+    });
 }
 
 // Create WidgetText content, but highlight the sequence matched by the searcher.

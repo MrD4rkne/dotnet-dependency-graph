@@ -16,6 +16,7 @@ pub(crate) struct Session {
     pub(crate) node_positions: HashMap<DependencyId, (f32, f32)>,
     pub(crate) selected_framework: Option<Framework>,
     pub(crate) visible_nodes: HashSet<DependencyId>,
+    pub(crate) selected_dependency: Option<DependencyId>,
     pub(crate) cache: GraphCache,
 }
 
@@ -38,6 +39,7 @@ impl Session {
             node_positions,
             selected_framework: None,
             visible_nodes,
+            selected_dependency: None,
             cache,
         }
     }
@@ -62,6 +64,7 @@ impl Session {
             node_positions,
             selected_framework: None,
             visible_nodes: all_dep_ids,
+            selected_dependency: None,
             cache,
         }
     }

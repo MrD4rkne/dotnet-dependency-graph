@@ -13,10 +13,13 @@ mod constants {
     pub(crate) const NODE_PADDING: f32 = 16.0;
     pub(crate) const NODE_CORNER_RADIUS: f32 = 4.0;
     pub(crate) const NODE_BORDER_WIDTH: f32 = 2.5;
+    pub(crate) const HIGHLIGHTED_NODE_BORDER_WIDTH: f32 = NODE_BORDER_WIDTH + 1.5;
 
     // Edge dimensions
     pub(crate) const EDGE_STROKE_WIDTH: f32 = 2.0;
+    pub(crate) const HIGHLIGHTED_EDGE_STROKE_WIDTH: f32 = EDGE_STROKE_WIDTH + 1.0;
     pub(crate) const ARROW_SIZE: f32 = 10.0;
+    pub(crate) const HIGHLIGHTED_ARROW_SIZE: f32 = ARROW_SIZE + 3.0;
     pub(crate) const ARROW_HEAD_WIDTH_FACTOR: f32 = 0.5;
 
     // Text sizing constants
@@ -32,6 +35,9 @@ mod constants {
     pub(crate) const NODE_BORDER_COLOR: Color32 = Color32::from_rgb(30, 60, 100);
     pub(crate) const TEXT_COLOR: Color32 = Color32::WHITE;
     pub(crate) const EDGE_COLOR: Color32 = Color32::from_rgb(100, 100, 100);
+    pub(crate) const HIGHLIGHTED_NODE_BACKGROUND: Color32 = Color32::from_rgb(255, 165, 0);
+    pub(crate) const HIGHLIGHTED_NODE_BORDER_COLOR: Color32 = Color32::from_rgb(200, 100, 0);
+    pub(crate) const HIGHLIGHTED_EDGE_COLOR: Color32 = Color32::from_rgb(220, 120, 20);
 
     // Layout constants
     pub(crate) const LAYOUT_SPACING: f64 = 100.0;
@@ -61,26 +67,41 @@ pub(crate) fn calculate_size(_id: &DependencyId, dep: &DependencyInfo) -> (f64, 
     (width as f64, height as f64)
 }
 
-pub(crate) fn draw_node(text: &str, painter: &eframe::egui::Painter, cache: &mut CachedNodeData) {
+pub(crate) fn draw_node(
+    text: &str,
+    painter: &eframe::egui::Painter,
+    cache: &mut CachedNodeData,
+    highlighted: bool,
+) {
     puffin::profile_function!();
     let max_text_width = cache.width - constants::NODE_PADDING;
     let position = cache.position;
     let rect = Rect::from_center_size(position, Vec2::new(cache.width, cache.height));
 
+    let (bg_color, border_color, border_width) = if highlighted {
+        (
+            constants::HIGHLIGHTED_NODE_BACKGROUND,
+            constants::HIGHLIGHTED_NODE_BORDER_COLOR,
+            constants::HIGHLIGHTED_NODE_BORDER_WIDTH,
+        )
+    } else {
+        (
+            constants::NODE_BACKGROUND_COLOR,
+            constants::NODE_BORDER_COLOR,
+            constants::NODE_BORDER_WIDTH,
+        )
+    };
+
     {
         puffin::profile_scope!("paint");
         // Draw rectangle background
-        painter.rect_filled(
-            rect,
-            constants::NODE_CORNER_RADIUS,
-            constants::NODE_BACKGROUND_COLOR,
-        );
+        painter.rect_filled(rect, constants::NODE_CORNER_RADIUS, bg_color);
 
         // Draw rectangle border
         painter.rect_stroke(
             rect,
             constants::NODE_CORNER_RADIUS,
-            Stroke::new(constants::NODE_BORDER_WIDTH, constants::NODE_BORDER_COLOR),
+            Stroke::new(border_width, border_color),
             eframe::egui::epaint::StrokeKind::Middle,
         );
     }
@@ -182,7 +203,7 @@ fn rect_edge_point(rect: Rect, direction: Vec2) -> Pos2 {
 }
 
 /// Draw a single edge with arrow from source to destination
-pub(crate) fn draw_edge(painter: &Painter, src_rect: Rect, dst_rect: Rect) {
+pub(crate) fn draw_edge(painter: &Painter, src_rect: Rect, dst_rect: Rect, highlighted: bool) {
     puffin::profile_function!();
     let src_center = src_rect.center();
     let dst_center = dst_rect.center();
@@ -194,15 +215,25 @@ pub(crate) fn draw_edge(painter: &Painter, src_rect: Rect, dst_rect: Rect) {
     let src_edge = rect_edge_point(src_rect, dir);
     let dst_edge = rect_edge_point(dst_rect, -dir);
 
+    let (edge_color, arrow_size, stroke_width) = if highlighted {
+        (
+            constants::HIGHLIGHTED_EDGE_COLOR,
+            constants::HIGHLIGHTED_ARROW_SIZE,
+            constants::HIGHLIGHTED_EDGE_STROKE_WIDTH,
+        )
+    } else {
+        (
+            constants::EDGE_COLOR,
+            constants::ARROW_SIZE,
+            constants::EDGE_STROKE_WIDTH,
+        )
+    };
+
     // Draw line from edge to edge
-    painter.line_segment(
-        [src_edge, dst_edge],
-        Stroke::new(constants::EDGE_STROKE_WIDTH, constants::EDGE_COLOR),
-    );
+    painter.line_segment([src_edge, dst_edge], Stroke::new(stroke_width, edge_color));
 
     // Draw arrow head at destination edge
     let perp = Vec2::new(-dir.y, dir.x);
-    let arrow_size = constants::ARROW_SIZE;
 
     // Two sides of the arrow
     painter.line_segment(
@@ -210,13 +241,13 @@ pub(crate) fn draw_edge(painter: &Painter, src_rect: Rect, dst_rect: Rect) {
             dst_edge,
             dst_edge - dir * arrow_size + perp * arrow_size * constants::ARROW_HEAD_WIDTH_FACTOR,
         ],
-        Stroke::new(constants::EDGE_STROKE_WIDTH, constants::EDGE_COLOR),
+        Stroke::new(stroke_width, edge_color),
     );
     painter.line_segment(
         [
             dst_edge,
             dst_edge - dir * arrow_size - perp * arrow_size * constants::ARROW_HEAD_WIDTH_FACTOR,
         ],
-        Stroke::new(constants::EDGE_STROKE_WIDTH, constants::EDGE_COLOR),
+        Stroke::new(stroke_width, edge_color),
     );
 }
