@@ -109,7 +109,7 @@ impl<'a> Widget for GraphWidget<'a> {
                     cache,
                     dep.name(),
                     ui,
-                    &mut self.interaction_state,
+                    self.interaction_state,
                     is_selected,
                 );
             }
