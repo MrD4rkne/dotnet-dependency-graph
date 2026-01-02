@@ -28,12 +28,12 @@ pub(crate) struct InteractionState<'a> {
 impl<'a> InteractionState<'a> {
     pub(crate) fn new(
         dragging_node: &'a mut Option<DependencyId>,
-        selected_node: &'a Option<DependencyId>,
+        selected_dependency: &'a Option<DependencyId>,
         selected_framework: &'a Option<&Framework>,
     ) -> Self {
         Self {
             dragging_node,
-            selected_dependency: selected_node,
+            selected_dependency,
             selected_framework,
         }
     }
