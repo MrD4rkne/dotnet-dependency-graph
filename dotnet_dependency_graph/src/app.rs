@@ -108,13 +108,12 @@ impl FileDialogHandler {
         let mut node_positions: std::collections::HashMap<DependencyId, (f32, f32)> =
             std::collections::HashMap::new();
 
-        if let Some(meta) = metadata {
-            for (id, (visible, (x, y))) in meta.into_iter() {
-                if visible {
-                    visible_nodes.insert(id);
-                }
-                node_positions.insert(id, (x, y));
+        let meta = metadata.ok_or(anyhow::anyhow!("Missing metadata in the file"))?;
+        for (id, (visible, (x, y))) in meta.into_iter() {
+            if visible {
+                visible_nodes.insert(id);
             }
+            node_positions.insert(id, (x, y));
         }
 
         Ok(Session::load_from_saved(
