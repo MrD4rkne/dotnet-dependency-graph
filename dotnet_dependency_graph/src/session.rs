@@ -9,6 +9,7 @@ use crate::graph::GraphCache;
 use crate::visualize;
 use dotnet_dependency_parser::graph::Layout;
 
+/// Holds data about interactions on the graph.
 #[derive(Default, Debug)]
 pub(crate) struct InteractionState {
     selected_dependency: Option<DependencyId>,
@@ -16,18 +17,24 @@ pub(crate) struct InteractionState {
 }
 
 impl InteractionState {
+    /// Returns the currently selected dependency identifier.
     pub(crate) fn selected_dependency(&self) -> Option<DependencyId> {
         self.selected_dependency
     }
 
+    /// Returns the currently selected framework.
+    ///
+    /// Returns reference as Framework does not impl Copy trait.
     pub(crate) fn selected_framework(&self) -> Option<&Framework> {
         self.selected_framework.as_ref()
     }
 
+    /// Change the selected dependency.
     pub(crate) fn select_dependency(&mut self, id: Option<DependencyId>) {
         self.selected_dependency = id;
     }
 
+    /// Change the selected framework.
     pub(crate) fn select_framework(&mut self, framework: Framework) {
         self.selected_framework = Some(framework);
     }
