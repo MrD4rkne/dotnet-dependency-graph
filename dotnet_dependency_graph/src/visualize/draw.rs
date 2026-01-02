@@ -16,9 +16,9 @@ mod constants {
     pub(crate) const HIGHLIGHTED_NODE_BORDER_WIDTH: f32 = NODE_BORDER_WIDTH + 1.5;
 
     // Edge dimensions
-    pub(crate) const EDGE_STROKE_WIDTH: f32 = 2.0;
+    pub(crate) const EDGE_STROKE_WIDTH: f32 = 3.0;
     pub(crate) const HIGHLIGHTED_EDGE_STROKE_WIDTH: f32 = EDGE_STROKE_WIDTH + 1.0;
-    pub(crate) const ARROW_SIZE: f32 = 10.0;
+    pub(crate) const ARROW_SIZE: f32 = 14.0;
     pub(crate) const HIGHLIGHTED_ARROW_SIZE: f32 = ARROW_SIZE + 3.0;
     pub(crate) const ARROW_HEAD_WIDTH_FACTOR: f32 = 0.5;
 
