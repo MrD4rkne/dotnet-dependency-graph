@@ -40,34 +40,38 @@ pub(crate) fn calculate_size(_id: &DependencyId, dep: &DependencyInfo) -> (f64, 
 
 pub(crate) fn draw_node(text: &str, painter: &eframe::egui::Painter, cache: &mut CachedNodeData) {
     puffin::profile_function!();
-    // Sizes and positions are in scene (unzoomed) coordinates. The Scene container
-    // will apply the current zoom/translation automatically.
-    let width = cache.unzoomed_width;
-    let height = cache.unzoomed_height;
-    let padding = constants::NODE_PADDING;
-    let corner_radius = constants::NODE_CORNER_RADIUS;
-    let border_width = constants::NODE_BORDER_WIDTH;
-    let font_size = constants::FONT_SIZE;
-    let max_text_width = width - padding;
-
+    let max_text_width = cache.unzoomed_width - constants::NODE_PADDING;
     let position = cache.position;
-    let rect = Rect::from_center_size(position, Vec2::new(width, height));
+    let rect = Rect::from_center_size(
+        position,
+        Vec2::new(cache.unzoomed_width, cache.unzoomed_height),
+    );
 
     {
         puffin::profile_scope!("paint");
         // Draw rectangle background
-        painter.rect_filled(rect, corner_radius, constants::NODE_BACKGROUND_COLOR);
+        painter.rect_filled(
+            rect,
+            constants::NODE_CORNER_RADIUS,
+            constants::NODE_BACKGROUND_COLOR,
+        );
 
         // Draw rectangle border
         painter.rect_stroke(
             rect,
-            corner_radius,
-            Stroke::new(border_width, constants::NODE_BORDER_COLOR),
+            constants::NODE_CORNER_RADIUS,
+            Stroke::new(constants::NODE_BORDER_WIDTH, constants::NODE_BORDER_COLOR),
             eframe::egui::epaint::StrokeKind::Middle,
         );
     }
 
-    let label_job = create_label(text, font_size, height, padding, max_text_width);
+    let label_job = create_label(
+        text,
+        constants::FONT_SIZE,
+        cache.unzoomed_height,
+        constants::NODE_PADDING,
+        max_text_width,
+    );
     {
         puffin::profile_scope!("paint_text");
         let galley = painter.layout_job(label_job);
