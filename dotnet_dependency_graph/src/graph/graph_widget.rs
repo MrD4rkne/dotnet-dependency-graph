@@ -87,7 +87,7 @@ impl<'a> GraphWidget<'a> {
     }
 
     fn draw_nodes(&mut self, ui: &mut Ui, painter: &Painter) {
-        puffin::profile_scope!("draw_nodes");
+        puffin::profile_function!();
         for id in self.graph_data.visible_nodes.iter() {
             puffin::profile_scope!("per_visible_node");
 
@@ -96,7 +96,6 @@ impl<'a> GraphWidget<'a> {
                 .node_cache_mut()
                 .get_mut(id)
                 .expect("All nodes should have cache");
-            puffin::profile_scope!("node_after_cache");
             let dep = self
                 .graph_data
                 .graph
@@ -155,8 +154,9 @@ fn draw_all_edges(
     visible_nodes: &HashSet<DependencyId>,
     zoom: f32,
 ) {
-    puffin::profile_scope!("draw_edges");
+    puffin::profile_function!();
     for src_id in visible_nodes.iter() {
+        puffin::profile_scope!("Per edge");
         if let Some(src_data) = cache.get(src_id) {
             let src_rect = src_data.rect;
 
@@ -191,7 +191,7 @@ fn draw_single_node(
     interaction_state: &mut NodeInteractionState,
     state: &State,
 ) {
-    puffin::profile_scope!("draw_single_node");
+    puffin::profile_function!();
     visualize::draw_node(ui, text, painter, cache, state);
     handle_node_drag(id, cache, ui, interaction_state, state.zoom(), text);
 }

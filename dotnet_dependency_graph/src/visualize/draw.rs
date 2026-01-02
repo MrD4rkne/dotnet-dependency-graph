@@ -1,9 +1,10 @@
 use crate::graph::CachedNodeData;
 use dotnet_dependency_parser::graph::{DependencyId, DependencyInfo, Layout};
-use eframe::egui::TextFormat;
 use eframe::egui::text::LayoutJob;
 use eframe::egui::{Color32, FontId, Painter, Pos2, Rect, Stroke, Vec2};
+use eframe::egui::{Galley, TextFormat};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use super::Zoomed;
 use super::constants;
@@ -74,7 +75,7 @@ pub(crate) fn draw_node(
     cache: &mut CachedNodeData,
     state: &State,
 ) {
-    puffin::profile_scope!("draw_node");
+    puffin::profile_function!();
     let width = Zoomed::new(cache.unzoomed_width, state.zoom());
     let height = Zoomed::new(cache.unzoomed_height, state.zoom());
     let padding = Zoomed::new(constants::NODE_PADDING, state.zoom());
@@ -86,35 +87,38 @@ pub(crate) fn draw_node(
     let position = state.transform_pos(cache.position);
     let rect = Rect::from_center_size(position, Vec2::new(width.into_value(), height.into_value()));
 
-    puffin::profile_scope!("paint");
-    // Draw rectangle background
-    painter.rect_filled(
-        rect,
-        corner_radius.into_value(),
-        constants::NODE_BACKGROUND_COLOR,
-    );
+    {
+        puffin::profile_scope!("paint");
+        // Draw rectangle background
+        painter.rect_filled(
+            rect,
+            corner_radius.into_value(),
+            constants::NODE_BACKGROUND_COLOR,
+        );
 
-    // Draw rectangle border
-    painter.rect_stroke(
-        rect,
-        corner_radius.into_value(),
-        Stroke::new(border_width.into_value(), constants::NODE_BORDER_COLOR),
-        eframe::egui::epaint::StrokeKind::Middle,
-    );
+        // Draw rectangle border
+        painter.rect_stroke(
+            rect,
+            corner_radius.into_value(),
+            Stroke::new(border_width.into_value(), constants::NODE_BORDER_COLOR),
+            eframe::egui::epaint::StrokeKind::Middle,
+        );
+    }
 
     let label_job = create_label(text, font_size, height, padding, max_text_width);
-    puffin::profile_scope!("painter_layout_job");
-    let galley = painter.layout_job(label_job);
+    {
+        puffin::profile_scope!("paint_text");
+        let galley = painter.layout_job(label_job);
 
-    puffin::profile_scope!("calculate_test_pos");
-    // Center the text in the node
-    let text_pos = Pos2::new(
-        rect.center().x - galley.size().x / 2.0,
-        rect.center().y - galley.size().y / 2.0,
-    );
+        // Center the text in the node
+        let text_pos = Pos2::new(
+            rect.center().x - galley.size().x / 2.0,
+            rect.center().y - galley.size().y / 2.0,
+        );
 
-    puffin::profile_scope!("galley");
-    painter.galley(text_pos, galley, constants::TEXT_COLOR);
+        puffin::profile_scope!("galley");
+        painter.galley(text_pos, galley, constants::TEXT_COLOR);
+    }
 
     cache.rect = rect;
 }
@@ -126,7 +130,7 @@ fn create_label(
     padding: Zoomed<f32>,
     max_text_width: Zoomed<f32>,
 ) -> LayoutJob {
-    puffin::profile_scope!("create_label");
+    puffin::profile_function!();
     let font_id = FontId::proportional(font_size.into_value());
     let max_text_height = height - padding;
 
@@ -145,7 +149,7 @@ fn create_label(
 pub(crate) fn join_layouts(
     layouts: Vec<Layout<DependencyId>>,
 ) -> HashMap<DependencyId, (f32, f32)> {
-    puffin::profile_scope!("join_layouts");
+    puffin::profile_function!();
     let mut result = HashMap::new();
     let mut offset_x = 0.0;
     for layout in layouts {
