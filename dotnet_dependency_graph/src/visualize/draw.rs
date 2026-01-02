@@ -40,12 +40,9 @@ pub(crate) fn calculate_size(_id: &DependencyId, dep: &DependencyInfo) -> (f64, 
 
 pub(crate) fn draw_node(text: &str, painter: &eframe::egui::Painter, cache: &mut CachedNodeData) {
     puffin::profile_function!();
-    let max_text_width = cache.unzoomed_width - constants::NODE_PADDING;
+    let max_text_width = cache.width - constants::NODE_PADDING;
     let position = cache.position;
-    let rect = Rect::from_center_size(
-        position,
-        Vec2::new(cache.unzoomed_width, cache.unzoomed_height),
-    );
+    let rect = Rect::from_center_size(position, Vec2::new(cache.width, cache.height));
 
     {
         puffin::profile_scope!("paint");
@@ -68,7 +65,7 @@ pub(crate) fn draw_node(text: &str, painter: &eframe::egui::Painter, cache: &mut
     let label_job = create_label(
         text,
         constants::FONT_SIZE,
-        cache.unzoomed_height,
+        cache.height,
         constants::NODE_PADDING,
         max_text_width,
     );
