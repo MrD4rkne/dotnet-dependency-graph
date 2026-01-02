@@ -14,7 +14,7 @@ mod constants {
     pub(crate) const NODE_CORNER_RADIUS: f32 = 4.0;
     pub(crate) const NODE_BORDER_WIDTH: f32 = 2.5;
 
-    // Edge dimentions
+    // Edge dimensions
     pub(crate) const EDGE_STROKE_WIDTH: f32 = 2.0;
     pub(crate) const ARROW_SIZE: f32 = 10.0;
     pub(crate) const ARROW_HEAD_WIDTH_FACTOR: f32 = 0.5;
