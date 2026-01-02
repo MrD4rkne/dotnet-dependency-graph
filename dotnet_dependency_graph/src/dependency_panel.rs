@@ -326,6 +326,7 @@ fn show_checkbox(
     };
 
     ui.horizontal(|ui| {
+        // "" is intentional, in order to have both: select / deselect checkbox AND selectable label.
         if ui.checkbox(&mut is_visible, "").changed() {
             if is_visible {
                 visible_nodes.insert(id);
