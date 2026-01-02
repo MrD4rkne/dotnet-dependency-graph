@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 #[derive(Debug)]
 pub(crate) struct CachedNodeData {
-    pub(crate) initial_position: Pos2,
+    pub(crate) position: Pos2,
     pub(crate) unzoomed_width: f32,
     pub(crate) unzoomed_height: f32,
     pub(crate) rect: Rect,
@@ -15,7 +15,7 @@ pub(crate) struct CachedNodeData {
 impl CachedNodeData {
     pub(crate) fn new(screen_pos: Pos2, unzoomed_width: f32, unzoomed_height: f32) -> Self {
         Self {
-            initial_position: screen_pos,
+            position: screen_pos,
             unzoomed_width,
             unzoomed_height,
             rect: Rect::from_center_size(Pos2::ZERO, Vec2::new(unzoomed_width, unzoomed_height)),
@@ -49,6 +49,10 @@ impl GraphCache {
 
     pub(crate) fn node_cache_mut(&mut self) -> &mut HashMap<DependencyId, CachedNodeData> {
         &mut self.node_cache
+    }
+
+    pub(crate) fn node_cache(&self) -> &HashMap<DependencyId, CachedNodeData> {
+        &self.node_cache
     }
 }
 

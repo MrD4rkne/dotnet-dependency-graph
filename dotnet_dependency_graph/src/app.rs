@@ -1,5 +1,5 @@
 use anyhow::Error;
-use dotnet_dependency_parser::graph::DependencyId;
+use dotnet_dependency_parser::graph::{DependencyId, SerializableGraph};
 use eframe::App;
 use eframe::egui::Context;
 use egui_file_dialog::FileDialog;
@@ -25,6 +25,7 @@ enum FileMode {
     Replace,
     Merge,
     Save,
+    Load,
     None,
 }
 
@@ -53,6 +54,9 @@ impl FileDialogHandler {
                 // `session` is a `&mut Box<Session>` here; convert to `&Session` for save_state
                 Self::save_state(session, path)?;
             }
+            (FileMode::Load, _) => {
+                *app_state = AppState::FileLoaded(Box::new(Self::load_state(path)?));
+            }
             _ => {}
         }
 
@@ -67,9 +71,18 @@ impl FileDialogHandler {
             dotnet_dependency_parser::graph::DependencyId,
             (bool, (f32, f32)),
         > = session
-            .node_positions
+            .cache
+            .node_cache()
             .iter()
-            .map(|(id, (x, y))| (*id, (session.visible_nodes.contains(id), (*x, *y))))
+            .map(|(id, cache)| {
+                (
+                    *id,
+                    (
+                        session.visible_nodes.contains(id),
+                        (cache.position.x, cache.position.y),
+                    ),
+                )
+            })
             .collect();
 
         let serializable = session
@@ -82,6 +95,34 @@ impl FileDialogHandler {
         serde_json::to_writer_pretty(file, &serializable)?;
 
         Ok(())
+    }
+
+    fn load_state(path: PathBuf) -> Result<Session, Error> {
+        let file = File::open(path.clone())?;
+        let serialized: SerializableGraph<(bool, (f32, f32))> = serde_json::from_reader(file)?;
+
+        let (graph, metadata) = serialized.from_serializable()?;
+
+        let mut visible_nodes: std::collections::HashSet<DependencyId> =
+            std::collections::HashSet::new();
+        let mut node_positions: std::collections::HashMap<DependencyId, (f32, f32)> =
+            std::collections::HashMap::new();
+
+        if let Some(meta) = metadata {
+            for (id, (visible, (x, y))) in meta.into_iter() {
+                if visible {
+                    visible_nodes.insert(id);
+                }
+                node_positions.insert(id, (x, y));
+            }
+        }
+
+        Ok(Session::load_from_saved(
+            path,
+            graph,
+            node_positions,
+            visible_nodes,
+        ))
     }
 
     fn handle_load(&mut self, app_state: &mut AppState, path: PathBuf) -> Result<(), Error> {
@@ -98,14 +139,7 @@ impl FileDialogHandler {
                     return Err(anyhow::anyhow!("Failed to merge: {}", e));
                 }
             }
-            _ => match Session::load_from(path, new_graph) {
-                Ok(session) => {
-                    *app_state = AppState::FileLoaded(Box::new(session));
-                }
-                Err(e) => {
-                    return Err(anyhow::anyhow!("Failed to load session: {}", e));
-                }
-            },
+            _ => *app_state = AppState::FileLoaded(Box::new(Session::load_from(path, new_graph))),
         };
 
         Ok(())
@@ -117,21 +151,28 @@ impl FileDialogHandler {
         eframe::egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             eframe::egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
-                    if ui.button("Open file").clicked() {
-                        self.open_for_replace();
-                    }
+                    ui.menu_button("Parse", |ui| {
+                        if ui.button("Open file").clicked() {
+                            self.open_for_replace();
+                        }
 
-                    if matches!(app_state, AppState::FileLoaded(_))
-                        && ui.button("Merge file").clicked()
-                    {
-                        self.open_for_merge();
-                    }
+                        if matches!(app_state, AppState::FileLoaded(_))
+                            && ui.button("Merge file").clicked()
+                        {
+                            self.open_for_merge();
+                        }
+                    });
 
-                    if matches!(app_state, AppState::FileLoaded(_))
-                        && ui.button("Save to file").clicked()
-                    {
-                        self.open_for_save();
-                    }
+                    ui.menu_button("State", |ui| {
+                        if ui.button("Load from file").clicked() {
+                            self.open_for_load();
+                        }
+                        if matches!(app_state, AppState::FileLoaded(_))
+                            && ui.button("Save to file").clicked()
+                        {
+                            self.open_for_save();
+                        }
+                    });
                 });
             });
 
@@ -167,6 +208,11 @@ impl FileDialogHandler {
     fn open_for_save(&mut self) {
         self.mode = FileMode::Save;
         self.file_dialog.save_file();
+    }
+
+    fn open_for_load(&mut self) {
+        self.mode = FileMode::Load;
+        self.file_dialog.pick_file();
     }
 }
 

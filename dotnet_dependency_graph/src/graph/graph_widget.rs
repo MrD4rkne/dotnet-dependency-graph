@@ -209,7 +209,7 @@ fn handle_node_drag(
 
     if node_response.dragged() && state.dragging_node.as_ref() == Some(id) {
         let delta = node_response.drag_delta() / zoom;
-        data.initial_position += delta;
+        data.position += delta;
     }
 
     if node_response.drag_stopped() {
