@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::graph::node_cache::GraphCache;
 use crate::graph::node_cache::NodeData;
+use crate::session::InteractionState;
 use crate::visualize;
 
 // Grouped parameters for view state
@@ -15,27 +16,6 @@ pub(crate) struct ViewState<'a> {
 impl<'a> ViewState<'a> {
     pub(crate) fn new(scene_rect: &'a mut Rect) -> Self {
         Self { scene_rect }
-    }
-}
-
-// Grouped parameters for interaction state
-pub(crate) struct InteractionState<'a> {
-    dragging_node: &'a mut Option<DependencyId>,
-    selected_dependency: &'a Option<DependencyId>,
-    selected_framework: &'a Option<&'a Framework>,
-}
-
-impl<'a> InteractionState<'a> {
-    pub(crate) fn new(
-        dragging_node: &'a mut Option<DependencyId>,
-        selected_dependency: &'a Option<DependencyId>,
-        selected_framework: &'a Option<&Framework>,
-    ) -> Self {
-        Self {
-            dragging_node,
-            selected_dependency,
-            selected_framework,
-        }
     }
 }
 
@@ -59,7 +39,7 @@ impl<'a> GraphData<'a> {
 
 pub(crate) struct GraphWidget<'a> {
     view_state: ViewState<'a>,
-    interaction_state: InteractionState<'a>,
+    interaction_state: &'a mut InteractionState,
     graph_data: GraphData<'a>,
     node_cache: &'a mut GraphCache,
 }
@@ -67,7 +47,7 @@ pub(crate) struct GraphWidget<'a> {
 impl<'a> GraphWidget<'a> {
     pub(crate) fn new(
         view_state: ViewState<'a>,
-        interaction_state: InteractionState<'a>,
+        interaction_state: &'a mut InteractionState,
         graph_data: GraphData<'a>,
         node_cache: &'a mut GraphCache,
     ) -> Self {
@@ -80,7 +60,7 @@ impl<'a> GraphWidget<'a> {
     }
 
     fn handle_dependency_selection(&mut self) {
-        let current_selected = *self.interaction_state.selected_dependency;
+        let current_selected = self.interaction_state.selected_dependency();
         let last_selected = self.node_cache.last_selected();
         if current_selected != last_selected {
             if let Some(sel) = current_selected {
@@ -119,13 +99,13 @@ impl<'a> Widget for GraphWidget<'a> {
                     .get(*id)
                     .expect("Visible node should be in graph");
 
-                let is_selected = match *self.interaction_state.selected_dependency {
+                let is_selected = match self.interaction_state.selected_dependency() {
                     Some(sel) => sel == *id,
                     None => false,
                 };
 
                 draw_single_node(
-                    id,
+                    *id,
                     cache,
                     dep.name(),
                     ui,
@@ -134,14 +114,14 @@ impl<'a> Widget for GraphWidget<'a> {
                 );
             }
 
-            if let Some(framework) = self.interaction_state.selected_framework {
+            if let Some(framework) = self.interaction_state.selected_framework() {
                 draw_all_edges(
                     self.node_cache.node_cache(),
                     ui.painter(),
                     self.graph_data.graph,
                     framework,
                     self.graph_data.visible_nodes,
-                    self.interaction_state.selected_dependency,
+                    self.interaction_state.selected_dependency(),
                 );
             }
         });
@@ -156,7 +136,7 @@ fn draw_all_edges(
     graph: &DependencyGraph,
     framework: &Framework,
     visible_nodes: &HashSet<DependencyId>,
-    selected_dependency: &Option<DependencyId>,
+    selected_dependency: Option<DependencyId>,
 ) {
     puffin::profile_function!();
     for src_id in visible_nodes.iter() {
@@ -184,7 +164,7 @@ fn draw_all_edges(
                 .expect("All nodes data should be in the cache.")
                 .rect();
             // Highlight edges adjacent to selected dependency
-            let highlight = match *selected_dependency {
+            let highlight = match selected_dependency {
                 Some(sel) => sel == *src_id || sel == dst_id,
                 None => false,
             };
@@ -196,7 +176,7 @@ fn draw_all_edges(
 
 /// Draw a single node and handle its dragging interaction
 fn draw_single_node(
-    id: &DependencyId,
+    id: DependencyId,
     cache: &mut NodeData,
     text: &str,
     ui: &mut Ui,
@@ -210,7 +190,7 @@ fn draw_single_node(
 
 /// Handle dragging interaction for a single node
 fn handle_node_drag(
-    id: &DependencyId,
+    id: DependencyId,
     data: &mut NodeData,
     ui: &mut Ui,
     state: &mut InteractionState,
@@ -219,16 +199,16 @@ fn handle_node_drag(
     let node_response = ui.interact(data.rect(), ui.id().with(id), Sense::drag());
 
     if node_response.drag_started() {
-        *state.dragging_node = Some(*id);
+        state.set_dragged_node(Some(id));
     }
 
-    if node_response.dragged() && state.dragging_node.as_ref() == Some(id) {
+    if node_response.dragged() && state.dragged_node() == Some(id) {
         let delta = node_response.drag_delta();
         data.move_by(delta);
     }
 
     if node_response.drag_stopped() {
-        *state.dragging_node = None;
+        state.set_dragged_node(None);
     }
 
     node_response.on_hover_text(text);

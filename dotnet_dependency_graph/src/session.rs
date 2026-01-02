@@ -14,6 +14,7 @@ use dotnet_dependency_parser::graph::Layout;
 pub(crate) struct InteractionState {
     selected_dependency: Option<DependencyId>,
     selected_framework: Option<Framework>,
+    dragged_node: Option<DependencyId>,
 }
 
 impl InteractionState {
@@ -37,6 +38,16 @@ impl InteractionState {
     /// Change the selected framework.
     pub(crate) fn select_framework(&mut self, framework: Framework) {
         self.selected_framework = Some(framework);
+    }
+
+    /// Returns the currently dragged node.
+    pub(crate) fn dragged_node(&self) -> Option<DependencyId> {
+        self.dragged_node
+    }
+
+    /// Sets the currently dragged node.
+    pub(crate) fn set_dragged_node(&mut self, dragged: Option<DependencyId>) {
+        self.dragged_node = dragged;
     }
 }
 
