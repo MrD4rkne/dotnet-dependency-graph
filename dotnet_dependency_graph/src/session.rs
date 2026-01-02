@@ -45,6 +45,7 @@ impl Session {
     pub(crate) fn merge(&mut self, graph: DependencyGraph) -> Result<(), DependencyGraphError> {
         self.graph.merge(graph)?; // Use atomic merge for safety
         self.node_positions = calculate_positions(&self.graph);
+        self.cache = GraphCache::new(&self.graph, &self.node_positions);
         Ok(())
     }
 
