@@ -134,27 +134,30 @@ fn draw_all_edges(
 ) {
     puffin::profile_function!();
     for src_id in visible_nodes.iter() {
-        puffin::profile_scope!("per_edge");
-        if let Some(src_data) = cache.get(src_id) {
-            let src_rect = src_data.rect;
+        puffin::profile_scope!("draw_edges_for_node");
 
-            let deps = graph.get_direct_dependencies_in_framework(*src_id, framework);
+        let src_data = cache
+            .get(src_id)
+            .expect("All nodes data should be in the cache.");
+        let src_rect = src_data.rect;
 
-            if let Ok(edges) = deps {
-                for edge in edges {
-                    let dst_id = edge.to();
+        let deps = graph
+            .get_direct_dependencies_in_framework(*src_id, framework)
+            .expect("Node should be in the graph.");
+        for edge in deps {
+            puffin::profile_scope!("per_edge");
+            let dst_id = edge.to();
 
-                    // Only draw edges to visible nodes
-                    if !visible_nodes.contains(&dst_id) {
-                        continue;
-                    }
-
-                    if let Some(dst_data) = cache.get(&dst_id) {
-                        let dst_rect = dst_data.rect;
-                        visualize::draw_edge(painter, src_rect, dst_rect);
-                    }
-                }
+            // Only draw edges to visible nodes
+            if !visible_nodes.contains(&dst_id) {
+                continue;
             }
+
+            let dst_rect = cache
+                .get(&dst_id)
+                .expect("All nodes data should be in the cache.")
+                .rect;
+            visualize::draw_edge(painter, src_rect, dst_rect);
         }
     }
 }
