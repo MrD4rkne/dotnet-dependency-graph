@@ -334,9 +334,17 @@ fn show_checkbox(
             }
         }
 
-        let checked = interaction_state.selected_dependency() == Some(id);
-        if ui.selectable_label(checked, label).clicked() {
-            interaction_state.select_dependency(id);
+        let is_selected = interaction_state.selected_dependency() == Some(id);
+        if ui
+            .selectable_label(is_selected && is_visible, label)
+            .clicked()
+            && is_visible
+        {
+            interaction_state.select_dependency(Some(id));
+        }
+
+        if is_selected && !is_visible {
+            interaction_state.select_dependency(None);
         }
     });
 }
