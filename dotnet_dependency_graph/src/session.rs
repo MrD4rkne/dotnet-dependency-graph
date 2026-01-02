@@ -9,14 +9,37 @@ use crate::graph::GraphCache;
 use crate::visualize;
 use dotnet_dependency_parser::graph::Layout;
 
+#[derive(Default, Debug)]
+pub(crate) struct InteractionState {
+    selected_dependency: Option<DependencyId>,
+    selected_framework: Option<Framework>,
+}
+
+impl InteractionState {
+    pub(crate) fn selected_dependency(&self) -> Option<DependencyId> {
+        self.selected_dependency
+    }
+
+    pub(crate) fn selected_framework(&self) -> Option<&Framework> {
+        self.selected_framework.as_ref()
+    }
+
+    pub(crate) fn select_dependency(&mut self, id: DependencyId) {
+        self.selected_dependency = Some(id);
+    }
+
+    pub(crate) fn select_framework(&mut self, framework: Framework) {
+        self.selected_framework = Some(framework);
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct Session {
     pub(crate) path: PathBuf,
     pub(crate) graph: DependencyGraph,
-    pub(crate) selected_framework: Option<Framework>,
     pub(crate) visible_nodes: HashSet<DependencyId>,
-    pub(crate) selected_dependency: Option<DependencyId>,
     pub(crate) cache: GraphCache,
+    pub(crate) interaction_state: InteractionState,
 }
 
 impl Session {
@@ -35,10 +58,9 @@ impl Session {
         Self {
             path,
             graph,
-            selected_framework: None,
             visible_nodes,
-            selected_dependency: None,
             cache,
+            interaction_state: InteractionState::default(),
         }
     }
 
@@ -58,10 +80,9 @@ impl Session {
         Self {
             path,
             graph,
-            selected_framework: None,
             visible_nodes: all_dep_ids,
-            selected_dependency: None,
             cache,
+            interaction_state: InteractionState::default(),
         }
     }
 }
