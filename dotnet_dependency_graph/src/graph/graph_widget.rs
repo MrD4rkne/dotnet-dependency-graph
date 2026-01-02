@@ -74,26 +74,22 @@ impl<'a> GraphWidget<'a> {
 }
 
 impl<'a> Widget for GraphWidget<'a> {
-    fn ui(mut self, ui: &mut Ui) -> Response {
-        // Use a Scene container to handle pan & zoom. Store the scene rect in
-        // the application state (via ViewState) so the Scene can mutate it.
+    fn ui(self, ui: &mut Ui) -> Response {
         let scene = Scene::new().zoom_range(ZOOM_MIN..=ZOOM_MAX);
-        let node_cache = &mut *self.node_cache;
-        let graph_data = &self.graph_data;
-        let interaction_state = &mut self.interaction_state;
-        let scene_rect = self.view_state.scene_rect;
 
-        let inner = scene.show(ui, scene_rect, |ui| {
+        let inner = scene.show(ui, self.view_state.scene_rect, |ui| {
             // Draw nodes in scene coordinates.
             puffin::profile_function!();
-            for id in graph_data.visible_nodes.iter() {
+            for id in self.graph_data.visible_nodes.iter() {
                 puffin::profile_scope!("per_visible_node");
 
-                let cache = node_cache
+                let cache = self
+                    .node_cache
                     .node_cache_mut()
                     .get_mut(id)
                     .expect("All nodes should have cache");
-                let dep = graph_data
+                let dep = self
+                    .graph_data
                     .graph
                     .get(*id)
                     .expect("Visible node should be in graph");
@@ -104,23 +100,21 @@ impl<'a> Widget for GraphWidget<'a> {
                     dep.name(),
                     ui,
                     &mut NodeInteractionState {
-                        dragging_node: interaction_state.dragging_node,
+                        dragging_node: self.interaction_state.dragging_node,
                     },
                 );
             }
 
-            if let Some(framework) = graph_data.selected_framework.as_ref() {
+            if let Some(framework) = self.graph_data.selected_framework.as_ref() {
                 draw_all_edges(
-                    node_cache.node_cache(),
+                    self.node_cache.node_cache(),
                     ui.painter(),
-                    graph_data.graph,
+                    self.graph_data.graph,
                     framework,
-                    graph_data.visible_nodes,
+                    self.graph_data.visible_nodes,
                 );
             }
         });
-
-        // Return the response of the inner scene UI so upstream can react to interactions.
         inner.response
     }
 }
@@ -193,7 +187,6 @@ fn handle_node_drag(
     }
 
     if node_response.dragged() && state.dragging_node.as_ref() == Some(id) {
-        // In scene coordinates, drag_delta() is the delta in world-space already.
         let delta = node_response.drag_delta();
         data.position += delta;
     }
@@ -205,8 +198,5 @@ fn handle_node_drag(
     node_response.on_hover_text(text);
 }
 
-// Panning is now handled by Scene::register_pan_and_zoom.
-
 const ZOOM_MIN: f32 = 0.1;
 const ZOOM_MAX: f32 = 3.0;
-// Zooming/panning behavior is supplied by `Scene`.
