@@ -256,7 +256,7 @@ impl<'a> DependencyPanel<'a> {
                             }
                         });
                     puffin::profile_scope!("handle_action");
-                    // Handle action here so when this code will be invoked even if the header is collapsed.
+                    // Handle action here so this code will be invoked even if the header is collapsed.
                     for id in versions {
                         handle_action(visible_nodes, id, &action);
                     }
