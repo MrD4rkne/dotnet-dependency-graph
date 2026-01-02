@@ -1,4 +1,4 @@
-use crate::graph::CachedNodeData;
+use crate::graph::NodeData;
 use dotnet_dependency_parser::graph::{DependencyId, DependencyInfo, Layout};
 use eframe::egui::TextFormat;
 use eframe::egui::text::LayoutJob;
@@ -70,7 +70,7 @@ pub(crate) fn calculate_size(_id: &DependencyId, dep: &DependencyInfo) -> (f64, 
 pub(crate) fn draw_node(
     text: &str,
     painter: &eframe::egui::Painter,
-    cache: &mut CachedNodeData,
+    cache: &mut NodeData,
     highlighted: bool,
 ) {
     puffin::profile_function!();

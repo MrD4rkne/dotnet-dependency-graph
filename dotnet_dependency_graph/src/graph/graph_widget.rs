@@ -2,8 +2,8 @@ use dotnet_dependency_parser::graph::{DependencyGraph, DependencyId, Framework};
 use eframe::egui::{Painter, Rect, Response, Sense, Ui, Widget, containers::Scene};
 use std::collections::{HashMap, HashSet};
 
-use crate::graph::node_cache::CachedNodeData;
 use crate::graph::node_cache::GraphCache;
+use crate::graph::node_cache::NodeData;
 use crate::visualize;
 
 // Grouped parameters for view state
@@ -147,7 +147,7 @@ impl<'a> Widget for GraphWidget<'a> {
 
 /// Draw all edges for the given framework
 fn draw_all_edges(
-    cache: &HashMap<DependencyId, CachedNodeData>,
+    cache: &HashMap<DependencyId, NodeData>,
     painter: &Painter,
     graph: &DependencyGraph,
     framework: &Framework,
@@ -193,7 +193,7 @@ fn draw_all_edges(
 /// Draw a single node and handle its dragging interaction
 fn draw_single_node(
     id: &DependencyId,
-    cache: &mut CachedNodeData,
+    cache: &mut NodeData,
     text: &str,
     ui: &mut Ui,
     interaction_state: &mut InteractionState,
@@ -207,7 +207,7 @@ fn draw_single_node(
 /// Handle dragging interaction for a single node
 fn handle_node_drag(
     id: &DependencyId,
-    data: &mut CachedNodeData,
+    data: &mut NodeData,
     ui: &mut Ui,
     state: &mut InteractionState,
     text: &str,
