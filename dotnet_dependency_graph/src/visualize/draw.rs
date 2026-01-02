@@ -1,10 +1,9 @@
 use crate::graph::CachedNodeData;
 use dotnet_dependency_parser::graph::{DependencyId, DependencyInfo, Layout};
+use eframe::egui::TextFormat;
 use eframe::egui::text::LayoutJob;
 use eframe::egui::{Color32, FontId, Painter, Pos2, Rect, Stroke, Vec2};
-use eframe::egui::{Galley, TextFormat};
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use super::Zoomed;
 use super::constants;
