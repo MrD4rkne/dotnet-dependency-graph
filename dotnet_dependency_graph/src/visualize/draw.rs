@@ -74,10 +74,7 @@ pub(crate) fn draw_node(
     highlighted: bool,
 ) {
     puffin::profile_function!();
-    let max_text_width = cache.width - constants::NODE_PADDING;
-    let position = cache.position;
-    let rect = Rect::from_center_size(position, Vec2::new(cache.width, cache.height));
-
+    let max_text_width = cache.width() - constants::NODE_PADDING;
     let (bg_color, border_color, border_width) = if highlighted {
         (
             constants::HIGHLIGHTED_NODE_BACKGROUND,
@@ -95,11 +92,11 @@ pub(crate) fn draw_node(
     {
         puffin::profile_scope!("paint");
         // Draw rectangle background
-        painter.rect_filled(rect, constants::NODE_CORNER_RADIUS, bg_color);
+        painter.rect_filled(cache.rect(), constants::NODE_CORNER_RADIUS, bg_color);
 
         // Draw rectangle border
         painter.rect_stroke(
-            rect,
+            cache.rect(),
             constants::NODE_CORNER_RADIUS,
             Stroke::new(border_width, border_color),
             eframe::egui::epaint::StrokeKind::Middle,
@@ -109,7 +106,7 @@ pub(crate) fn draw_node(
     let label_job = create_label(
         text,
         constants::FONT_SIZE,
-        cache.height,
+        cache.height(),
         constants::NODE_PADDING,
         max_text_width,
     );
@@ -119,8 +116,8 @@ pub(crate) fn draw_node(
 
         // Center the text in the node
         let text_pos = Pos2::new(
-            rect.center().x - galley.size().x / 2.0,
-            rect.center().y - galley.size().y / 2.0,
+            cache.rect().center().x - galley.size().x / 2.0,
+            cache.rect().center().y - galley.size().y / 2.0,
         );
 
         {
@@ -128,8 +125,6 @@ pub(crate) fn draw_node(
             painter.galley(text_pos, galley, constants::TEXT_COLOR);
         }
     }
-
-    cache.rect = rect;
 }
 
 fn create_label(
