@@ -240,7 +240,7 @@ impl<T> SerializableGraph<T> {
                 .expect("Validated ids missing from mapping");
             graph
                 .add_relation(from_id, to_id, framework)
-                .expect("Ids have been validated in the previous steps.");
+                .expect("Failed to add relation; this may indicate a graph constraint violation.");
         }
 
         // Re-map metadata to use DependencyId keys.
