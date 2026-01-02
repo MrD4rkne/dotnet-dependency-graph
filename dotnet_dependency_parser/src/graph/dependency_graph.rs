@@ -1,4 +1,5 @@
 use petgraph::stable_graph::{NodeIndex, StableDiGraph};
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use thiserror::Error;
@@ -14,7 +15,7 @@ impl DependencyId {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ProjectInfo {
     path: String,
     version: Option<String>,
@@ -26,7 +27,7 @@ impl ProjectInfo {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PackageInfo {
     name: String,
     version: Option<String>,
@@ -38,7 +39,7 @@ impl PackageInfo {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum DependencyInfo {
     Project(ProjectInfo),
     Package(PackageInfo),
@@ -62,7 +63,7 @@ impl DependencyInfo {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Framework {
     name: String,
 }
@@ -111,6 +112,141 @@ pub struct DependencyGraph {
     graph: StableDiGraph<DependencyInfo, DepEdge>,
     id_by_name: HashMap<String, Vec<DependencyId>>,
     frameworks: HashSet<Framework>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SerializableGraph<T> {
+    pub nodes: Vec<(usize, DependencyInfo)>,
+    pub edges: Vec<(usize, usize, Framework)>,
+    pub node_metadata: Option<HashMap<usize, T>>,
+}
+
+use itertools::Itertools;
+
+#[derive(Error, Debug)]
+pub enum SerializableGraphError<T> {
+    #[error("Dependency not found in the graph")]
+    DependencyNotFound(
+        Vec<DependencyId>,
+        Box<DependencyGraph>,
+        Option<HashMap<DependencyId, T>>,
+    ),
+    #[error("Invalid ids")]
+    InvalidIds(Vec<usize>, SerializableGraph<T>),
+    #[error("Couldn't add some of the dependencies")]
+    CouldntAddDeps(Vec<DependencyGraphError>),
+}
+
+impl DependencyGraph {
+    pub fn try_into_serializable<T>(
+        self,
+        metadata: Option<HashMap<DependencyId, T>>,
+    ) -> Result<SerializableGraph<T>, SerializableGraphError<T>> {
+        // Let's start with validating if each DependencyId is valid.
+        if let Some(metadata_map) = &metadata {
+            let nonexisting_ids: Vec<_> = metadata_map
+                .iter()
+                .filter(|(id, _)| self.is_in_graph(**id))
+                .map(|(id, _)| *id)
+                .collect();
+            if !nonexisting_ids.is_empty() {
+                return Err(SerializableGraphError::DependencyNotFound(
+                    nonexisting_ids,
+                    Box::new(self),
+                    metadata,
+                ));
+            }
+        }
+
+        let (nodes_from_graph, edges_from_graph) = self.graph.into_nodes_edges_iters();
+
+        let nodes = nodes_from_graph
+            .map(|node| (node.index.index(), node.weight))
+            .collect();
+        let edges = edges_from_graph
+            .map(|edge| {
+                (
+                    edge.source.index(),
+                    edge.target.index(),
+                    edge.weight.target_framework,
+                )
+            })
+            .collect();
+        let metadata = metadata.map(|met| {
+            met.into_iter()
+                .map(|(id, value)| (id.ix.index(), value))
+                .collect()
+        });
+        Ok(SerializableGraph {
+            nodes,
+            edges,
+            node_metadata: metadata,
+        })
+    }
+}
+
+impl<T> SerializableGraph<T> {
+    /// Recreate a `DependencyGraph` from a `SerializableGraph`.
+    pub fn from_serializable(
+        self,
+    ) -> Result<(DependencyGraph, Option<HashMap<DependencyId, T>>), SerializableGraphError<T>>
+    {
+        let mut graph = DependencyGraph::new();
+
+        let ids: HashSet<usize> = self.nodes.iter().map(|(id, _)| *id).collect();
+        let invalid_ids_from_metadata = self
+            .node_metadata
+            .iter()
+            .flat_map(|x| x.iter())
+            .filter(|(id, _)| !ids.contains(id))
+            .map(|(id, _)| *id);
+        let invalid_ids_from_edges_from = self
+            .edges
+            .iter()
+            .filter(|(from, _, _)| !ids.contains(from))
+            .map(|(from, _, _)| *from);
+        let invalid_ids_from_edges_to = self
+            .edges
+            .iter()
+            .filter(|(_, to, _)| !ids.contains(to))
+            .map(|(_, to, _)| *to);
+        let invalid_ids: Vec<_> = invalid_ids_from_metadata
+            .merge(invalid_ids_from_edges_from)
+            .merge(invalid_ids_from_edges_to)
+            .collect();
+        if !invalid_ids.is_empty() {
+            return Err(SerializableGraphError::InvalidIds(invalid_ids, self));
+        }
+
+        let (mapping, errors): (HashMap<usize, DependencyId>, Vec<_>) = self
+            .nodes
+            .into_iter()
+            .map(|(index, info)| graph.add_dependency(info).map(|id| (index, id)))
+            .partition_result();
+        if !errors.is_empty() {
+            return Err(SerializableGraphError::CouldntAddDeps(errors));
+        }
+
+        // Now we're sure that all mappings are correct, we can safely assume that all DependencyId and id (usize) are in the mapping.
+        self.edges.into_iter().for_each(|(from, to, framework)| {
+            graph
+                .add_relation(
+                    *mapping.get(&from).unwrap(),
+                    *mapping.get(&to).unwrap(),
+                    framework,
+                )
+                .expect("Ids have been validated in the previous steps.");
+        });
+
+        // Now update the metadata.
+        let metadata = self.node_metadata.map(|met| {
+            met.into_iter()
+                .map(|(id, value)| (*mapping.get(&id).unwrap(), value))
+                .collect()
+        });
+
+        Ok((graph, metadata))
+    }
 }
 
 impl Default for DependencyGraph {
