@@ -4,6 +4,8 @@ use eframe::App;
 use eframe::egui::Context;
 use egui_file_dialog::FileDialog;
 use puffin::GlobalProfiler;
+use std::fs::File;
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use crate::dependency_panel::DependencyPanel;
@@ -15,13 +17,14 @@ use crate::session::Session;
 /// Handles file dialog operations.
 struct FileDialogHandler {
     file_dialog: FileDialog,
-    mode: OpenFileMode,
+    mode: FileMode,
 }
 
 #[derive(PartialEq, Eq)]
-enum OpenFileMode {
+enum FileMode {
     Replace,
     Merge,
+    Save,
     None,
 }
 
@@ -29,12 +32,12 @@ impl FileDialogHandler {
     fn new() -> Self {
         Self {
             file_dialog: FileDialog::new(),
-            mode: OpenFileMode::None,
+            mode: FileMode::None,
         }
     }
 
     fn handle(&mut self, app_state: &mut AppState) -> Result<(), Error> {
-        if self.mode == OpenFileMode::None {
+        if self.mode == FileMode::None {
             return Ok(());
         }
 
@@ -42,6 +45,46 @@ impl FileDialogHandler {
             return Ok(());
         };
 
+        match (&self.mode, &app_state) {
+            (FileMode::Merge | FileMode::Replace, _) => {
+                self.handle_load(app_state, path)?;
+            }
+            (FileMode::Save, AppState::FileLoaded(session)) => {
+                // `session` is a `&mut Box<Session>` here; convert to `&Session` for save_state
+                Self::save_state(session, path)?;
+            }
+            _ => {}
+        }
+
+        self.mode = FileMode::None;
+
+        Ok(())
+    }
+
+    fn save_state(session: &Session, path: PathBuf) -> Result<(), Error> {
+        // Build metadata map keyed by DependencyId so parser can remap ids when loading
+        let metadata: std::collections::HashMap<
+            dotnet_dependency_parser::graph::DependencyId,
+            (bool, (f32, f32)),
+        > = session
+            .node_positions
+            .iter()
+            .map(|(id, (x, y))| (*id, (session.visible_nodes.contains(id), (*x, *y))))
+            .collect();
+
+        let serializable = session
+            .graph
+            .clone()
+            .try_into_serializable(Some(metadata))
+            .map_err(|e| anyhow::anyhow!("Failed to create serializable graph: {}", e))?;
+
+        let file = File::create(path)?;
+        serde_json::to_writer_pretty(file, &serializable)?;
+
+        Ok(())
+    }
+
+    fn handle_load(&mut self, app_state: &mut AppState, path: PathBuf) -> Result<(), Error> {
         let new_graph = match parser::parse_with_supported_parsers(&path) {
             Ok(graph) => graph,
             Err(e) => {
@@ -50,7 +93,7 @@ impl FileDialogHandler {
         };
 
         match (&mut *app_state, &self.mode) {
-            (AppState::FileLoaded(session), OpenFileMode::Merge) => {
+            (AppState::FileLoaded(session), FileMode::Merge) => {
                 if let Err(e) = session.merge(new_graph) {
                     return Err(anyhow::anyhow!("Failed to merge: {}", e));
                 }
@@ -63,9 +106,7 @@ impl FileDialogHandler {
                     return Err(anyhow::anyhow!("Failed to load session: {}", e));
                 }
             },
-        }
-
-        self.mode = OpenFileMode::None;
+        };
 
         Ok(())
     }
@@ -84,6 +125,12 @@ impl FileDialogHandler {
                         && ui.button("Merge file").clicked()
                     {
                         self.open_for_merge();
+                    }
+
+                    if matches!(app_state, AppState::FileLoaded(_))
+                        && ui.button("Save to file").clicked()
+                    {
+                        self.open_for_save();
                     }
                 });
             });
@@ -108,13 +155,18 @@ impl FileDialogHandler {
     }
 
     fn open_for_replace(&mut self) {
-        self.mode = OpenFileMode::Replace;
+        self.mode = FileMode::Replace;
         self.file_dialog.pick_file();
     }
 
     fn open_for_merge(&mut self) {
-        self.mode = OpenFileMode::Merge;
+        self.mode = FileMode::Merge;
         self.file_dialog.pick_file();
+    }
+
+    fn open_for_save(&mut self) {
+        self.mode = FileMode::Save;
+        self.file_dialog.save_file();
     }
 }
 
