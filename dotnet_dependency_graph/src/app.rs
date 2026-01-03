@@ -51,7 +51,6 @@ impl FileDialogHandler {
                 self.handle_load(app_state, path)?;
             }
             (FileMode::Save, AppState::FileLoaded(session)) => {
-                // `session` is a `&mut Box<Session>` here; convert to `&Session` for save_state
                 Self::save_state(session, path)?;
             }
             (FileMode::Load, _) => {
