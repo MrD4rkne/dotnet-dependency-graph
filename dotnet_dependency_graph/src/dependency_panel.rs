@@ -361,8 +361,6 @@ fn show_label_for_depedency(
 
         if label.hovered() {
             interaction_state.highlight_dependency(Some(id));
-        } else if interaction_state.highlighted_dependency() == Some(id) {
-            interaction_state.highlight_dependency(None);
         }
     });
 
