@@ -400,51 +400,70 @@ impl<'a> DepPanel<'a> {
 impl<'a> Widget for DepPanel<'a> {
     fn ui(self, ui: &mut Ui) -> Response {
         ui.vertical(|ui| {
-            if let (Some(dep), Some(framework)) = (
+            match (
                 self.interaction_state.selected_dependency(),
                 self.interaction_state.selected_framework().cloned(),
             ) {
-                ui.group(|ui| {
-                    ui.label("Direct dependencies");
-                    for dep in self
-                        .graph
-                        .get_direct_dependencies_in_framework(dep, &framework)
-                        .unwrap()
-                    {
-                        let info = self.graph.get(dep.to()).unwrap();
-                        show_label_for_depedency(
-                            ui,
-                            self.interaction_state,
-                            self.visible_nodes,
-                            dep.to(),
-                            eframe::egui::WidgetText::Text(info.name().to_string()),
-                        );
-                    }
-                });
-                ui.group(|ui| {
-                    ui.label("Reverse direct dependencies");
-                    for dep in self
-                        .graph
-                        .get_direct_reverse_dependencies_in_framework(dep, &framework)
-                        .unwrap()
-                    {
-                        let info = self.graph.get(dep.to()).unwrap();
-                        show_label_for_depedency(
-                            ui,
-                            self.interaction_state,
-                            self.visible_nodes,
-                            dep.to(),
-                            eframe::egui::WidgetText::Text(info.name().to_string()),
-                        );
-                    }
-                });
-            } else {
-                ui.with_layout(
-                    eframe::egui::Layout::centered_and_justified(eframe::egui::Direction::TopDown),
-                    |ui| {
-                        ui.label("Select framework and dependency");
-                    },
-                );
+                (Some(dep), Some(framework)) => {
+                    ui.group(|ui| {
+                        ui.label("Direct dependencies");
+                        for dep in self
+                            .graph
+                            .get_direct_dependencies_in_framework(dep, &framework)
+                            .unwrap()
+                        {
+                            let info = self.graph.get(dep.to()).unwrap();
+                            show_label_for_depedency(
+                                ui,
+                                self.interaction_state,
+                                self.visible_nodes,
+                                dep.to(),
+                                eframe::egui::WidgetText::Text(info.name().to_string()),
+                            );
+                        }
+                    });
+                    ui.group(|ui| {
+                        ui.label("Reverse direct dependencies");
+                        for dep in self
+                            .graph
+                            .get_direct_reverse_dependencies_in_framework(dep, &framework)
+                            .unwrap()
+                        {
+                            let info = self.graph.get(dep.to()).unwrap();
+                            show_label_for_depedency(
+                                ui,
+                                self.interaction_state,
+                                self.visible_nodes,
+                                dep.to(),
+                                eframe::egui::WidgetText::Text(info.name().to_string()),
+                            );
+                        }
+                    });
+                }
+                (Some(_), None) => {
+                    ui.with_layout(
+                        eframe::egui::Layout::centered_and_justified(
+                            eframe::egui::Direction::TopDown,
+                        ),
+                        |ui| ui.label("Select framework"),
+                    );
+                }
+                (None, Some(_)) => {
+                    ui.with_layout(
+                        eframe::egui::Layout::centered_and_justified(
+                            eframe::egui::Direction::TopDown,
+                        ),
+                        |ui| ui.label("Select dependency"),
+                    );
+                }
+                (None, None) => {
+                    ui.with_layout(
+                        eframe::egui::Layout::centered_and_justified(
+                            eframe::egui::Direction::TopDown,
+                        ),
+                        |ui| ui.label("Select framework and dependency"),
+                    );
+                }
             }
         })
         .response
