@@ -434,6 +434,7 @@ impl<'a> Widget for DepPanel<'a> {
                 self.interaction_state.selected_framework().cloned(),
             ) {
                 (Some(dep), Some(framework)) => {
+                    ui.horizontal_wrapped(|ui| ui.label(self.graph.get(dep).unwrap().name()));
                     ui.columns(2, |columns| {
                         let deps = self
                             .graph
