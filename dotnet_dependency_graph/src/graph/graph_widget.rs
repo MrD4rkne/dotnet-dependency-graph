@@ -183,10 +183,10 @@ fn draw_single_node(
     text: &str,
     ui: &mut Ui,
     interaction_state: &mut InteractionController,
-    selected: bool,
+    highlighted: bool,
 ) {
     puffin::profile_function!();
-    visualize::draw_node(text, ui.painter(), cache, selected);
+    visualize::draw_node(text, ui.painter(), cache, highlighted);
     handle_node_interactions(id, cache, ui, interaction_state, text);
 }
 
