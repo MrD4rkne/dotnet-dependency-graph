@@ -159,7 +159,7 @@ impl Session {
             graph,
             visible_nodes: all_dep_ids,
             cache,
-            interaction_state: InteractionController::new(),
+            interaction_state: InteractionController::default(),
         }
     }
 }
