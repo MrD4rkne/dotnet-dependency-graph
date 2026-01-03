@@ -369,3 +369,57 @@ fn rich_text_for_label(label: &str, searcher: &Searcher) -> eframe::egui::Widget
         label.into()
     }
 }
+
+pub(crate) struct DepPanel<'a> {
+    graph: &'a DependencyGraph,
+    interaction_state: &'a mut InteractionState,
+}
+
+impl<'a> DepPanel<'a> {
+    pub(crate) fn new(
+        graph: &'a DependencyGraph,
+        interaction_state: &'a mut InteractionState,
+    ) -> Self {
+        Self {
+            graph,
+            interaction_state,
+        }
+    }
+}
+
+impl<'a> Widget for DepPanel<'a> {
+    fn ui(self, ui: &mut Ui) -> Response {
+        ui.vertical(|ui| {
+            if let (Some(dep), Some(framework)) = (
+                self.interaction_state.selected_dependency(),
+                self.interaction_state.selected_framework(),
+            ) {
+                ui.group(|ui| {
+                    ui.label("Deps");
+                    for dep in self
+                        .graph
+                        .get_direct_dependencies_in_framework(dep, framework)
+                        .unwrap()
+                    {
+                        let info = self.graph.get(dep.to()).unwrap();
+                        ui.label(info.name());
+                    }
+                });
+                ui.group(|ui| {
+                    ui.label("Reverse");
+                    for dep in self
+                        .graph
+                        .get_direct_reverse_dependencies_in_framework(dep, framework)
+                        .unwrap()
+                    {
+                        let info = self.graph.get(dep.to()).unwrap();
+                        ui.label(info.name());
+                    }
+                });
+            } else {
+                ui.label("Select framework and dependency");
+            }
+        })
+        .response
+    }
+}
