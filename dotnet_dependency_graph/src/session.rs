@@ -63,10 +63,6 @@ pub(crate) struct InteractionController {
 }
 
 impl InteractionController {
-    pub(crate) fn new() -> Self {
-        Self::default()
-    }
-
     /// Publish an event which will be processed when `process_pending`
     /// is called (usually between UI panels in a frame).
     pub(crate) fn publish(&mut self, ev: InteractionEvent) {
