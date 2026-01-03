@@ -78,7 +78,7 @@ impl Framework {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DepEdge {
     from: DependencyId,
     to: DependencyId,
@@ -984,6 +984,89 @@ fn test_reverse_dependencies_edge_from_to() {
     let source_ids: Vec<DependencyId> = reverse_deps.iter().map(|e| e.from()).collect();
     assert!(source_ids.contains(&proj1));
     assert!(source_ids.contains(&proj2));
+}
+
+#[test]
+fn test_reverse_dependencies_in_framework() {
+    let mut graph = DependencyGraph::new();
+
+    let proj1 = graph
+        .add_project("/path/to/proj1.csproj".to_string(), None)
+        .unwrap();
+    let proj2 = graph
+        .add_project("/path/to/proj2.csproj".to_string(), None)
+        .unwrap();
+    let pkg = graph
+        .add_package("SharedPackage".to_string(), None)
+        .unwrap();
+
+    let framework = Framework::new("net8.0".to_string());
+    let other_framework = Framework::new("net9.0".to_string());
+
+    // Both projects depend on the package
+    graph.add_relation(proj1, pkg, framework.clone()).unwrap();
+    graph.add_relation(proj2, pkg, framework.clone()).unwrap();
+    graph
+        .add_relation(proj1, proj2, other_framework.clone())
+        .unwrap();
+
+    // Get reverse dependencies of the package
+    let reverse_deps: Vec<_> = graph
+        .get_direct_reverse_dependencies_in_framework(pkg, &framework)
+        .unwrap()
+        .collect();
+    assert_eq!(reverse_deps.len(), 2);
+    // For reverse dependencies (incoming edges), the edges still have:
+    // - from: the source that depends on pkg (proj1 or proj2)
+    // - to: pkg
+    for edge in &reverse_deps {
+        assert_eq!(edge.to(), pkg);
+    }
+    let source_ids: Vec<DependencyId> = reverse_deps.iter().map(|e| e.from()).collect();
+    assert!(source_ids.contains(&proj1));
+    assert!(source_ids.contains(&proj2));
+
+    // Other deps should not
+    assert!(
+        graph
+            .get_direct_reverse_dependencies_in_framework(proj1, &framework)
+            .unwrap()
+            .count()
+            == 0
+    );
+    assert!(
+        graph
+            .get_direct_reverse_dependencies_in_framework(proj2, &framework)
+            .unwrap()
+            .count()
+            == 0
+    );
+
+    // Now verify for other_framework
+    assert!(
+        graph
+            .get_direct_reverse_dependencies_in_framework(pkg, &other_framework)
+            .unwrap()
+            .count()
+            == 0
+    );
+    assert!(
+        graph
+            .get_direct_reverse_dependencies_in_framework(proj1, &other_framework)
+            .unwrap()
+            .count()
+            == 0
+    );
+
+    let reverse_deps: Vec<_> = graph
+        .get_direct_reverse_dependencies_in_framework(proj2, &other_framework)
+        .unwrap()
+        .collect();
+    assert_eq!(reverse_deps.len(), 1);
+    assert_eq!(
+        *reverse_deps[0],
+        DepEdge::new(proj1, proj2, other_framework)
+    )
 }
 
 #[test]
