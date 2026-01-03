@@ -333,14 +333,13 @@ fn show_checkbox(
             }
         }
 
-        show_label_for_dependency(ui, interaction_state, visible_nodes, id, label);
+        show_label_for_dependency(ui, interaction_state, id, label);
     });
 }
 
 fn show_label_for_dependency(
     ui: &mut Ui,
     interaction_state: &mut crate::session::InteractionController,
-    visible_nodes: &mut HashSet<DependencyId>,
     id: DependencyId,
     label: WidgetText,
 ) {
@@ -386,19 +385,16 @@ fn rich_text_for_label(label: &str, searcher: &Searcher) -> eframe::egui::Widget
 pub(crate) struct DepPanel<'a> {
     graph: &'a DependencyGraph,
     interaction_state: &'a mut crate::session::InteractionController,
-    visible_nodes: &'a mut HashSet<DependencyId>,
 }
 
 impl<'a> DepPanel<'a> {
     pub(crate) fn new(
         graph: &'a DependencyGraph,
         interaction_state: &'a mut crate::session::InteractionController,
-        visible_nodes: &'a mut HashSet<DependencyId>,
     ) -> Self {
         Self {
             graph,
             interaction_state,
-            visible_nodes,
         }
     }
 
@@ -420,7 +416,6 @@ impl<'a> DepPanel<'a> {
                         show_label_for_dependency(
                             ui,
                             self.interaction_state,
-                            self.visible_nodes,
                             id,
                             eframe::egui::WidgetText::Text(info.name().to_string()),
                         );
