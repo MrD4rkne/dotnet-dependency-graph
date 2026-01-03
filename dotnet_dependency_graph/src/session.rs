@@ -16,8 +16,6 @@ use dotnet_dependency_parser::graph::Layout;
 pub(crate) enum InteractionEvent {
     Select(DependencyId),
     Highlight(DependencyId),
-    SetDragged(DependencyId),
-    StopDragged(),
     SelectFramework(Framework),
 }
 
@@ -27,7 +25,6 @@ pub(crate) struct InteractionState {
     selected: Option<DependencyId>,
     highlighted: Option<DependencyId>,
     selected_framework: Option<Framework>,
-    dragged_node: Option<DependencyId>,
 }
 
 impl InteractionState {
@@ -37,10 +34,6 @@ impl InteractionState {
 
     pub(crate) fn selected_framework(&self) -> Option<&Framework> {
         self.selected_framework.as_ref()
-    }
-
-    pub(crate) fn dragged_node(&self) -> Option<DependencyId> {
-        self.dragged_node
     }
 
     pub(crate) fn highlighted_dependency(&self) -> Option<DependencyId> {
@@ -77,8 +70,6 @@ impl InteractionController {
             match ev {
                 InteractionEvent::Select(opt) => self.state.selected = Some(opt),
                 InteractionEvent::Highlight(opt) => self.state.highlighted = Some(opt),
-                InteractionEvent::SetDragged(opt) => self.state.dragged_node = Some(opt),
-                InteractionEvent::StopDragged() => self.state.dragged_node = None,
                 InteractionEvent::SelectFramework(opt) => self.state.selected_framework = Some(opt),
             }
         }
@@ -95,10 +86,6 @@ impl InteractionController {
 
     pub(crate) fn selected_framework(&self) -> Option<&Framework> {
         self.state.selected_framework()
-    }
-
-    pub(crate) fn dragged_node(&self) -> Option<DependencyId> {
-        self.state.dragged_node()
     }
 
     pub(crate) fn highlighted_dependency(&self) -> Option<DependencyId> {
