@@ -59,7 +59,7 @@ impl<'a> GraphWidget<'a> {
         }
     }
 
-    fn handle_dependency_selection(&mut self) {
+    fn handle_panning_to_dependency(&mut self) {
         if let Some(sel) = self.interaction_state.panned_dependency() {
             let cache = self
                 .node_cache
@@ -75,7 +75,7 @@ impl<'a> GraphWidget<'a> {
 impl<'a> Widget for GraphWidget<'a> {
     fn ui(mut self, ui: &mut Ui) -> Response {
         let scene = Scene::new().zoom_range(ZOOM_MIN..=ZOOM_MAX);
-        self.handle_dependency_selection();
+        self.handle_panning_to_dependency();
 
         let inner = scene.show(ui, self.view_state.scene_rect, |ui| {
             // Draw nodes in scene coordinates.
@@ -193,18 +193,9 @@ fn handle_node_interactions(
 ) {
     let node_response = ui.interact(data.rect(), ui.id().with(id), Sense::click_and_drag());
 
-    if node_response.drag_started() {
-        state.publish(crate::session::InteractionEvent::SetDragged(id));
-    }
-
-    if node_response.dragged() && (state.dragged_node() == Some(id) || node_response.drag_started())
-    {
+    if node_response.dragged() {
         let delta = node_response.drag_delta();
         data.move_by(delta);
-    }
-
-    if node_response.drag_stopped() {
-        state.publish(crate::session::InteractionEvent::StopDragged());
     }
 
     if node_response.clicked() {
