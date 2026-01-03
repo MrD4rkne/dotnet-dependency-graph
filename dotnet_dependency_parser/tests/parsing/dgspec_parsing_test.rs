@@ -9,14 +9,7 @@ use super::dotnet_project;
 fn dgspec_for_project_and_libraries_dependencies_deserializing_then_serializing_produces_equivalent_json()
 -> std::io::Result<()> {
     // Arrange
-    let crate_root = std::env::current_dir()?;
-    let sln_dir = crate_root
-        .join("tests")
-        .join("data")
-        .join("project_with_two_frameworks");
-
-    dotnet_project::clean_dotnet_sln(&sln_dir)?;
-    dotnet_project::restore_dotnet_sln(&sln_dir)?;
+    let sln_dir = dotnet_project::prepare_simple_dotnet_project();
 
     let dgspec_files = get_dgspecs_from_dir(&sln_dir)?;
     assert!(
