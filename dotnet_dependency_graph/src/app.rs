@@ -315,8 +315,8 @@ impl<'a> PackagesViewRenderer<'a> {
                         &mut file.interaction_state,
                     ));
                 });
-            eframe::egui::SidePanel::right("dependency_panel")
-                .max_width(600.0)
+            eframe::egui::TopBottomPanel::bottom("dependency_panel")
+                .max_height(600.0)
                 .resizable(true)
                 .show(ctx, |ui| {
                     ui.add(DepPanel::new(

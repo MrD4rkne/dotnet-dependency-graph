@@ -405,39 +405,41 @@ impl<'a> Widget for DepPanel<'a> {
                 self.interaction_state.selected_framework().cloned(),
             ) {
                 (Some(dep), Some(framework)) => {
-                    ui.group(|ui| {
-                        ui.label("Direct dependencies");
-                        for dep in self
-                            .graph
-                            .get_direct_dependencies_in_framework(dep, &framework)
-                            .unwrap()
-                        {
-                            let info = self.graph.get(dep.to()).unwrap();
-                            show_label_for_depedency(
-                                ui,
-                                self.interaction_state,
-                                self.visible_nodes,
-                                dep.to(),
-                                eframe::egui::WidgetText::Text(info.name().to_string()),
-                            );
-                        }
-                    });
-                    ui.group(|ui| {
-                        ui.label("Reverse direct dependencies");
-                        for dep in self
-                            .graph
-                            .get_direct_reverse_dependencies_in_framework(dep, &framework)
-                            .unwrap()
-                        {
-                            let info = self.graph.get(dep.to()).unwrap();
-                            show_label_for_depedency(
-                                ui,
-                                self.interaction_state,
-                                self.visible_nodes,
-                                dep.to(),
-                                eframe::egui::WidgetText::Text(info.name().to_string()),
-                            );
-                        }
+                    ui.columns(2, |columns| {
+                        columns[0].group(|ui| {
+                            ui.label("Direct dependencies");
+                            for dep in self
+                                .graph
+                                .get_direct_dependencies_in_framework(dep, &framework)
+                                .unwrap()
+                            {
+                                let info = self.graph.get(dep.to()).unwrap();
+                                show_label_for_depedency(
+                                    ui,
+                                    self.interaction_state,
+                                    self.visible_nodes,
+                                    dep.to(),
+                                    eframe::egui::WidgetText::Text(info.name().to_string()),
+                                );
+                            }
+                        });
+                        columns[1].group(|ui| {
+                            ui.label("Reverse direct dependencies");
+                            for dep in self
+                                .graph
+                                .get_direct_reverse_dependencies_in_framework(dep, &framework)
+                                .unwrap()
+                            {
+                                let info = self.graph.get(dep.to()).unwrap();
+                                show_label_for_depedency(
+                                    ui,
+                                    self.interaction_state,
+                                    self.visible_nodes,
+                                    dep.to(),
+                                    eframe::egui::WidgetText::Text(info.name().to_string()),
+                                );
+                            }
+                        });
                     });
                 }
                 (Some(_), None) => {
