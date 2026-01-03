@@ -387,7 +387,10 @@ impl DependencyGraph {
         id: DependencyId,
     ) -> Result<impl Iterator<Item = &DepEdge>, DependencyGraphError> {
         if self.is_in_graph(id) {
-            Ok(self.graph.edges(id.ix).map(|edge_ref| edge_ref.weight()))
+            Ok(self
+                .graph
+                .edges_directed(id.ix, petgraph::Direction::Outgoing)
+                .map(|edge_ref| edge_ref.weight()))
         } else {
             Err(DependencyGraphError::DependencyNotFound)
         }
@@ -428,15 +431,8 @@ impl DependencyGraph {
         id: DependencyId,
         framework: &Framework,
     ) -> Result<impl Iterator<Item = &DepEdge>, DependencyGraphError> {
-        if self.is_in_graph(id) {
-            Ok(self
-                .graph
-                .edges_directed(id.ix, petgraph::Direction::Incoming)
-                .filter(move |x| x.weight().framework() == framework)
-                .map(|edge| edge.weight()))
-        } else {
-            Err(DependencyGraphError::DependencyNotFound)
-        }
+        self.get_direct_reverse_dependencies(id)
+            .map(|x| x.filter(move |edge| edge.framework() == framework))
     }
 
     pub fn add_relation(
