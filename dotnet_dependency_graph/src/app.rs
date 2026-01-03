@@ -251,7 +251,7 @@ impl<'a> CentralPanelRenderer<'a> {
                     |ui| {
                         ui.label(format!("FPS: {:.0}", self.fps_counter.fps()));
                         ui.label("Click to select and pan to the dependency | Hover to highlight | Drag nodes to move them");
-                        ui.label("Ctrl + mouse wheel to zoom | Drag background to pan | Drag nodes to move them");
+                        ui.label("Ctrl + mouse wheel to zoom | Drag background to pan");
                     },
                 );
             } else {
