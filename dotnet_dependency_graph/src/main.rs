@@ -9,6 +9,7 @@ mod graph;
 mod node;
 mod parser;
 mod session;
+mod state;
 mod visualize;
 
 use crate::app::DependencyApp;

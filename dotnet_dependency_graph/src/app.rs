@@ -1,10 +1,8 @@
 use anyhow::Error;
-use dotnet_dependency_parser::graph::{DependencyId, SerializableGraph};
 use eframe::App;
 use eframe::egui::Context;
 use egui_file_dialog::FileDialog;
 use puffin::GlobalProfiler;
-use std::fs::File;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
@@ -51,10 +49,10 @@ impl FileDialogHandler {
                 self.handle_load(app_state, path)?;
             }
             (FileMode::Save, AppState::FileLoaded(session)) => {
-                Self::save_state(session, path)?;
+                crate::state::save_state(session, path)?;
             }
             (FileMode::Load, _) => {
-                *app_state = AppState::FileLoaded(Box::new(Self::load_state(path)?));
+                *app_state = AppState::FileLoaded(Box::new(crate::state::load_state(path)?));
             }
             _ => {}
         }
@@ -62,60 +60,6 @@ impl FileDialogHandler {
         self.mode = FileMode::None;
 
         Ok(())
-    }
-
-    fn save_state(session: &Session, path: PathBuf) -> Result<(), Error> {
-        // Build metadata map keyed by DependencyId so parser can remap ids when loading
-        let metadata: std::collections::HashMap<
-            dotnet_dependency_parser::graph::DependencyId,
-            (bool, (f32, f32)),
-        > = session
-            .cache
-            .node_cache()
-            .iter()
-            .map(|(id, cache)| {
-                (
-                    *id,
-                    (
-                        session.visible_nodes.contains(id),
-                        (cache.position().x, cache.position().y),
-                    ),
-                )
-            })
-            .collect();
-
-        let serializable = session
-            .graph
-            .clone()
-            .try_into_serializable(Some(metadata))
-            .map_err(|e| anyhow::anyhow!("Failed to create serializable graph: {}", e))?;
-
-        let file = File::create(path)?;
-        serde_json::to_writer_pretty(file, &serializable)?;
-
-        Ok(())
-    }
-
-    fn load_state(path: PathBuf) -> Result<Session, Error> {
-        let file = File::open(path.clone())?;
-        let serialized: SerializableGraph<(bool, (f32, f32))> = serde_json::from_reader(file)?;
-
-        let (graph, metadata) = serialized.from_serializable()?;
-
-        let mut visible_nodes: std::collections::HashSet<DependencyId> =
-            std::collections::HashSet::new();
-        let mut node_positions: std::collections::HashMap<DependencyId, (f32, f32)> =
-            std::collections::HashMap::new();
-
-        let meta = metadata.ok_or(anyhow::anyhow!("Missing metadata in the file"))?;
-        for (id, (visible, (x, y))) in meta.into_iter() {
-            if visible {
-                visible_nodes.insert(id);
-            }
-            node_positions.insert(id, (x, y));
-        }
-
-        Ok(Session::new(path, graph, node_positions, visible_nodes))
     }
 
     fn handle_load(&mut self, app_state: &mut AppState, path: PathBuf) -> Result<(), Error> {
