@@ -97,23 +97,8 @@ pub(crate) struct Session {
 impl Session {
     pub(crate) fn load_from(path: PathBuf, graph: DependencyGraph) -> Session {
         let positions = calculate_positions(&graph);
-        Session::new(path, graph, positions)
-    }
-
-    pub(crate) fn load_from_saved(
-        path: PathBuf,
-        graph: DependencyGraph,
-        node_positions: HashMap<DependencyId, (f32, f32)>,
-        visible_nodes: HashSet<DependencyId>,
-    ) -> Session {
-        let cache = GraphCache::new(&graph, &node_positions);
-        Self {
-            path,
-            graph,
-            visible_nodes,
-            cache,
-            interaction_state: InteractionController::default(),
-        }
+        let visible_nodes = graph.iter().map(|(id, _)| id).collect();
+        Session::new(path, graph, positions, visible_nodes)
     }
 
     pub(crate) fn merge(&mut self, graph: DependencyGraph) -> Result<(), DependencyGraphError> {
@@ -122,17 +107,17 @@ impl Session {
         Ok(())
     }
 
-    fn new(
+    pub(crate) fn new(
         path: PathBuf,
         graph: DependencyGraph,
         node_positions: HashMap<DependencyId, (f32, f32)>,
+        visible_nodes: HashSet<DependencyId>,
     ) -> Self {
-        let all_dep_ids = graph.iter().map(|(id, _)| id).collect();
         let cache = GraphCache::new(&graph, &node_positions);
         Self {
             path,
             graph,
-            visible_nodes: all_dep_ids,
+            visible_nodes,
             cache,
             interaction_state: InteractionController::default(),
         }

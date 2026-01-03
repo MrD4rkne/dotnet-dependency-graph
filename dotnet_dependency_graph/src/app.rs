@@ -116,12 +116,7 @@ impl FileDialogHandler {
             node_positions.insert(id, (x, y));
         }
 
-        Ok(Session::load_from_saved(
-            path,
-            graph,
-            node_positions,
-            visible_nodes,
-        ))
+        Ok(Session::new(path, graph, node_positions, visible_nodes))
     }
 
     fn handle_load(&mut self, app_state: &mut AppState, path: PathBuf) -> Result<(), Error> {
