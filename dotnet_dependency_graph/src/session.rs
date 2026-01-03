@@ -137,7 +137,7 @@ impl Session {
             graph,
             visible_nodes,
             cache,
-            interaction_state: InteractionController::new(),
+            interaction_state: InteractionController::default(),
         }
     }
 
