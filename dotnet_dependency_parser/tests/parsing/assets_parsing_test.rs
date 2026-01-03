@@ -88,15 +88,7 @@ fn test_parse_project_assets_includes_all_frameworks() {
 
 fn get_assets_content() -> String {
     // Arrange
-    let crate_root = std::env::current_dir().expect("Invalid current dir");
-    let sln_dir = crate_root
-        .join("tests")
-        .join("data")
-        .join("project_with_two_frameworks");
-
-    dotnet_project::clean_dotnet_sln(&sln_dir).expect("Failed on dotnet clean");
-    dotnet_project::restore_dotnet_sln(&sln_dir).expect("Failed on dotnet restore");
-
+    let sln_dir = dotnet_project::prepare_simple_dotnet_project();
     let assets_path = sln_dir
         .join("console1")
         .join("obj")
