@@ -7,7 +7,6 @@ use std::path::PathBuf;
 
 use crate::graph::GraphCache;
 use crate::visualize;
-use dotnet_dependency_parser::graph::Layout;
 
 /// Events representing user interactions. Widgets should publish these
 /// instead of mutating state directly. The controller processes events
@@ -124,12 +123,12 @@ impl Session {
     }
 }
 
+use dotnet_dependency_parser::graph::algo::{Config, RankingType};
 fn calculate_positions(graph: &DependencyGraph) -> HashMap<DependencyId, (f32, f32)> {
-    let layouts = calculate_layout(graph);
+    let config = Config {
+        ranking_type: RankingType::Down,
+        ..Default::default()
+    };
+    let layouts = graph.layout_with_config(&visualize::calculate_size, &config);
     visualize::join_layouts(layouts)
-}
-
-pub(crate) fn calculate_layout(graph: &DependencyGraph) -> Vec<Layout<DependencyId>> {
-    puffin::profile_function!();
-    graph.layout(&visualize::calculate_size)
 }
