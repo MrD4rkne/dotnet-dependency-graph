@@ -319,7 +319,11 @@ impl<'a> PackagesViewRenderer<'a> {
                 .max_width(600.0)
                 .resizable(true)
                 .show(ctx, |ui| {
-                    ui.add(DepPanel::new(&file.graph, &mut file.interaction_state));
+                    ui.add(DepPanel::new(
+                        &file.graph,
+                        &mut file.interaction_state,
+                        &mut file.visible_nodes,
+                    ));
                 });
         }
     }

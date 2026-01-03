@@ -333,29 +333,26 @@ fn show_checkbox(
             }
         }
 
-        show_label_for_depedency(ui, interaction_state, id, label, is_visible);
+        show_label_for_depedency(ui, interaction_state, visible_nodes, id, label);
     });
 }
 
 fn show_label_for_depedency(
     ui: &mut Ui,
     interaction_state: &mut InteractionState,
+    visible_nodes: &mut HashSet<DependencyId>,
     id: DependencyId,
     label: WidgetText,
-    selectable: bool,
 ) {
     let is_selected = interaction_state.selected_dependency() == Some(id);
     ui.horizontal_wrapped(|ui| {
-        if ui
-            .selectable_label(is_selected && selectable, label)
-            .clicked()
-            && selectable
-        {
+        if ui.selectable_label(is_selected, label).clicked() {
             interaction_state.select_dependency(Some(id));
+            visible_nodes.insert(id);
         }
     });
 
-    if is_selected && !selectable {
+    if is_selected && !visible_nodes.contains(&id) {
         interaction_state.select_dependency(None);
     }
 }
@@ -383,16 +380,19 @@ fn rich_text_for_label(label: &str, searcher: &Searcher) -> eframe::egui::Widget
 pub(crate) struct DepPanel<'a> {
     graph: &'a DependencyGraph,
     interaction_state: &'a mut InteractionState,
+    visible_nodes: &'a mut HashSet<DependencyId>,
 }
 
 impl<'a> DepPanel<'a> {
     pub(crate) fn new(
         graph: &'a DependencyGraph,
         interaction_state: &'a mut InteractionState,
+        visible_nodes: &'a mut HashSet<DependencyId>,
     ) -> Self {
         Self {
             graph,
             interaction_state,
+            visible_nodes,
         }
     }
 }
@@ -415,9 +415,9 @@ impl<'a> Widget for DepPanel<'a> {
                         show_label_for_depedency(
                             ui,
                             self.interaction_state,
+                            self.visible_nodes,
                             dep.to(),
                             eframe::egui::WidgetText::Text(info.name().to_string()),
-                            true,
                         );
                     }
                 });
@@ -432,9 +432,9 @@ impl<'a> Widget for DepPanel<'a> {
                         show_label_for_depedency(
                             ui,
                             self.interaction_state,
+                            self.visible_nodes,
                             dep.to(),
                             eframe::egui::WidgetText::Text(info.name().to_string()),
-                            true,
                         );
                     }
                 });
