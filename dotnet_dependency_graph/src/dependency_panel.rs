@@ -445,7 +445,7 @@ impl<'a> Widget for DepPanel<'a> {
                                             ui,
                                             self.interaction_state,
                                             self.visible_nodes,
-                                            dep.to(),
+                                            dep.from(),
                                             eframe::egui::WidgetText::Text(info.name().to_string()),
                                         );
                                     }
