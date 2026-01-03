@@ -1,5 +1,5 @@
 use dotnet_dependency_parser::graph::{DependencyGraph, DependencyId};
-use eframe::egui::{Response, Ui, Widget};
+use eframe::egui::{Response, Ui, Widget, WidgetText};
 use regex::Regex;
 use std::collections::{BTreeMap, HashSet};
 
@@ -335,19 +335,29 @@ fn show_checkbox(
             }
         }
 
-        let is_selected = interaction_state.selected_dependency() == Some(id);
-        if ui
-            .selectable_label(is_selected && is_visible, label)
-            .clicked()
-            && is_visible
-        {
-            interaction_state.select_dependency(Some(id));
-        }
-
-        if is_selected && !is_visible {
-            interaction_state.select_dependency(None);
-        }
+        show_label_for_depedency(ui, interaction_state, id, label, is_visible);
     });
+}
+
+fn show_label_for_depedency(
+    ui: &mut Ui,
+    interaction_state: &mut InteractionState,
+    id: DependencyId,
+    label: WidgetText,
+    selectable: bool,
+) {
+    let is_selected = interaction_state.selected_dependency() == Some(id);
+    if ui
+        .selectable_label(is_selected && selectable, label)
+        .clicked()
+        && selectable
+    {
+        interaction_state.select_dependency(Some(id));
+    }
+
+    if is_selected && !selectable {
+        interaction_state.select_dependency(None);
+    }
 }
 
 // Create WidgetText content, but highlight the sequence matched by the searcher.
@@ -388,36 +398,53 @@ impl<'a> DepPanel<'a> {
 }
 
 impl<'a> Widget for DepPanel<'a> {
-    fn ui(self, ui: &mut Ui) -> Response {
+    fn ui(mut self, ui: &mut Ui) -> Response {
         ui.vertical(|ui| {
             if let (Some(dep), Some(framework)) = (
                 self.interaction_state.selected_dependency(),
-                self.interaction_state.selected_framework(),
+                self.interaction_state.selected_framework().cloned(),
             ) {
                 ui.group(|ui| {
                     ui.label("Deps");
                     for dep in self
                         .graph
-                        .get_direct_dependencies_in_framework(dep, framework)
+                        .get_direct_dependencies_in_framework(dep, &framework)
                         .unwrap()
                     {
                         let info = self.graph.get(dep.to()).unwrap();
-                        ui.label(info.name());
+                        show_label_for_depedency(
+                            ui,
+                            self.interaction_state,
+                            dep.to(),
+                            eframe::egui::WidgetText::Text(info.name().to_string()),
+                            true,
+                        );
                     }
                 });
                 ui.group(|ui| {
                     ui.label("Reverse");
                     for dep in self
                         .graph
-                        .get_direct_reverse_dependencies_in_framework(dep, framework)
+                        .get_direct_reverse_dependencies_in_framework(dep, &framework)
                         .unwrap()
                     {
                         let info = self.graph.get(dep.to()).unwrap();
-                        ui.label(info.name());
+                        show_label_for_depedency(
+                            ui,
+                            self.interaction_state,
+                            dep.to(),
+                            eframe::egui::WidgetText::Text(info.name().to_string()),
+                            true,
+                        );
                     }
                 });
             } else {
-                ui.label("Select framework and dependency");
+                ui.with_layout(
+                    eframe::egui::Layout::centered_and_justified(eframe::egui::Direction::TopDown),
+                    |ui| {
+                        ui.label("Select framework and dependency");
+                    },
+                );
             }
         })
         .response
