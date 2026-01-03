@@ -143,33 +143,9 @@ impl<'a> DependencyPanel<'a> {
         }
     }
 
-    fn show(&mut self, ui: &mut Ui) {
-        puffin::profile_function!();
-        ui.heading("Packages");
-        ui.separator();
-
-        let searcher = Searcher::new(&*self.search_options, self.filter);
-
-        self.show_search_box(ui, &searcher);
-        self.show_mode_selection(ui);
-
-        let action = self.show_selection_buttons(ui);
-        let tree = self.cache.dependency_tree();
-        let dependencies_to_show = Self::compute_dependencies_to_show_from_groups(tree, &searcher);
-
-        Self::show_packages_and_update_visibility(
-            ui,
-            self.graph,
-            self.visible_nodes,
-            dependencies_to_show,
-            &searcher,
-            action,
-            self.interaction_state,
-        );
-    }
-
     fn show_search_box(&mut self, ui: &mut Ui, searcher: &Searcher) {
         puffin::profile_function!();
+        ui.take_available_width();
         ui.horizontal(|ui| {
             ui.label("Filter:");
             let original_visuals = ui.visuals().clone();
@@ -303,8 +279,30 @@ fn handle_action(
 
 impl<'a> Widget for DependencyPanel<'a> {
     fn ui(mut self, ui: &mut Ui) -> Response {
-        ui.group(|ui| {
-            self.show(ui);
+        ui.vertical(|ui| {
+            puffin::profile_function!();
+            ui.heading("Packages");
+            ui.separator();
+
+            let searcher = Searcher::new(&*self.search_options, self.filter);
+
+            self.show_search_box(ui, &searcher);
+            self.show_mode_selection(ui);
+
+            let action = self.show_selection_buttons(ui);
+            let tree = self.cache.dependency_tree();
+            let dependencies_to_show =
+                Self::compute_dependencies_to_show_from_groups(tree, &searcher);
+
+            Self::show_packages_and_update_visibility(
+                ui,
+                self.graph,
+                self.visible_nodes,
+                dependencies_to_show,
+                &searcher,
+                action,
+                self.interaction_state,
+            );
         })
         .response
     }
@@ -347,13 +345,15 @@ fn show_label_for_depedency(
     selectable: bool,
 ) {
     let is_selected = interaction_state.selected_dependency() == Some(id);
-    if ui
-        .selectable_label(is_selected && selectable, label)
-        .clicked()
-        && selectable
-    {
-        interaction_state.select_dependency(Some(id));
-    }
+    ui.horizontal_wrapped(|ui| {
+        if ui
+            .selectable_label(is_selected && selectable, label)
+            .clicked()
+            && selectable
+        {
+            interaction_state.select_dependency(Some(id));
+        }
+    });
 
     if is_selected && !selectable {
         interaction_state.select_dependency(None);
