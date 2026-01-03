@@ -197,7 +197,8 @@ fn handle_node_interactions(
         state.publish(crate::session::InteractionEvent::SetDragged(id));
     }
 
-    if node_response.dragged() && state.dragged_node() == Some(id) {
+    if node_response.dragged() && (state.dragged_node() == Some(id) || node_response.drag_started())
+    {
         let delta = node_response.drag_delta();
         data.move_by(delta);
     }
