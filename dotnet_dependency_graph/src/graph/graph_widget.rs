@@ -2,6 +2,7 @@ use dotnet_dependency_parser::graph::{DependencyGraph, DependencyId, Framework};
 use eframe::egui::{Painter, Rect, Response, Sense, Ui, Widget, containers::Scene};
 use std::collections::{HashMap, HashSet};
 
+use crate::graph::node_cache;
 use crate::graph::node_cache::GraphCache;
 use crate::graph::node_cache::NodeData;
 use crate::session::InteractionController;
@@ -80,34 +81,6 @@ impl<'a> Widget for GraphWidget<'a> {
         let inner = scene.show(ui, self.view_state.scene_rect, |ui| {
             // Draw nodes in scene coordinates.
             puffin::profile_function!();
-            for id in self.graph_data.visible_nodes.iter() {
-                puffin::profile_scope!("per_visible_node");
-
-                let cache = self
-                    .node_cache
-                    .node_cache_mut()
-                    .get_mut(id)
-                    .expect("All nodes should have cache");
-                let dep = self
-                    .graph_data
-                    .graph
-                    .get(*id)
-                    .expect("Visible node should be in graph");
-
-                let is_selected = match self.interaction_state.highlighted_dependency() {
-                    Some(sel) => sel == *id,
-                    None => false,
-                };
-
-                draw_single_node(
-                    *id,
-                    cache,
-                    dep.name(),
-                    ui,
-                    self.interaction_state,
-                    is_selected,
-                );
-            }
 
             if let Some(framework) = self.interaction_state.selected_framework() {
                 draw_all_edges(
@@ -119,8 +92,42 @@ impl<'a> Widget for GraphWidget<'a> {
                     self.interaction_state.highlighted_dependency(),
                 );
             }
+
+            draw_all_nodes(
+                ui,
+                &self.graph_data,
+                &mut self.node_cache,
+                self.interaction_state,
+            );
         });
         inner.response
+    }
+}
+
+fn draw_all_nodes(
+    ui: &mut Ui,
+    graph_data: &GraphData,
+    node_cache: &mut node_cache::GraphCache,
+    interaction_state: &mut InteractionController,
+) {
+    for id in graph_data.visible_nodes.iter() {
+        puffin::profile_scope!("per_visible_node");
+
+        let cache = node_cache
+            .node_cache_mut()
+            .get_mut(id)
+            .expect("All nodes should have cache");
+        let dep = graph_data
+            .graph
+            .get(*id)
+            .expect("Visible node should be in graph");
+
+        let is_selected = match interaction_state.highlighted_dependency() {
+            Some(sel) => sel == *id,
+            None => false,
+        };
+
+        draw_single_node(*id, cache, dep.name(), ui, interaction_state, is_selected);
     }
 }
 

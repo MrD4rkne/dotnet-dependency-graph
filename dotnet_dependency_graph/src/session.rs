@@ -21,30 +21,11 @@ pub(crate) enum InteractionEvent {
 
 /// Holds data about interactions on the graph.
 #[derive(Default, Debug, Clone)]
-pub(crate) struct InteractionState {
+struct InteractionState {
     selected: Option<DependencyId>,
     highlighted: Option<DependencyId>,
     selected_framework: Option<Framework>,
     pan_to_dependency: Option<DependencyId>,
-}
-
-impl InteractionState {
-    pub(crate) fn selected_dependency(&self) -> Option<DependencyId> {
-        self.selected
-    }
-
-    pub(crate) fn selected_framework(&self) -> Option<&Framework> {
-        self.selected_framework.as_ref()
-    }
-
-    pub(crate) fn highlighted_dependency(&self) -> Option<DependencyId> {
-        self.highlighted
-    }
-
-    pub(crate) fn panned_dependency(&self) -> Option<DependencyId> {
-        // We want to pan to the selected dependency.
-        self.pan_to_dependency
-    }
 }
 
 /// Controller that collects interaction events and applies them to the
@@ -88,19 +69,19 @@ impl InteractionController {
 
     // Read-only accessors
     pub(crate) fn selected_dependency(&self) -> Option<DependencyId> {
-        self.state.selected_dependency()
+        self.state.selected
     }
 
     pub(crate) fn selected_framework(&self) -> Option<&Framework> {
-        self.state.selected_framework()
+        self.state.selected_framework.as_ref()
     }
 
     pub(crate) fn highlighted_dependency(&self) -> Option<DependencyId> {
-        self.state.highlighted_dependency()
+        self.state.highlighted
     }
 
     pub(crate) fn panned_dependency(&self) -> Option<DependencyId> {
-        self.state.panned_dependency()
+        self.state.pan_to_dependency
     }
 }
 
