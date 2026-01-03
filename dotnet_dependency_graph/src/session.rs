@@ -55,9 +55,7 @@ impl InteractionState {
 
 /// Controller that collects interaction events and applies them to the
 /// internal InteractionState. Widgets should publish events and read
-/// the state through this controller. The controller also exposes a
-/// couple of immediate mutators for interactions that must be visible
-/// in the same frame (dragging, hover, select).
+/// the state through this controller.
 #[derive(Default, Debug)]
 pub(crate) struct InteractionController {
     state: InteractionState,
