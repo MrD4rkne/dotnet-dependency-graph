@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::graph::node_cache::GraphCache;
 use crate::graph::node_cache::NodeData;
-use crate::session::InteractionState;
+use crate::session::InteractionController;
 use crate::visualize;
 
 // Grouped parameters for view state
@@ -39,7 +39,7 @@ impl<'a> GraphData<'a> {
 
 pub(crate) struct GraphWidget<'a> {
     view_state: ViewState<'a>,
-    interaction_state: &'a mut InteractionState,
+    interaction_state: &'a mut InteractionController,
     graph_data: GraphData<'a>,
     node_cache: &'a mut GraphCache,
 }
@@ -47,7 +47,7 @@ pub(crate) struct GraphWidget<'a> {
 impl<'a> GraphWidget<'a> {
     pub(crate) fn new(
         view_state: ViewState<'a>,
-        interaction_state: &'a mut InteractionState,
+        interaction_state: &'a mut InteractionController,
         graph_data: GraphData<'a>,
         node_cache: &'a mut GraphCache,
     ) -> Self {
@@ -60,7 +60,7 @@ impl<'a> GraphWidget<'a> {
     }
 
     fn handle_dependency_selection(&mut self) {
-        if let Some(sel) = self.interaction_state.dependency_to_pan_to() {
+        if let Some(sel) = self.interaction_state.panned_dependency() {
             let cache = self
                 .node_cache
                 .node_cache()
@@ -68,7 +68,6 @@ impl<'a> GraphWidget<'a> {
                 .expect("All nodes should be in cache");
             let size = self.view_state.scene_rect.size();
             *self.view_state.scene_rect = Rect::from_center_size(*cache.position(), size);
-            self.interaction_state.set_dependency_to_pan_to(None);
         }
     }
 }
@@ -176,7 +175,7 @@ fn draw_single_node(
     cache: &mut NodeData,
     text: &str,
     ui: &mut Ui,
-    interaction_state: &mut InteractionState,
+    interaction_state: &mut InteractionController,
     selected: bool,
 ) {
     puffin::profile_function!();
@@ -189,13 +188,13 @@ fn handle_node_interactions(
     id: DependencyId,
     data: &mut NodeData,
     ui: &mut Ui,
-    state: &mut InteractionState,
+    state: &mut InteractionController,
     text: &str,
 ) {
     let node_response = ui.interact(data.rect(), ui.id().with(id), Sense::click_and_drag());
 
     if node_response.drag_started() {
-        state.set_dragged_node(Some(id));
+        state.publish(crate::session::InteractionEvent::SetDragged(id));
     }
 
     if node_response.dragged() && state.dragged_node() == Some(id) {
@@ -204,17 +203,15 @@ fn handle_node_interactions(
     }
 
     if node_response.drag_stopped() {
-        state.set_dragged_node(None);
+        state.publish(crate::session::InteractionEvent::StopDragged());
     }
 
-    if node_response.double_clicked() {
-        state.set_dependency_to_pan_to(Some(id));
-    } else if node_response.clicked() {
-        state.select_dependency(Some(id));
+    if node_response.clicked() {
+        state.publish(crate::session::InteractionEvent::Select(id));
     }
 
     if node_response.hovered() {
-        state.highlight_dependency(Some(id));
+        state.publish(crate::session::InteractionEvent::Highlight(id));
     }
 
     node_response.on_hover_text(text);
