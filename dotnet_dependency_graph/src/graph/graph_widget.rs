@@ -181,18 +181,18 @@ fn draw_single_node(
 ) {
     puffin::profile_function!();
     visualize::draw_node(text, ui.painter(), cache, selected);
-    handle_node_drag(id, cache, ui, interaction_state, text);
+    handle_node_interactions(id, cache, ui, interaction_state, text);
 }
 
 /// Handle dragging interaction for a single node
-fn handle_node_drag(
+fn handle_node_interactions(
     id: DependencyId,
     data: &mut NodeData,
     ui: &mut Ui,
     state: &mut InteractionState,
     text: &str,
 ) {
-    let node_response = ui.interact(data.rect(), ui.id().with(id), Sense::drag());
+    let node_response = ui.interact(data.rect(), ui.id().with(id), Sense::click_and_drag());
 
     if node_response.drag_started() {
         state.set_dragged_node(Some(id));
@@ -205,6 +205,16 @@ fn handle_node_drag(
 
     if node_response.drag_stopped() {
         state.set_dragged_node(None);
+    }
+
+    if node_response.double_clicked() {
+        state.set_dependency_to_pan_to(Some(id));
+    } else if node_response.clicked() {
+        state.select_dependency(Some(id));
+    }
+
+    if node_response.hovered() {
+        state.highlight_dependency(Some(id));
     }
 
     node_response.on_hover_text(text);
