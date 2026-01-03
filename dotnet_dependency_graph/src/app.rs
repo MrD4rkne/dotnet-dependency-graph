@@ -302,19 +302,25 @@ impl<'a> PackagesViewRenderer<'a> {
 
     fn render(&mut self, ctx: &Context, app_state: &mut AppState) {
         if let AppState::FileLoaded(file) = app_state {
-            eframe::egui::SidePanel::left("list_panel").show(ctx, |ui| {
-                ui.add(DependencyPanel::new(
-                    self.package_filter,
-                    self.search_options,
-                    &file.graph,
-                    &mut file.visible_nodes,
-                    &mut file.cache,
-                    &mut file.interaction_state,
-                ));
-            });
-            eframe::egui::SidePanel::right("dependency_panel").show(ctx, |ui| {
-                ui.add(DepPanel::new(&file.graph, &mut file.interaction_state));
-            });
+            eframe::egui::SidePanel::left("list_panel")
+                .max_width(600.0)
+                .resizable(true)
+                .show(ctx, |ui| {
+                    ui.add(DependencyPanel::new(
+                        self.package_filter,
+                        self.search_options,
+                        &file.graph,
+                        &mut file.visible_nodes,
+                        &mut file.cache,
+                        &mut file.interaction_state,
+                    ));
+                });
+            eframe::egui::SidePanel::right("dependency_panel")
+                .max_width(600.0)
+                .resizable(true)
+                .show(ctx, |ui| {
+                    ui.add(DepPanel::new(&file.graph, &mut file.interaction_state));
+                });
         }
     }
 }
@@ -412,10 +418,10 @@ impl App for DependencyApp {
             self.error_text = Some(error.to_string());
         }
 
-        // Render left side first not to overlay over central panel.
+        self.render_error_window(ctx);
+
+        // Render left side first not to overlay over central panel. It MUST be kept in this order.
         self.render_packages_view(ctx);
         self.render_central_panel(ctx);
-
-        self.render_error_window(ctx);
     }
 }
