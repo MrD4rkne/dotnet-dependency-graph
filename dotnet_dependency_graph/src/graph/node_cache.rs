@@ -45,8 +45,6 @@ impl NodeData {
 pub(crate) struct GraphCache {
     node_cache: HashMap<DependencyId, NodeData>,
     dependency_tree: BTreeMap<String, Vec<DependencyId>>,
-    // Keep track of the last selected dependency so UI can react to selection changes
-    last_selected_dependency: Option<DependencyId>,
 }
 
 impl GraphCache {
@@ -59,7 +57,6 @@ impl GraphCache {
         Self {
             node_cache,
             dependency_tree,
-            last_selected_dependency: None,
         }
     }
 
@@ -73,14 +70,6 @@ impl GraphCache {
 
     pub(crate) fn node_cache(&self) -> &HashMap<DependencyId, NodeData> {
         &self.node_cache
-    }
-
-    pub(crate) fn last_selected(&self) -> Option<DependencyId> {
-        self.last_selected_dependency
-    }
-
-    pub(crate) fn set_last_selected(&mut self, v: Option<DependencyId>) {
-        self.last_selected_dependency = v;
     }
 }
 

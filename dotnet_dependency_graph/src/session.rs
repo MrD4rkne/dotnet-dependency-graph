@@ -12,15 +12,17 @@ use dotnet_dependency_parser::graph::Layout;
 /// Holds data about interactions on the graph.
 #[derive(Default, Debug)]
 pub(crate) struct InteractionState {
-    selected_dependency: Option<DependencyId>,
+    selected: Option<DependencyId>,
+    highlighted: Option<DependencyId>,
     selected_framework: Option<Framework>,
     dragged_node: Option<DependencyId>,
+    dependency_to_pan_to: Option<DependencyId>,
 }
 
 impl InteractionState {
     /// Returns the currently selected dependency identifier.
     pub(crate) fn selected_dependency(&self) -> Option<DependencyId> {
-        self.selected_dependency
+        self.selected
     }
 
     /// Returns the currently selected framework.
@@ -30,9 +32,9 @@ impl InteractionState {
         self.selected_framework.as_ref()
     }
 
-    /// Change the selected dependency.
+    /// Select dependency.
     pub(crate) fn select_dependency(&mut self, id: Option<DependencyId>) {
-        self.selected_dependency = id;
+        self.selected = id;
     }
 
     /// Change the selected framework.
@@ -48,6 +50,24 @@ impl InteractionState {
     /// Sets the currently dragged node.
     pub(crate) fn set_dragged_node(&mut self, dragged: Option<DependencyId>) {
         self.dragged_node = dragged;
+    }
+
+    pub(crate) fn dependency_to_pan_to(&self) -> Option<DependencyId> {
+        self.dependency_to_pan_to
+    }
+
+    pub(crate) fn set_dependency_to_pan_to(&mut self, dep: Option<DependencyId>) {
+        self.dependency_to_pan_to = dep;
+    }
+
+    /// Returns the currently highlighted dependency.
+    pub(crate) fn highlighted_dependency(&self) -> Option<DependencyId> {
+        self.highlighted
+    }
+
+    /// Highlight dependency.
+    pub(crate) fn highlight_dependency(&mut self, id: Option<DependencyId>) {
+        self.highlighted = id;
     }
 }
 

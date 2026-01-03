@@ -60,19 +60,15 @@ impl<'a> GraphWidget<'a> {
     }
 
     fn handle_dependency_selection(&mut self) {
-        let current_selected = self.interaction_state.selected_dependency();
-        let last_selected = self.node_cache.last_selected();
-        if current_selected != last_selected {
-            if let Some(sel) = current_selected {
-                let cache = self
-                    .node_cache
-                    .node_cache()
-                    .get(&sel)
-                    .expect("All nodes should be in cache");
-                let size = self.view_state.scene_rect.size();
-                *self.view_state.scene_rect = Rect::from_center_size(*cache.position(), size);
-            }
-            self.node_cache.set_last_selected(current_selected);
+        if let Some(sel) = self.interaction_state.dependency_to_pan_to() {
+            let cache = self
+                .node_cache
+                .node_cache()
+                .get(&sel)
+                .expect("All nodes should be in cache");
+            let size = self.view_state.scene_rect.size();
+            *self.view_state.scene_rect = Rect::from_center_size(*cache.position(), size);
+            self.interaction_state.set_dependency_to_pan_to(None);
         }
     }
 }
@@ -99,7 +95,7 @@ impl<'a> Widget for GraphWidget<'a> {
                     .get(*id)
                     .expect("Visible node should be in graph");
 
-                let is_selected = match self.interaction_state.selected_dependency() {
+                let is_selected = match self.interaction_state.highlighted_dependency() {
                     Some(sel) => sel == *id,
                     None => false,
                 };
@@ -121,7 +117,7 @@ impl<'a> Widget for GraphWidget<'a> {
                     self.graph_data.graph,
                     framework,
                     self.graph_data.visible_nodes,
-                    self.interaction_state.selected_dependency(),
+                    self.interaction_state.highlighted_dependency(),
                 );
             }
         });
