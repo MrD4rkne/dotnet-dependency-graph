@@ -61,7 +61,7 @@ If you have an already loaded graph, you can merge another file into it using `F
 
 ### Navigate
 
-You can navigate the graph using mouse interactions. Each node in the graph represents a dependency. Also, on the left side and bottom side of the window, you have lists of dependencies that you can also use to interacy with the graph.
+You can navigate the graph using mouse interactions. Each node in the graph represents a dependency. Also, on the left side and bottom side of the window, you have lists of dependencies that you can also use to interact with the graph.
 
 - highlight nodes by hovering over,
 - pan to the node by double clicking on it,
