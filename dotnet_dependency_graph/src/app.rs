@@ -416,6 +416,14 @@ impl App for DependencyApp {
     fn update(&mut self, ctx: &Context, _: &mut eframe::Frame) {
         GlobalProfiler::lock().new_frame();
 
+        // Apply interaction events published by the packages view so
+        // central panel (graph) can react within the same frame.
+        // Also, reset the per_frame state.
+        if let AppState::FileLoaded(file) = &mut self.app_state {
+            file.interaction_state
+                .process_pending(&mut file.visible_nodes);
+        }
+
         self.fps_counter.update();
         self.file_dialog_handler.render(ctx, &mut self.app_state);
         if let Err(error) = self.file_dialog_handler.handle(&mut self.app_state) {
@@ -427,12 +435,5 @@ impl App for DependencyApp {
         // Render left side first not to overlay over central panel. It MUST be kept in this order.
         self.render_packages_view(ctx);
         self.render_central_panel(ctx);
-
-        // Apply interaction events published by the packages view so
-        // central panel (graph) can react within the same frame.
-        if let AppState::FileLoaded(file) = &mut self.app_state {
-            file.interaction_state
-                .process_pending(&mut file.visible_nodes);
-        }
     }
 }
