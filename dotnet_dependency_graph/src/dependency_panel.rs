@@ -346,9 +346,23 @@ fn show_label_for_depedency(
 ) {
     let is_selected = interaction_state.selected_dependency() == Some(id);
     ui.horizontal_wrapped(|ui| {
-        if ui.selectable_label(is_selected, label).clicked() {
+        let mut label = ui.selectable_label(is_selected, label);
+        // If the representing Dependency is highlighted, highlight the label.
+        // This way we highlight ALL labels that are connected to this Dependency.
+        if interaction_state.highlighted_dependency() == Some(id) {
+            label = label.highlight();
+        }
+
+        if label.clicked() {
+            interaction_state.set_dependency_to_pan_to(Some(id));
             interaction_state.select_dependency(Some(id));
             visible_nodes.insert(id);
+        }
+
+        if label.hovered() {
+            interaction_state.highlight_dependency(Some(id));
+        } else if interaction_state.highlighted_dependency() == Some(id) {
+            interaction_state.highlight_dependency(None);
         }
     });
 
