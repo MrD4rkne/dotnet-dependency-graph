@@ -459,28 +459,22 @@ impl<'a> Widget for DepPanel<'a> {
                         );
                     });
                 }
-                (Some(_), None) => {
+                _ => {
+                    let label = match (
+                        self.interaction_state.selected_dependency(),
+                        self.interaction_state.selected_framework().cloned(),
+                    ) {
+                        (Some(_), None) => "Select framework",
+                        (None, Some(_)) => "Select dependency",
+                        (None, None) => "Select framework and dependency",
+                        _ => unreachable!(),
+                    };
+
                     ui.with_layout(
                         eframe::egui::Layout::centered_and_justified(
                             eframe::egui::Direction::TopDown,
                         ),
-                        |ui| ui.label("Select framework"),
-                    );
-                }
-                (None, Some(_)) => {
-                    ui.with_layout(
-                        eframe::egui::Layout::centered_and_justified(
-                            eframe::egui::Direction::TopDown,
-                        ),
-                        |ui| ui.label("Select dependency"),
-                    );
-                }
-                (None, None) => {
-                    ui.with_layout(
-                        eframe::egui::Layout::centered_and_justified(
-                            eframe::egui::Direction::TopDown,
-                        ),
-                        |ui| ui.label("Select framework and dependency"),
+                        |ui| ui.label(label),
                     );
                 }
             }
