@@ -353,8 +353,11 @@ fn show_label_for_depedency(
             label = label.highlight();
         }
 
-        if label.clicked() {
+        if label.double_clicked() {
             interaction_state.set_dependency_to_pan_to(Some(id));
+            interaction_state.select_dependency(Some(id));
+            visible_nodes.insert(id);
+        } else if label.clicked() {
             interaction_state.select_dependency(Some(id));
             visible_nodes.insert(id);
         }
