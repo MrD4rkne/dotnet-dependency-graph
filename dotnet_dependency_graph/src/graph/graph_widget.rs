@@ -96,7 +96,7 @@ impl<'a> Widget for GraphWidget<'a> {
             draw_all_nodes(
                 ui,
                 &self.graph_data,
-                &mut self.node_cache,
+                self.node_cache,
                 self.interaction_state,
             );
         });
