@@ -1,5 +1,5 @@
 use dotnet_dependency_parser::graph::{DependencyGraph, DependencyId};
-use eframe::egui::{Response, Ui, Widget, WidgetText};
+use eframe::egui::{self, Response, Ui, Widget, WidgetText};
 use regex::Regex;
 use std::collections::{BTreeMap, HashSet};
 
@@ -399,6 +399,7 @@ impl<'a> DepPanel<'a> {
 
 impl<'a> Widget for DepPanel<'a> {
     fn ui(self, ui: &mut Ui) -> Response {
+        ui.take_available_height();
         ui.vertical(|ui| {
             match (
                 self.interaction_state.selected_dependency(),
@@ -408,37 +409,47 @@ impl<'a> Widget for DepPanel<'a> {
                     ui.columns(2, |columns| {
                         columns[0].group(|ui| {
                             ui.label("Direct dependencies");
-                            for dep in self
-                                .graph
-                                .get_direct_dependencies_in_framework(dep, &framework)
-                                .unwrap()
-                            {
-                                let info = self.graph.get(dep.to()).unwrap();
-                                show_label_for_depedency(
-                                    ui,
-                                    self.interaction_state,
-                                    self.visible_nodes,
-                                    dep.to(),
-                                    eframe::egui::WidgetText::Text(info.name().to_string()),
-                                );
-                            }
+                            egui::ScrollArea::vertical()
+                                .id_salt("deps_scroll")
+                                .show(ui, |ui| {
+                                    for dep in self
+                                        .graph
+                                        .get_direct_dependencies_in_framework(dep, &framework)
+                                        .unwrap()
+                                    {
+                                        let info = self.graph.get(dep.to()).unwrap();
+                                        show_label_for_depedency(
+                                            ui,
+                                            self.interaction_state,
+                                            self.visible_nodes,
+                                            dep.to(),
+                                            eframe::egui::WidgetText::Text(info.name().to_string()),
+                                        );
+                                    }
+                                });
                         });
                         columns[1].group(|ui| {
                             ui.label("Reverse direct dependencies");
-                            for dep in self
-                                .graph
-                                .get_direct_reverse_dependencies_in_framework(dep, &framework)
-                                .unwrap()
-                            {
-                                let info = self.graph.get(dep.to()).unwrap();
-                                show_label_for_depedency(
-                                    ui,
-                                    self.interaction_state,
-                                    self.visible_nodes,
-                                    dep.to(),
-                                    eframe::egui::WidgetText::Text(info.name().to_string()),
-                                );
-                            }
+                            egui::ScrollArea::vertical()
+                                .id_salt("reverse_deps_scroll")
+                                .show(ui, |ui| {
+                                    for dep in self
+                                        .graph
+                                        .get_direct_reverse_dependencies_in_framework(
+                                            dep, &framework,
+                                        )
+                                        .unwrap()
+                                    {
+                                        let info = self.graph.get(dep.to()).unwrap();
+                                        show_label_for_depedency(
+                                            ui,
+                                            self.interaction_state,
+                                            self.visible_nodes,
+                                            dep.to(),
+                                            eframe::egui::WidgetText::Text(info.name().to_string()),
+                                        );
+                                    }
+                                });
                         });
                     });
                 }

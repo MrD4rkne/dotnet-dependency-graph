@@ -316,6 +316,7 @@ impl<'a> PackagesViewRenderer<'a> {
                     ));
                 });
             eframe::egui::TopBottomPanel::bottom("dependency_panel")
+                .min_height(100.0)
                 .max_height(600.0)
                 .resizable(true)
                 .show(ctx, |ui| {
@@ -323,7 +324,7 @@ impl<'a> PackagesViewRenderer<'a> {
                         &file.graph,
                         &mut file.interaction_state,
                         &mut file.visible_nodes,
-                    ));
+                    ))
                 });
         }
     }
