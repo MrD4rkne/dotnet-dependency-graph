@@ -187,7 +187,9 @@ impl FileDialogHandler {
                             )
                             .clicked()
                         {
-                            file.interaction_state.select_framework(fw.clone());
+                            file.interaction_state.publish(
+                                crate::session::InteractionEvent::SelectFramework(fw.clone()),
+                            );
                         }
                     }
                 });
@@ -429,5 +431,12 @@ impl App for DependencyApp {
         // Render left side first not to overlay over central panel. It MUST be kept in this order.
         self.render_packages_view(ctx);
         self.render_central_panel(ctx);
+
+        // Apply interaction events published by the packages view so
+        // central panel (graph) can react within the same frame.
+        if let AppState::FileLoaded(file) = &mut self.app_state {
+            file.interaction_state
+                .process_pending(&mut file.visible_nodes);
+        }
     }
 }

@@ -3,7 +3,7 @@ use eframe::egui::{self, Response, Ui, Widget, WidgetText};
 use regex::Regex;
 use std::collections::{BTreeMap, HashSet};
 
-use crate::{graph::GraphCache, session::InteractionState};
+use crate::{graph::GraphCache, session::InteractionController};
 
 /// Options for configuring search behavior in the packages panel.
 #[derive(Debug, Clone)]
@@ -121,7 +121,7 @@ pub(crate) struct DependencyPanel<'a> {
     graph: &'a DependencyGraph,
     visible_nodes: &'a mut HashSet<DependencyId>,
     cache: &'a mut GraphCache,
-    interaction_state: &'a mut InteractionState,
+    interaction_state: &'a mut InteractionController,
 }
 
 impl<'a> DependencyPanel<'a> {
@@ -131,7 +131,7 @@ impl<'a> DependencyPanel<'a> {
         graph: &'a DependencyGraph,
         visible_nodes: &'a mut HashSet<DependencyId>,
         cache: &'a mut GraphCache,
-        interaction_state: &'a mut InteractionState,
+        interaction_state: &'a mut InteractionController,
     ) -> Self {
         Self {
             filter,
@@ -210,7 +210,7 @@ impl<'a> DependencyPanel<'a> {
         dependencies_to_show: impl Iterator<Item = (&'g String, &'g Vec<DependencyId>)>,
         searcher: &Searcher,
         action: Option<Action>,
-        interaction_state: &'g mut InteractionState,
+        interaction_state: &'g mut InteractionController,
     ) {
         puffin::profile_function!();
         ui.separator();
@@ -315,7 +315,7 @@ fn show_checkbox(
     id: DependencyId,
     label: &str,
     searcher: Option<&Searcher>,
-    interaction_state: &mut InteractionState,
+    interaction_state: &mut InteractionController,
 ) {
     let mut is_visible = visible_nodes.contains(&id);
     let label = match searcher {
@@ -339,7 +339,7 @@ fn show_checkbox(
 
 fn show_label_for_dependency(
     ui: &mut Ui,
-    interaction_state: &mut InteractionState,
+    interaction_state: &mut crate::session::InteractionController,
     visible_nodes: &mut HashSet<DependencyId>,
     id: DependencyId,
     label: WidgetText,
@@ -353,23 +353,14 @@ fn show_label_for_dependency(
             label = label.highlight();
         }
 
-        if label.double_clicked() {
-            interaction_state.set_dependency_to_pan_to(Some(id));
-            interaction_state.select_dependency(Some(id));
-            visible_nodes.insert(id);
-        } else if label.clicked() {
-            interaction_state.select_dependency(Some(id));
-            visible_nodes.insert(id);
+        if label.clicked() {
+            interaction_state.publish(crate::session::InteractionEvent::Select(id));
         }
 
         if label.hovered() {
-            interaction_state.highlight_dependency(Some(id));
+            interaction_state.publish(crate::session::InteractionEvent::Highlight(id));
         }
     });
-
-    if is_selected && !visible_nodes.contains(&id) {
-        interaction_state.select_dependency(None);
-    }
 }
 
 // Create WidgetText content, but highlight the sequence matched by the searcher.
@@ -394,14 +385,14 @@ fn rich_text_for_label(label: &str, searcher: &Searcher) -> eframe::egui::Widget
 
 pub(crate) struct DepPanel<'a> {
     graph: &'a DependencyGraph,
-    interaction_state: &'a mut InteractionState,
+    interaction_state: &'a mut crate::session::InteractionController,
     visible_nodes: &'a mut HashSet<DependencyId>,
 }
 
 impl<'a> DepPanel<'a> {
     pub(crate) fn new(
         graph: &'a DependencyGraph,
-        interaction_state: &'a mut InteractionState,
+        interaction_state: &'a mut crate::session::InteractionController,
         visible_nodes: &'a mut HashSet<DependencyId>,
     ) -> Self {
         Self {

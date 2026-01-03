@@ -9,65 +9,110 @@ use crate::graph::GraphCache;
 use crate::visualize;
 use dotnet_dependency_parser::graph::Layout;
 
+/// Events representing user interactions. Widgets should publish these
+/// instead of mutating state directly. The controller processes events
+/// and updates the authoritative state.
+#[derive(Debug, Clone)]
+pub(crate) enum InteractionEvent {
+    Select(DependencyId),
+    Highlight(DependencyId),
+    SetDragged(DependencyId),
+    StopDragged(),
+    SelectFramework(Framework),
+}
+
 /// Holds data about interactions on the graph.
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub(crate) struct InteractionState {
     selected: Option<DependencyId>,
     highlighted: Option<DependencyId>,
     selected_framework: Option<Framework>,
     dragged_node: Option<DependencyId>,
-    dependency_to_pan_to: Option<DependencyId>,
 }
 
 impl InteractionState {
-    /// Returns the currently selected dependency identifier.
     pub(crate) fn selected_dependency(&self) -> Option<DependencyId> {
         self.selected
     }
 
-    /// Returns the currently selected framework.
-    ///
-    /// Returns reference as Framework does not impl Copy trait.
     pub(crate) fn selected_framework(&self) -> Option<&Framework> {
         self.selected_framework.as_ref()
     }
 
-    /// Select dependency.
-    pub(crate) fn select_dependency(&mut self, id: Option<DependencyId>) {
-        self.selected = id;
-    }
-
-    /// Change the selected framework.
-    pub(crate) fn select_framework(&mut self, framework: Framework) {
-        self.selected_framework = Some(framework);
-    }
-
-    /// Returns the currently dragged node.
     pub(crate) fn dragged_node(&self) -> Option<DependencyId> {
         self.dragged_node
     }
 
-    /// Sets the currently dragged node.
-    pub(crate) fn set_dragged_node(&mut self, dragged: Option<DependencyId>) {
-        self.dragged_node = dragged;
-    }
-
-    pub(crate) fn dependency_to_pan_to(&self) -> Option<DependencyId> {
-        self.dependency_to_pan_to
-    }
-
-    pub(crate) fn set_dependency_to_pan_to(&mut self, dep: Option<DependencyId>) {
-        self.dependency_to_pan_to = dep;
-    }
-
-    /// Returns the currently highlighted dependency.
     pub(crate) fn highlighted_dependency(&self) -> Option<DependencyId> {
         self.highlighted
     }
 
-    /// Highlight dependency.
-    pub(crate) fn highlight_dependency(&mut self, id: Option<DependencyId>) {
-        self.highlighted = id;
+    pub(crate) fn panned_dependency(&self) -> Option<DependencyId> {
+        // We want to pan to the selected dependency.
+        self.selected
+    }
+}
+
+/// Controller that collects interaction events and applies them to the
+/// internal InteractionState. Widgets should publish events and read
+/// the state through this controller. The controller also exposes a
+/// couple of immediate mutators for interactions that must be visible
+/// in the same frame (dragging, hover, select).
+#[derive(Default, Debug)]
+pub(crate) struct InteractionController {
+    state: InteractionState,
+    pending: Vec<InteractionEvent>,
+}
+
+impl InteractionController {
+    pub(crate) fn new() -> Self {
+        Self::default()
+    }
+
+    /// Publish an event which will be processed when `process_pending`
+    /// is called (usually between UI panels in a frame).
+    pub(crate) fn publish(&mut self, ev: InteractionEvent) {
+        self.pending.push(ev);
+    }
+
+    /// Apply pending events to the state. Events are applied in order.
+    pub(crate) fn process_pending(&mut self, visible_nodes: &mut HashSet<DependencyId>) {
+        self.state.highlighted = None;
+
+        for ev in self.pending.drain(..) {
+            match ev {
+                InteractionEvent::Select(opt) => self.state.selected = Some(opt),
+                InteractionEvent::Highlight(opt) => self.state.highlighted = Some(opt),
+                InteractionEvent::SetDragged(opt) => self.state.dragged_node = Some(opt),
+                InteractionEvent::StopDragged() => self.state.dragged_node = None,
+                InteractionEvent::SelectFramework(opt) => self.state.selected_framework = Some(opt),
+            }
+        }
+
+        if let Some(selected) = self.state.selected {
+            visible_nodes.insert(selected);
+        }
+    }
+
+    // Read-only accessors
+    pub(crate) fn selected_dependency(&self) -> Option<DependencyId> {
+        self.state.selected_dependency()
+    }
+
+    pub(crate) fn selected_framework(&self) -> Option<&Framework> {
+        self.state.selected_framework()
+    }
+
+    pub(crate) fn dragged_node(&self) -> Option<DependencyId> {
+        self.state.dragged_node()
+    }
+
+    pub(crate) fn highlighted_dependency(&self) -> Option<DependencyId> {
+        self.state.highlighted_dependency()
+    }
+
+    pub(crate) fn panned_dependency(&self) -> Option<DependencyId> {
+        self.state.panned_dependency()
     }
 }
 
@@ -77,7 +122,7 @@ pub(crate) struct Session {
     pub(crate) graph: DependencyGraph,
     pub(crate) visible_nodes: HashSet<DependencyId>,
     pub(crate) cache: GraphCache,
-    pub(crate) interaction_state: InteractionState,
+    pub(crate) interaction_state: InteractionController,
 }
 
 impl Session {
@@ -98,7 +143,7 @@ impl Session {
             graph,
             visible_nodes,
             cache,
-            interaction_state: InteractionState::default(),
+            interaction_state: InteractionController::new(),
         }
     }
 
@@ -120,7 +165,7 @@ impl Session {
             graph,
             visible_nodes: all_dep_ids,
             cache,
-            interaction_state: InteractionState::default(),
+            interaction_state: InteractionController::new(),
         }
     }
 }
