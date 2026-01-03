@@ -411,8 +411,7 @@ impl App for DependencyApp {
     fn update(&mut self, ctx: &Context, _: &mut eframe::Frame) {
         GlobalProfiler::lock().new_frame();
 
-        // Apply interaction events published by the packages view so
-        // central panel (graph) can react within the same frame.
+        // Apply interaction events published in the previous frame.
         // Also, reset the per_frame state.
         if let AppState::FileLoaded(file) = &mut self.app_state {
             file.interaction_state
