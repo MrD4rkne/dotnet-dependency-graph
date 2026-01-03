@@ -333,11 +333,11 @@ fn show_checkbox(
             }
         }
 
-        show_label_for_depedency(ui, interaction_state, visible_nodes, id, label);
+        show_label_for_dependency(ui, interaction_state, visible_nodes, id, label);
     });
 }
 
-fn show_label_for_depedency(
+fn show_label_for_dependency(
     ui: &mut Ui,
     interaction_state: &mut InteractionState,
     visible_nodes: &mut HashSet<DependencyId>,
