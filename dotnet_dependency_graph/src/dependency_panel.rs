@@ -398,14 +398,14 @@ impl<'a> DepPanel<'a> {
 }
 
 impl<'a> Widget for DepPanel<'a> {
-    fn ui(mut self, ui: &mut Ui) -> Response {
+    fn ui(self, ui: &mut Ui) -> Response {
         ui.vertical(|ui| {
             if let (Some(dep), Some(framework)) = (
                 self.interaction_state.selected_dependency(),
                 self.interaction_state.selected_framework().cloned(),
             ) {
                 ui.group(|ui| {
-                    ui.label("Deps");
+                    ui.label("Direct dependencies");
                     for dep in self
                         .graph
                         .get_direct_dependencies_in_framework(dep, &framework)
@@ -422,7 +422,7 @@ impl<'a> Widget for DepPanel<'a> {
                     }
                 });
                 ui.group(|ui| {
-                    ui.label("Reverse");
+                    ui.label("Reverse direct dependencies");
                     for dep in self
                         .graph
                         .get_direct_reverse_dependencies_in_framework(dep, &framework)
