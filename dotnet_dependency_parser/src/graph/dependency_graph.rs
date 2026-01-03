@@ -420,6 +420,25 @@ impl DependencyGraph {
         }
     }
 
+    /// Get direct reverse dependencies of the dependency for framework.
+    ///
+    /// Returns **Error** if dependency with the provided id was not from this graph.
+    pub fn get_direct_reverse_dependencies_in_framework(
+        &self,
+        id: DependencyId,
+        framework: &Framework,
+    ) -> Result<impl Iterator<Item = &DepEdge>, DependencyGraphError> {
+        if self.is_in_graph(id) {
+            Ok(self
+                .graph
+                .edges_directed(id.ix, petgraph::Direction::Incoming)
+                .filter(move |x| x.weight().framework() == framework)
+                .map(|edge| edge.weight()))
+        } else {
+            Err(DependencyGraphError::DependencyNotFound)
+        }
+    }
+
     pub fn add_relation(
         &mut self,
         from: DependencyId,

@@ -8,8 +8,8 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use crate::dependency_panel::DependencyPanel;
 use crate::dependency_panel::SearchOptions;
+use crate::dependency_panel::{DepPanel, DependencyPanel};
 use crate::graph::graph_widget::GraphWidget;
 use crate::parser;
 use crate::session::Session;
@@ -302,7 +302,7 @@ impl<'a> PackagesViewRenderer<'a> {
 
     fn render(&mut self, ctx: &Context, app_state: &mut AppState) {
         if let AppState::FileLoaded(file) = app_state {
-            eframe::egui::SidePanel::left("nodes_panel").show(ctx, |ui| {
+            eframe::egui::SidePanel::left("list_panel").show(ctx, |ui| {
                 ui.add(DependencyPanel::new(
                     self.package_filter,
                     self.search_options,
@@ -311,6 +311,9 @@ impl<'a> PackagesViewRenderer<'a> {
                     &mut file.cache,
                     &mut file.interaction_state,
                 ));
+            });
+            eframe::egui::SidePanel::right("dependency_panel").show(ctx, |ui| {
+                ui.add(DepPanel::new(&file.graph, &mut file.interaction_state));
             });
         }
     }
