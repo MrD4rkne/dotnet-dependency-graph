@@ -151,7 +151,7 @@ fn create_label(
 }
 
 pub(crate) fn join_layouts(
-    layouts: Vec<Layout<DependencyId>>,
+    layouts: impl Iterator<Item = Layout<DependencyId>>,
 ) -> HashMap<DependencyId, (f32, f32)> {
     puffin::profile_function!();
     let mut result = HashMap::new();
