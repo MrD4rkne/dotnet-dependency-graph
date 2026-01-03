@@ -469,7 +469,7 @@ impl<'a> Widget for DepPanel<'a> {
                         (Some(_), None) => "Select framework",
                         (None, Some(_)) => "Select dependency",
                         (None, None) => "Select framework and dependency",
-                        _ => unreachable!(),
+                        (Some(_), Some(_)) => unreachable!(),
                     };
 
                     ui.with_layout(
