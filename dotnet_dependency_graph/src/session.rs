@@ -25,6 +25,7 @@ pub(crate) struct InteractionState {
     selected: Option<DependencyId>,
     highlighted: Option<DependencyId>,
     selected_framework: Option<Framework>,
+    pan_to_dependency: Option<DependencyId>,
 }
 
 impl InteractionState {
@@ -42,7 +43,7 @@ impl InteractionState {
 
     pub(crate) fn panned_dependency(&self) -> Option<DependencyId> {
         // We want to pan to the selected dependency.
-        self.selected
+        self.pan_to_dependency
     }
 }
 
@@ -63,18 +64,24 @@ impl InteractionController {
     }
 
     /// Apply pending events to the state. Events are applied in order.
+    ///
+    /// Resets highlighted and pan_to_dependency.
     pub(crate) fn process_pending(&mut self, visible_nodes: &mut HashSet<DependencyId>) {
         self.state.highlighted = None;
+        self.state.pan_to_dependency = None;
 
         for ev in self.pending.drain(..) {
             match ev {
-                InteractionEvent::Select(opt) => self.state.selected = Some(opt),
+                InteractionEvent::Select(opt) => {
+                    self.state.selected = Some(opt);
+                    self.state.pan_to_dependency = Some(opt);
+                }
                 InteractionEvent::Highlight(opt) => self.state.highlighted = Some(opt),
                 InteractionEvent::SelectFramework(opt) => self.state.selected_framework = Some(opt),
             }
         }
 
-        if let Some(selected) = self.state.selected {
+        if let Some(selected) = self.state.selected.or(self.state.pan_to_dependency) {
             visible_nodes.insert(selected);
         }
     }
