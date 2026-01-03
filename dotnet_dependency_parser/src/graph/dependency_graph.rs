@@ -464,15 +464,17 @@ impl DependencyGraph {
         self.frameworks.iter()
     }
 
-    pub fn layout(
+    /// Run layout with a provided `Config` from `rust_sugiyama`.
+    pub fn layout_with_config(
         &self,
         vertex_size: &impl Fn(&DependencyId, &DependencyInfo) -> (f64, f64),
-    ) -> Vec<super::algo::Layout<DependencyId>> {
+        cfg: &rust_sugiyama::configure::Config,
+    ) -> impl Iterator<Item = super::algo::Layout<DependencyId>> {
         let vertex_size_fn = |ix: NodeIndex, dep: &DependencyInfo| -> (f64, f64) {
             let id = DependencyId::new(ix);
             vertex_size(&id, dep)
         };
-        super::algo::layout_sugiyama(&self.graph, &vertex_size_fn)
+        super::algo::layout_sugiyama_with_config(&self.graph, &vertex_size_fn, cfg)
             .into_iter()
             .map(|layout| {
                 let map = layout
@@ -482,7 +484,6 @@ impl DependencyGraph {
                     .collect();
                 super::algo::Layout::new(map, layout.width, layout.height)
             })
-            .collect()
     }
 
     /// Merge another graph into this one atomically.

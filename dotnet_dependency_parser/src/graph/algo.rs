@@ -1,19 +1,20 @@
 use petgraph::graph::NodeIndex;
 use petgraph::stable_graph::StableDiGraph;
-use std::collections::HashMap;
 
-use rust_sugiyama::configure::Config;
+pub use rust_sugiyama::configure::Config;
+pub use rust_sugiyama::configure::CrossingMinimization;
+pub use rust_sugiyama::configure::RankingType;
 use rust_sugiyama::from_graph;
 
 #[derive(Clone)]
 pub struct Layout<V> {
-    pub positions: HashMap<V, (f64, f64)>,
+    pub positions: Vec<(V, (f64, f64))>,
     pub width: f64,
     pub height: f64,
 }
 
 impl<V> Layout<V> {
-    pub fn new(positions: HashMap<V, (f64, f64)>, width: f64, height: f64) -> Self {
+    pub fn new(positions: Vec<(V, (f64, f64))>, width: f64, height: f64) -> Self {
         Self {
             positions,
             width,
@@ -22,20 +23,15 @@ impl<V> Layout<V> {
     }
 }
 
-/// Run Sugiyama layout on a StableDiGraph.
-/// Returns a Vec of per-connected-component results. Each result contains:
-///   - HashMap<NodeIndex, (x,y)> for node coordinates
-///   - width, height of that component layout
-pub fn layout_sugiyama<V: std::cmp::Eq + std::hash::Hash + Clone, E>(
+/// Run Sugiyama layout using a supplied configuration.
+pub fn layout_sugiyama_with_config<V: std::cmp::Eq + std::hash::Hash + Clone, E>(
     g: &StableDiGraph<V, E>,
     vertex_size: &impl Fn(NodeIndex, &V) -> (f64, f64),
+    cfg: &Config,
 ) -> Vec<Layout<NodeIndex>> {
-    let layouts = from_graph(g, &vertex_size, &Config::default());
+    let layouts = from_graph(g, &vertex_size, cfg);
     layouts
         .into_iter()
-        .map(|(vec_layout, width, height)| {
-            let map: HashMap<NodeIndex, (f64, f64)> = vec_layout.into_iter().collect();
-            Layout::new(map, width, height)
-        })
+        .map(|(vec_layout, width, height)| Layout::new(vec_layout, width, height))
         .collect()
 }
