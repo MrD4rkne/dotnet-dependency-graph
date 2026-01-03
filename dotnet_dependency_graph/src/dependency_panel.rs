@@ -1,4 +1,4 @@
-use dotnet_dependency_parser::graph::{DependencyGraph, DependencyId};
+use dotnet_dependency_parser::graph::{DependencyGraph, DependencyId, DependencyInfo};
 use eframe::egui::{self, Response, Ui, Widget, WidgetText};
 use regex::Regex;
 use std::collections::{BTreeMap, HashSet};
@@ -395,10 +395,37 @@ impl<'a> DepPanel<'a> {
             visible_nodes,
         }
     }
+
+    fn show_column_with_deps(
+        &mut self,
+        ui: &mut Ui,
+        text: impl Into<WidgetText>,
+        id_salt: impl std::hash::Hash,
+        deps: impl Iterator<Item = (DependencyId, &'a DependencyInfo)>,
+    ) {
+        ui.group(|ui| {
+            ui.take_available_height();
+            ui.label(text);
+            egui::ScrollArea::vertical()
+                .id_salt(id_salt)
+                .show(ui, |ui| {
+                    ui.take_available_width();
+                    for (id, info) in deps {
+                        show_label_for_depedency(
+                            ui,
+                            self.interaction_state,
+                            self.visible_nodes,
+                            id,
+                            eframe::egui::WidgetText::Text(info.name().to_string()),
+                        );
+                    }
+                });
+        });
+    }
 }
 
 impl<'a> Widget for DepPanel<'a> {
-    fn ui(self, ui: &mut Ui) -> Response {
+    fn ui(mut self, ui: &mut Ui) -> Response {
         ui.take_available_height();
         ui.vertical(|ui| {
             match (
@@ -407,55 +434,29 @@ impl<'a> Widget for DepPanel<'a> {
             ) {
                 (Some(dep), Some(framework)) => {
                     ui.columns(2, |columns| {
-                        columns[0].group(|ui| {
-                            ui.take_available_height();
-                            ui.label("Direct dependencies");
-                            egui::ScrollArea::vertical()
-                                .id_salt("deps_scroll")
-                                .show(ui, |ui| {
-                                    ui.take_available_width();
-                                    for dep in self
-                                        .graph
-                                        .get_direct_dependencies_in_framework(dep, &framework)
-                                        .unwrap()
-                                    {
-                                        let info = self.graph.get(dep.to()).unwrap();
-                                        show_label_for_depedency(
-                                            ui,
-                                            self.interaction_state,
-                                            self.visible_nodes,
-                                            dep.to(),
-                                            eframe::egui::WidgetText::Text(info.name().to_string()),
-                                        );
-                                    }
-                                });
-                        });
-                        columns[1].group(|ui| {
-                            ui.take_available_height();
-                            ui.label("Reverse direct dependencies");
-                            egui::ScrollArea::vertical()
-                                .id_salt("reverse_deps_scroll")
-                                .show(ui, |ui| {
-                                    ui.take_available_width();
-                                    for dep in self
-                                        .graph
-                                        .get_direct_reverse_dependencies_in_framework(
-                                            dep, &framework,
-                                        )
-                                        .unwrap()
-                                    {
-                                        let reverse_dep_id = dep.from();
-                                        let info = self.graph.get(reverse_dep_id).unwrap();
-                                        show_label_for_depedency(
-                                            ui,
-                                            self.interaction_state,
-                                            self.visible_nodes,
-                                            reverse_dep_id,
-                                            eframe::egui::WidgetText::Text(info.name().to_string()),
-                                        );
-                                    }
-                                });
-                        });
+                        let deps = self
+                            .graph
+                            .get_direct_dependencies_in_framework(dep, &framework)
+                            .unwrap()
+                            .map(|edge| (edge.to(), self.graph.get(edge.to()).unwrap()));
+                        self.show_column_with_deps(
+                            &mut columns[0],
+                            "Direct dependencies",
+                            "deps_scroll",
+                            deps,
+                        );
+
+                        let reverse_deps = self
+                            .graph
+                            .get_direct_reverse_dependencies_in_framework(dep, &framework)
+                            .unwrap()
+                            .map(|edge| (edge.from(), self.graph.get(edge.from()).unwrap()));
+                        self.show_column_with_deps(
+                            &mut columns[1],
+                            "Reverse direct dependencies",
+                            "reverse_deps_scroll",
+                            reverse_deps,
+                        );
                     });
                 }
                 (Some(_), None) => {
