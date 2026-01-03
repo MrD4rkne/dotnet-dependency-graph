@@ -426,7 +426,7 @@ impl<'a> DepPanel<'a> {
                 .show(ui, |ui| {
                     ui.take_available_width();
                     for (id, info) in deps {
-                        show_label_for_depedency(
+                        show_label_for_dependency(
                             ui,
                             self.interaction_state,
                             self.visible_nodes,
