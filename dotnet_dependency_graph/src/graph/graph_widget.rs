@@ -183,7 +183,7 @@ fn draw_single_node(
     handle_node_interactions(id, cache, ui, interaction_state, text);
 }
 
-/// Handle dragging interaction for a single node
+/// Handle all user interactions for a single node (dragging, clicking, hovering)
 fn handle_node_interactions(
     id: DependencyId,
     data: &mut NodeData,
