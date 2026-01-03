@@ -139,57 +139,8 @@ impl FileDialogHandler {
         Ok(())
     }
 
-    fn render(&mut self, ctx: &Context, app_state: &mut AppState) {
-        puffin::profile_function!();
+    fn render(&mut self, ctx: &Context) {
         self.file_dialog.update(ctx);
-
-        eframe::egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
-            eframe::egui::MenuBar::new().ui(ui, |ui| {
-                ui.menu_button("File", |ui| {
-                    ui.menu_button("Parse", |ui| {
-                        if ui.button("Open file").clicked() {
-                            self.open_for_replace();
-                        }
-
-                        if matches!(app_state, AppState::FileLoaded(_))
-                            && ui.button("Merge file").clicked()
-                        {
-                            self.open_for_merge();
-                        }
-                    });
-
-                    ui.menu_button("State", |ui| {
-                        if ui.button("Load from file").clicked() {
-                            self.open_for_load();
-                        }
-                        if matches!(app_state, AppState::FileLoaded(_))
-                            && ui.button("Save to file").clicked()
-                        {
-                            self.open_for_save();
-                        }
-                    });
-                });
-            });
-
-            if let AppState::FileLoaded(file) = app_state {
-                ui.horizontal(|ui| {
-                    ui.label("Framework:");
-                    for fw in file.graph.iter_frameworks() {
-                        if ui
-                            .selectable_label(
-                                file.interaction_state.selected_framework() == Some(fw),
-                                fw.name(),
-                            )
-                            .clicked()
-                        {
-                            file.interaction_state.publish(
-                                crate::session::InteractionEvent::SelectFramework(fw.clone()),
-                            );
-                        }
-                    }
-                });
-            }
-        });
     }
 
     fn open_for_replace(&mut self) {
@@ -406,7 +357,58 @@ impl DependencyApp {
             PackagesViewRenderer::new(&mut self.package_filter, &mut self.search_options);
         renderer.render(ctx, &mut self.app_state);
     }
+
+    fn render_menu(&mut self, ctx: &Context) {
+        eframe::egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
+            eframe::egui::MenuBar::new().ui(ui, |ui| {
+                ui.menu_button("File", |ui| {
+                    ui.menu_button("Parse", |ui| {
+                        if ui.button("Open file").clicked() {
+                            self.file_dialog_handler.open_for_replace();
+                        }
+
+                        if matches!(self.app_state, AppState::FileLoaded(_))
+                            && ui.button("Merge file").clicked()
+                        {
+                            self.file_dialog_handler.open_for_merge();
+                        }
+                    });
+
+                    ui.menu_button("State", |ui| {
+                        if ui.button("Load from file").clicked() {
+                            self.file_dialog_handler.open_for_load();
+                        }
+                        if matches!(self.app_state, AppState::FileLoaded(_))
+                            && ui.button("Save to file").clicked()
+                        {
+                            self.file_dialog_handler.open_for_save();
+                        }
+                    });
+                });
+            });
+
+            if let AppState::FileLoaded(file) = &mut self.app_state {
+                ui.horizontal(|ui| {
+                    ui.label("Framework:");
+                    for fw in file.graph.iter_frameworks() {
+                        if ui
+                            .selectable_label(
+                                file.interaction_state.selected_framework() == Some(fw),
+                                fw.name(),
+                            )
+                            .clicked()
+                        {
+                            file.interaction_state.publish(
+                                crate::session::InteractionEvent::SelectFramework(fw.clone()),
+                            );
+                        }
+                    }
+                });
+            }
+        });
+    }
 }
+
 impl App for DependencyApp {
     fn update(&mut self, ctx: &Context, _: &mut eframe::Frame) {
         GlobalProfiler::lock().new_frame();
@@ -419,7 +421,8 @@ impl App for DependencyApp {
         }
 
         self.fps_counter.update();
-        self.file_dialog_handler.render(ctx, &mut self.app_state);
+        self.render_menu(ctx);
+        self.file_dialog_handler.render(ctx);
         if let Err(error) = self.file_dialog_handler.handle(&mut self.app_state) {
             self.error_text = Some(error.to_string());
         }
