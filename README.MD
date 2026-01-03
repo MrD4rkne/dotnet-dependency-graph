@@ -59,6 +59,12 @@ If you have an already loaded graph, you can merge another file into it using `F
 
 ![Dropdown at the left top corner- File -> Merge file](/docs/merge-files.png)
 
+### Navigate
+
+You can navigate the graph using mouse interactions:
+
+- highlight nodes by hovering over them on the graph or any of the lists,
+- pan to the node by clicking on it in any of the lists,
 
 ### Where to find the files
 
