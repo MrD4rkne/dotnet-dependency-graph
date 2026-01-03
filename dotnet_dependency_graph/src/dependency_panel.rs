@@ -145,7 +145,6 @@ impl<'a> DependencyPanel<'a> {
 
     fn show_search_box(&mut self, ui: &mut Ui, searcher: &Searcher) {
         puffin::profile_function!();
-        ui.take_available_width();
         ui.horizontal(|ui| {
             ui.label("Filter:");
             let original_visuals = ui.visuals().clone();
