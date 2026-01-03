@@ -408,10 +408,12 @@ impl<'a> Widget for DepPanel<'a> {
                 (Some(dep), Some(framework)) => {
                     ui.columns(2, |columns| {
                         columns[0].group(|ui| {
+                            ui.take_available_height();
                             ui.label("Direct dependencies");
                             egui::ScrollArea::vertical()
                                 .id_salt("deps_scroll")
                                 .show(ui, |ui| {
+                                    ui.take_available_width();
                                     for dep in self
                                         .graph
                                         .get_direct_dependencies_in_framework(dep, &framework)
@@ -429,10 +431,12 @@ impl<'a> Widget for DepPanel<'a> {
                                 });
                         });
                         columns[1].group(|ui| {
+                            ui.take_available_height();
                             ui.label("Reverse direct dependencies");
                             egui::ScrollArea::vertical()
                                 .id_salt("reverse_deps_scroll")
                                 .show(ui, |ui| {
+                                    ui.take_available_width();
                                     for dep in self
                                         .graph
                                         .get_direct_reverse_dependencies_in_framework(
@@ -440,12 +444,13 @@ impl<'a> Widget for DepPanel<'a> {
                                         )
                                         .unwrap()
                                     {
-                                        let info = self.graph.get(dep.to()).unwrap();
+                                        let reverse_dep_id = dep.from();
+                                        let info = self.graph.get(reverse_dep_id).unwrap();
                                         show_label_for_depedency(
                                             ui,
                                             self.interaction_state,
                                             self.visible_nodes,
-                                            dep.from(),
+                                            reverse_dep_id,
                                             eframe::egui::WidgetText::Text(info.name().to_string()),
                                         );
                                     }
