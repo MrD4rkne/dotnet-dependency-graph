@@ -45,7 +45,7 @@ pub struct LayoutConfig {
     node_spacing: f64,
     /// spacing between layers
     layer_spacing: u32,
-    // how nodes are ranked and ditributed
+    // how nodes are ranked and distributed
     ranking_type: RankingType,
     // Which heuristic to use when minimizing edge crossings.
     c_minimization: CrossingMinimization,
