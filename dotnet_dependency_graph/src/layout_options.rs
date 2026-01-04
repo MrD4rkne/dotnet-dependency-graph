@@ -6,9 +6,9 @@ enum RankingType {
     ForceDown,
 }
 
-impl Into<dotnet_dependency_parser::graph::algo::RankingType> for RankingType {
-    fn into(self) -> dotnet_dependency_parser::graph::algo::RankingType {
-        match self {
+impl From<RankingType> for dotnet_dependency_parser::graph::algo::RankingType {
+    fn from(ranking_type: RankingType) -> dotnet_dependency_parser::graph::algo::RankingType {
+        match ranking_type {
             RankingType::ForceUp => dotnet_dependency_parser::graph::algo::RankingType::Up,
             RankingType::ForceDown => dotnet_dependency_parser::graph::algo::RankingType::Down,
         }
@@ -21,9 +21,11 @@ enum CrossingMinimization {
     Barycenter,
 }
 
-impl Into<dotnet_dependency_parser::graph::algo::CrossingMinimization> for CrossingMinimization {
-    fn into(self) -> dotnet_dependency_parser::graph::algo::CrossingMinimization {
-        match self {
+impl From<CrossingMinimization> for dotnet_dependency_parser::graph::algo::CrossingMinimization {
+    fn from(
+        cm: CrossingMinimization,
+    ) -> dotnet_dependency_parser::graph::algo::CrossingMinimization {
+        match cm {
             CrossingMinimization::Median => {
                 dotnet_dependency_parser::graph::algo::CrossingMinimization::Median
             }
