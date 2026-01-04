@@ -92,10 +92,12 @@ impl LayoutWindow {
             .resizable(false)
             .show(ctx, |ui| {
                 ui.label("Node spacing");
-                ui.add(Slider::new(&mut self.config.node_spacing, 10.0..=20.0));
+                ui.add(Slider::new(&mut self.config.node_spacing, 10.0..=20.0))
+                .on_hover_text("Spacing between nodes, both in the same and adjacent layers");
 
                 ui.label("Layer spacing");
-                ui.add(Slider::new(&mut self.config.layer_spacing, 1..=20));
+                ui.add(Slider::new(&mut self.config.layer_spacing, 1..=20))
+                .on_hover_text("Space between layers");
 
                 ui.horizontal(|ui| {
                     ui.label("Ranking method:");
@@ -106,24 +108,28 @@ impl LayoutWindow {
                                 &mut self.config.ranking_type,
                                 RankingType::ForceUp,
                                 "Force nodes up",
-                            );
+                            )
+                            .on_hover_text("Move the vertices as far up as possible");
                             ui.selectable_value(
                                 &mut self.config.ranking_type,
                                 RankingType::ForceDown,
                                 "Force nodes down",
-                            );
+                            )
+                            .on_hover_text("Move the vertices as far down as possible");
                             ui.selectable_value(
                                 &mut self.config.ranking_type,
                                 RankingType::Original,
                                 "Original",
-                            );
+                            )
+                            .on_hover_text("Firstly move vertices up, then down")
                         });
                 });
 
                 ui.checkbox(
                     &mut self.config.minimalize_crosses,
                     "Try to minimalize edge crossing",
-                );
+                )
+                .on_hover_text("Should the algo try to minimalize edge crossing again, after positioning the nodes in layers, by swapping nodes in the same layer. This might significantly prolong the calculations");
 
                 ui.horizontal(|ui| {
                     ui.label("Crossing edges minimalization method:");
