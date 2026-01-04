@@ -44,7 +44,7 @@ impl BackgroundWindow {
             Window::new("Background work")
                 .resizable(false)
                 .show(ctx, |ui| {
-                    ui.centered_and_justified(|ui| match &task.last_progress {
+                    ui.vertical_centered_justified(|ui| match &task.last_progress {
                         Some(Progress::Percent(p, msg)) => {
                             if let Some(msg) = msg {
                                 ui.label(msg);
