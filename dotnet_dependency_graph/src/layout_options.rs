@@ -67,7 +67,7 @@ impl From<LayoutConfig> for dotnet_dependency_parser::graph::algo::Config {
             minimum_length: layout_config.layer_spacing,
             vertex_spacing: layout_config.node_spacing,
             ranking_type: layout_config.ranking_type.into(),
-            dummy_vertices: true,
+            dummy_vertices: Default::default(),
             dummy_size: Default::default(),
             c_minimization: layout_config.c_minimization.into(),
             transpose: layout_config.minimalize_crosses,
