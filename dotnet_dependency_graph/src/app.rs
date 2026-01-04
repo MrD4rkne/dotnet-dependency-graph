@@ -9,6 +9,8 @@ use std::time::{Duration, Instant};
 use crate::dependency_panel::SearchOptions;
 use crate::dependency_panel::{DepPanel, DependencyPanel};
 use crate::graph::graph_widget::GraphWidget;
+use crate::layout_options::LayoutConfig;
+use crate::layout_options::LayoutWindow;
 use crate::parser;
 use crate::session::Session;
 
@@ -35,7 +37,7 @@ impl FileDialogHandler {
         }
     }
 
-    fn handle(&mut self, app_state: &mut AppState) -> Result<(), Error> {
+    fn handle(&mut self, app_state: &mut AppState, config: LayoutConfig) -> Result<(), Error> {
         if self.mode == FileMode::None {
             return Ok(());
         }
@@ -46,7 +48,7 @@ impl FileDialogHandler {
 
         match (&self.mode, &app_state) {
             (FileMode::Merge | FileMode::Replace, _) => {
-                self.handle_load(app_state, path)?;
+                self.handle_load(app_state, path, config)?;
             }
             (FileMode::Save, AppState::FileLoaded(session)) => {
                 crate::state::save_state(session, path)?;
@@ -62,7 +64,12 @@ impl FileDialogHandler {
         Ok(())
     }
 
-    fn handle_load(&mut self, app_state: &mut AppState, path: PathBuf) -> Result<(), Error> {
+    fn handle_load(
+        &mut self,
+        app_state: &mut AppState,
+        path: PathBuf,
+        config: LayoutConfig,
+    ) -> Result<(), Error> {
         let new_graph = match parser::parse_with_supported_parsers(&path) {
             Ok(graph) => graph,
             Err(e) => {
@@ -72,11 +79,14 @@ impl FileDialogHandler {
 
         match (&mut *app_state, &self.mode) {
             (AppState::FileLoaded(session), FileMode::Merge) => {
-                if let Err(e) = session.merge(new_graph) {
+                if let Err(e) = session.merge(new_graph, config) {
                     return Err(anyhow::anyhow!("Failed to merge: {}", e));
                 }
             }
-            _ => *app_state = AppState::FileLoaded(Box::new(Session::load_from(path, new_graph))),
+            _ => {
+                *app_state =
+                    AppState::FileLoaded(Box::new(Session::load_from(path, new_graph, config)))
+            }
         };
 
         Ok(())
@@ -264,6 +274,7 @@ pub(crate) struct DependencyApp {
     package_filter: String,
     search_options: SearchOptions,
     file_dialog_handler: FileDialogHandler,
+    layout_config: LayoutWindow,
 }
 
 impl Default for DependencyApp {
@@ -279,6 +290,7 @@ impl Default for DependencyApp {
             package_filter: String::new(),
             search_options: SearchOptions::default(),
             file_dialog_handler: FileDialogHandler::new(),
+            layout_config: LayoutWindow::default(),
         }
     }
 }
@@ -328,6 +340,12 @@ impl DependencyApp {
                         }
                     });
                 });
+
+                ui.menu_button("View", |ui| {
+                    if ui.button("Layout").clicked() {
+                        self.layout_config.request_show();
+                    }
+                });
             });
 
             if let AppState::FileLoaded(file) = &mut self.app_state {
@@ -366,7 +384,10 @@ impl App for DependencyApp {
         self.fps_counter.update();
         self.render_menu(ctx);
         self.file_dialog_handler.render(ctx);
-        if let Err(error) = self.file_dialog_handler.handle(&mut self.app_state) {
+        if let Err(error) = self
+            .file_dialog_handler
+            .handle(&mut self.app_state, self.layout_config.get_config())
+        {
             self.error_text = Some(error.to_string());
         }
 
@@ -375,5 +396,7 @@ impl App for DependencyApp {
         // Render left side first not to overlay over central panel. It MUST be kept in this order.
         self.render_packages_view(ctx);
         self.render_central_panel(ctx);
+
+        self.layout_config.update(ctx);
     }
 }

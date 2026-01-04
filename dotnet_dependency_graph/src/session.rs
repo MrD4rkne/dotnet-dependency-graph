@@ -1,3 +1,4 @@
+use dotnet_dependency_parser::graph::algo::Config;
 use dotnet_dependency_parser::graph::{
     DependencyGraph, DependencyGraphError, DependencyId, Framework,
 };
@@ -6,6 +7,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 
 use crate::graph::GraphCache;
+use crate::layout_options::LayoutConfig;
 use crate::visualize;
 
 /// Events representing user interactions. Widgets should publish these
@@ -94,15 +96,23 @@ pub(crate) struct Session {
 }
 
 impl Session {
-    pub(crate) fn load_from(path: PathBuf, graph: DependencyGraph) -> Session {
-        let positions = calculate_positions(&graph);
+    pub(crate) fn load_from(
+        path: PathBuf,
+        graph: DependencyGraph,
+        config: LayoutConfig,
+    ) -> Session {
+        let positions = calculate_positions(&graph, config);
         let visible_nodes = graph.iter().map(|(id, _)| id).collect();
         Session::new(path, graph, positions, visible_nodes)
     }
 
-    pub(crate) fn merge(&mut self, graph: DependencyGraph) -> Result<(), DependencyGraphError> {
+    pub(crate) fn merge(
+        &mut self,
+        graph: DependencyGraph,
+        config: LayoutConfig,
+    ) -> Result<(), DependencyGraphError> {
         self.graph.merge(graph)?;
-        self.cache = GraphCache::new(&self.graph, &calculate_positions(&self.graph));
+        self.cache = GraphCache::new(&self.graph, &calculate_positions(&self.graph, config));
         Ok(())
     }
 
@@ -123,12 +133,11 @@ impl Session {
     }
 }
 
-use dotnet_dependency_parser::graph::algo::{Config, RankingType};
-fn calculate_positions(graph: &DependencyGraph) -> HashMap<DependencyId, (f32, f32)> {
-    let config = Config {
-        ranking_type: RankingType::Down,
-        ..Default::default()
-    };
+fn calculate_positions(
+    graph: &DependencyGraph,
+    config: LayoutConfig,
+) -> HashMap<DependencyId, (f32, f32)> {
+    let config: Config = config.into();
     let layouts = graph.layout_with_config(&visualize::calculate_size, &config);
     visualize::join_layouts(layouts)
 }

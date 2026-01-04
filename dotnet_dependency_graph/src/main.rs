@@ -6,6 +6,7 @@ use std::any::Any;
 mod app;
 mod dependency_panel;
 mod graph;
+mod layout_options;
 mod node;
 mod parser;
 mod session;
