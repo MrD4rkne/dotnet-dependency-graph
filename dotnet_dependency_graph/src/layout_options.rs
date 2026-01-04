@@ -49,8 +49,8 @@ pub struct LayoutConfig {
     ranking_type: RankingType,
     // Which heuristic to use when minimizing edge crossings.
     c_minimization: CrossingMinimization,
-    // whether to try to minimalize crosses of the edges by swapping nodes in the same layer.
-    minimalize_crosses: bool,
+    // whether to try to minimize crosses of the edges by swapping nodes in the same layer.
+    minimize_crosses: bool,
 }
 
 impl Default for LayoutConfig {
@@ -60,7 +60,7 @@ impl Default for LayoutConfig {
             layer_spacing: 10,
             ranking_type: RankingType::ForceDown,
             c_minimization: CrossingMinimization::Barycenter,
-            minimalize_crosses: true,
+            minimize_crosses: true,
         }
     }
 }
@@ -74,7 +74,7 @@ impl From<LayoutConfig> for dotnet_dependency_parser::graph::algo::Config {
             dummy_vertices: true,
             dummy_size: 1.0,
             c_minimization: layout_config.c_minimization.into(),
-            transpose: layout_config.minimalize_crosses,
+            transpose: layout_config.minimize_crosses,
         }
     }
 }
@@ -126,10 +126,10 @@ impl LayoutWindow {
                 });
 
                 ui.checkbox(
-                    &mut self.config.minimalize_crosses,
-                    "Try to minimalize edge crossing",
+                    &mut self.config.minimize_crosses,
+                    "Try to minimize edge crossing",
                 )
-                .on_hover_text("Should the algo try to minimalize edge crossing again, after positioning the nodes in layers, by swapping nodes in the same layer. This might significantly prolong the calculations");
+                .on_hover_text("Should the algo try to minimize edge crossing again, after positioning the nodes in layers, by swapping nodes in the same layer. This might significantly prolong the calculations");
 
                 ui.horizontal(|ui| {
                     ui.label("Crossing edges minimalization method:");
