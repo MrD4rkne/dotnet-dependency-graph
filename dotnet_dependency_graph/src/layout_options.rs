@@ -133,7 +133,7 @@ impl LayoutWindow {
 
                 ui.horizontal(|ui| {
                     ui.label("Crossing edges minimalization method:");
-                    ComboBox::from_id_salt("crosssing_edges_minimalizing_method")
+                    ComboBox::from_id_salt("crossing_edges_minimalizing_method")
                         .selected_text(format!("{:?}", self.config.c_minimization))
                         .show_ui(ui, |ui| {
                             ui.selectable_value(
