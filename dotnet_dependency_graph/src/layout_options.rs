@@ -56,7 +56,7 @@ pub struct LayoutConfig {
 impl Default for LayoutConfig {
     fn default() -> Self {
         Self {
-            node_spacing: 1.0,
+            node_spacing: 10.0,
             layer_spacing: 10,
             ranking_type: RankingType::ForceDown,
             c_minimization: CrossingMinimization::Barycenter,
@@ -92,7 +92,7 @@ impl LayoutWindow {
             .resizable(false)
             .show(ctx, |ui| {
                 ui.label("Node spacing");
-                ui.add(Slider::new(&mut self.config.node_spacing, 10.0..=20.0))
+                ui.add(Slider::new(&mut self.config.node_spacing, 1.0..=40.0))
                 .on_hover_text("Spacing between nodes, both in the same and adjacent layers");
 
                 ui.label("Layer spacing");
