@@ -112,8 +112,12 @@ impl Session {
         config: LayoutConfig,
     ) -> Result<(), DependencyGraphError> {
         self.graph.merge(graph)?;
-        self.cache = GraphCache::new(&self.graph, &calculate_positions(&self.graph, config));
+        self.recalculate_layout(config);
         Ok(())
+    }
+
+    pub(crate) fn recalculate_layout(&mut self, config: LayoutConfig) {
+        self.cache = GraphCache::new(&self.graph, &calculate_positions(&self.graph, config));
     }
 
     pub(crate) fn new(

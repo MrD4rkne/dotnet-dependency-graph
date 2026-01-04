@@ -341,9 +341,15 @@ impl DependencyApp {
                     });
                 });
 
-                ui.menu_button("View", |ui| {
-                    if ui.button("Layout").clicked() {
+                ui.menu_button("Layout", |ui| {
+                    if ui.button("Config").clicked() {
                         self.layout_config.request_show();
+                    }
+
+                    if let AppState::FileLoaded(session) = &mut self.app_state
+                        && ui.button("Recalculate").clicked()
+                    {
+                        session.recalculate_layout(self.layout_config.get_config());
                     }
                 });
             });
