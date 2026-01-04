@@ -4,6 +4,7 @@ use eframe::egui::{ComboBox, Context, Slider, Window};
 enum RankingType {
     ForceUp,
     ForceDown,
+    Original,
 }
 
 impl From<RankingType> for dotnet_dependency_parser::graph::algo::RankingType {
@@ -11,6 +12,7 @@ impl From<RankingType> for dotnet_dependency_parser::graph::algo::RankingType {
         match ranking_type {
             RankingType::ForceUp => dotnet_dependency_parser::graph::algo::RankingType::Up,
             RankingType::ForceDown => dotnet_dependency_parser::graph::algo::RankingType::Down,
+            RankingType::Original => dotnet_dependency_parser::graph::algo::RankingType::Original,
         }
     }
 }
@@ -109,6 +111,11 @@ impl LayoutWindow {
                                 &mut self.config.ranking_type,
                                 RankingType::ForceDown,
                                 "Force nodes down",
+                            );
+                            ui.selectable_value(
+                                &mut self.config.ranking_type,
+                                RankingType::Original,
+                                "Original",
                             );
                         });
                 });
