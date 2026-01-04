@@ -69,8 +69,8 @@ impl From<LayoutConfig> for dotnet_dependency_parser::graph::algo::Config {
             minimum_length: layout_config.layer_spacing,
             vertex_spacing: layout_config.node_spacing,
             ranking_type: layout_config.ranking_type.into(),
-            dummy_vertices: Default::default(),
-            dummy_size: Default::default(),
+            dummy_vertices: true,
+            dummy_size: 1.0,
             c_minimization: layout_config.c_minimization.into(),
             transpose: layout_config.minimalize_crosses,
         }
@@ -93,7 +93,7 @@ impl LayoutWindow {
                 ui.add(Slider::new(&mut self.config.node_spacing, 10.0..=20.0));
 
                 ui.label("Layer spacing");
-                ui.add(Slider::new(&mut self.config.layer_spacing, 10..=40));
+                ui.add(Slider::new(&mut self.config.layer_spacing, 1..=20));
 
                 ui.horizontal(|ui| {
                     ui.label("Ranking method:");
