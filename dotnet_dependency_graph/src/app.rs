@@ -1,4 +1,5 @@
 use anyhow::Error;
+use dotnet_dependency_parser::graph::DependencyGraph;
 use eframe::App;
 use eframe::egui::Context;
 use egui_file_dialog::FileDialog;
@@ -6,7 +7,7 @@ use puffin::GlobalProfiler;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use crate::background::BackgroundWindow;
+use crate::background::{BackgroundWindow, PollResult};
 use crate::dependency_panel::SearchOptions;
 use crate::dependency_panel::{DepPanel, DependencyPanel};
 use crate::graph::graph_widget::GraphWidget;
@@ -38,7 +39,7 @@ impl FileDialogHandler {
         }
     }
 
-    fn handle(&mut self, app_state: &mut AppState, config: LayoutConfig) -> Result<(), Error> {
+    fn handle(&mut self, app_state: &mut AppState) -> Result<(), Error> {
         if self.mode == FileMode::None {
             return Ok(());
         }
@@ -49,7 +50,13 @@ impl FileDialogHandler {
 
         match (&self.mode, &app_state) {
             (FileMode::Merge | FileMode::Replace, _) => {
-                self.handle_load(app_state, path, config)?;
+                *app_state = AppState::LoadingFile(BackgroundWindow::new(
+                    "Loading file...".to_string(),
+                    move || match parser::parse_with_supported_parsers(&path) {
+                        Ok(graph) => Ok(graph),
+                        Err(e) => Err(anyhow::anyhow!("Failed to parse file: {}", e)),
+                    },
+                ));
             }
             (FileMode::Save, AppState::FileLoaded(session)) => {
                 crate::state::save_state(session, path)?;
@@ -61,34 +68,6 @@ impl FileDialogHandler {
         }
 
         self.mode = FileMode::None;
-
-        Ok(())
-    }
-
-    fn handle_load(
-        &mut self,
-        app_state: &mut AppState,
-        path: PathBuf,
-        config: LayoutConfig,
-    ) -> Result<(), Error> {
-        let new_graph = match parser::parse_with_supported_parsers(&path) {
-            Ok(graph) => graph,
-            Err(e) => {
-                return Err(anyhow::anyhow!("Failed to parse file: {}", e));
-            }
-        };
-
-        match (&mut *app_state, &self.mode) {
-            (AppState::FileLoaded(session), FileMode::Merge) => {
-                if let Err(e) = session.merge(new_graph, config) {
-                    return Err(anyhow::anyhow!("Failed to merge: {}", e));
-                }
-            }
-            _ => {
-                *app_state =
-                    AppState::FileLoaded(Box::new(Session::load_from(path, new_graph, config)))
-            }
-        };
 
         Ok(())
     }
@@ -135,11 +114,6 @@ impl<'a> CentralPanelRenderer<'a> {
     fn render(&mut self, ctx: &Context, app_state: &mut AppState) {
         eframe::egui::CentralPanel::default().show(ctx, |ui| {
             if let AppState::FileLoaded(file) = app_state {
-                ui.label(format!(
-                    "File: {}",
-                    file.path.file_name().unwrap_or_default().to_string_lossy()
-                ));
-
                 ui.add(GraphWidget::new(
                     crate::graph::graph_widget::ViewState::new(self.scene_rect),
                     &mut file.interaction_state,
@@ -230,10 +204,12 @@ impl<'a> PackagesViewRenderer<'a> {
 }
 
 /// Represents the current state of the application.
-#[derive(Debug)]
 enum AppState {
     /// No file is currently loaded.
     NoFile,
+    // File is being loaded in the background.
+    LoadingFile(BackgroundWindow<Result<DependencyGraph, Error>>),
+    CalculatingLayout(BackgroundWindow<Box<Session>>),
     /// A file is loaded and ready for visualization.
     FileLoaded(Box<Session>),
 }
@@ -393,6 +369,31 @@ impl App for DependencyApp {
     fn update(&mut self, ctx: &Context, _: &mut eframe::Frame) {
         GlobalProfiler::lock().new_frame();
 
+        let previous_state = std::mem::replace(&mut self.app_state, AppState::NoFile);
+        self.app_state = match previous_state {
+            AppState::LoadingFile(bw) => match bw.update(ctx) {
+                PollResult::Pending(bw) => AppState::LoadingFile(bw),
+                PollResult::Ready(graph_result) => match graph_result {
+                    Ok(graph) => {
+                        let config = self.layout_config.get_config();
+                        AppState::CalculatingLayout(BackgroundWindow::new(
+                            "Calculating layout...".to_string(),
+                            move || Box::new(Session::load_from(graph, config)),
+                        ))
+                    }
+                    Err(err) => {
+                        self.error_text = Some(err.to_string());
+                        AppState::NoFile
+                    }
+                },
+            },
+            AppState::CalculatingLayout(bw) => match bw.update(ctx) {
+                PollResult::Pending(bw) => AppState::CalculatingLayout(bw),
+                PollResult::Ready(session) => AppState::FileLoaded(session),
+            },
+            other => other,
+        };
+
         // Apply interaction events published in the previous frame.
         // Also, reset the per_frame state.
         if let AppState::FileLoaded(file) = &mut self.app_state {
@@ -403,10 +404,7 @@ impl App for DependencyApp {
         self.fps_counter.update();
         self.render_menu(ctx);
         self.file_dialog_handler.render(ctx);
-        if let Err(error) = self
-            .file_dialog_handler
-            .handle(&mut self.app_state, self.layout_config.get_config())
-        {
+        if let Err(error) = self.file_dialog_handler.handle(&mut self.app_state) {
             self.error_text = Some(error.to_string());
         }
 

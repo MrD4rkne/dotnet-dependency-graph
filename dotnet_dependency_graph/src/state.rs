@@ -54,5 +54,5 @@ pub(crate) fn load_state(path: PathBuf) -> Result<Session, Error> {
         node_positions.insert(id, (x, y));
     }
 
-    Ok(Session::new(path, graph, node_positions, visible_nodes))
+    Ok(Session::new(graph, node_positions, visible_nodes))
 }

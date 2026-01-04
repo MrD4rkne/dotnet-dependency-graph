@@ -88,7 +88,6 @@ impl InteractionController {
 
 #[derive(Debug)]
 pub(crate) struct Session {
-    pub(crate) path: PathBuf,
     pub(crate) graph: DependencyGraph,
     pub(crate) visible_nodes: HashSet<DependencyId>,
     pub(crate) cache: GraphCache,
@@ -96,14 +95,10 @@ pub(crate) struct Session {
 }
 
 impl Session {
-    pub(crate) fn load_from(
-        path: PathBuf,
-        graph: DependencyGraph,
-        config: LayoutConfig,
-    ) -> Session {
+    pub(crate) fn load_from(graph: DependencyGraph, config: LayoutConfig) -> Session {
         let positions = calculate_positions(&graph, config);
         let visible_nodes = graph.iter().map(|(id, _)| id).collect();
-        Session::new(path, graph, positions, visible_nodes)
+        Session::new(graph, positions, visible_nodes)
     }
 
     pub(crate) fn merge(
@@ -121,14 +116,12 @@ impl Session {
     }
 
     pub(crate) fn new(
-        path: PathBuf,
         graph: DependencyGraph,
         node_positions: HashMap<DependencyId, (f32, f32)>,
         visible_nodes: HashSet<DependencyId>,
     ) -> Self {
         let cache = GraphCache::new(&graph, &node_positions);
         Self {
-            path,
             graph,
             visible_nodes,
             cache,
