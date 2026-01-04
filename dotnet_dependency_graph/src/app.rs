@@ -276,7 +276,7 @@ pub(crate) struct DependencyApp {
     search_options: SearchOptions,
     file_dialog_handler: FileDialogHandler,
     layout_config: LayoutWindow,
-    background: BackgroundWindow,
+    background: Option<BackgroundWindow<u32>>,
 }
 
 impl Default for DependencyApp {
@@ -293,7 +293,7 @@ impl Default for DependencyApp {
             search_options: SearchOptions::default(),
             file_dialog_handler: FileDialogHandler::new(),
             layout_config: LayoutWindow::default(),
-            background: BackgroundWindow::default(),
+            background: None,
         }
     }
 }
@@ -358,26 +358,11 @@ impl DependencyApp {
 
                 ui.menu_button("Job", |ui| {
                     if ui.button("Do").clicked() {
-                        self.background.schedule_task(
-                            |x| {
-                                x.publish(crate::background::Progress::Percent(
-                                    0,
-                                    Some("Starting job".to_string()),
-                                ));
-
-                                std::thread::sleep(Duration::from_secs(2));
-
-                                x.publish(crate::background::Progress::Percent(
-                                    50,
-                                    Some("Half through".to_string()),
-                                ));
-
-                                std::thread::sleep(Duration::from_secs(2));
-
-                                x.publish(crate::background::Progress::Done);
-                            },
-                            ctx.clone(),
-                        );
+                        self.background =
+                            Some(BackgroundWindow::new("Counting...".to_string(), || {
+                                std::thread::sleep(Duration::from_secs(3));
+                                2
+                            }));
                     }
                 });
             });
@@ -425,7 +410,17 @@ impl App for DependencyApp {
             self.error_text = Some(error.to_string());
         }
 
-        self.background.update(ctx);
+        self.background = match self.background.take() {
+            None => None,
+            Some(w) => match w.update(ctx) {
+                crate::background::PollResult::Ready(v) => {
+                    dbg!(v);
+                    None
+                }
+                crate::background::PollResult::Pending(v) => Some(v),
+            },
+        };
+
         self.render_error_window(ctx);
 
         // Render left side first not to overlay over central panel. It MUST be kept in this order.
