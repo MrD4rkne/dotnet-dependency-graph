@@ -6,6 +6,7 @@ use puffin::GlobalProfiler;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
+use crate::background::BackgroundWindow;
 use crate::dependency_panel::SearchOptions;
 use crate::dependency_panel::{DepPanel, DependencyPanel};
 use crate::graph::graph_widget::GraphWidget;
@@ -275,6 +276,7 @@ pub(crate) struct DependencyApp {
     search_options: SearchOptions,
     file_dialog_handler: FileDialogHandler,
     layout_config: LayoutWindow,
+    background: BackgroundWindow,
 }
 
 impl Default for DependencyApp {
@@ -291,6 +293,7 @@ impl Default for DependencyApp {
             search_options: SearchOptions::default(),
             file_dialog_handler: FileDialogHandler::new(),
             layout_config: LayoutWindow::default(),
+            background: BackgroundWindow::default(),
         }
     }
 }
@@ -352,6 +355,31 @@ impl DependencyApp {
                         session.recalculate_layout(self.layout_config.get_config());
                     }
                 });
+
+                ui.menu_button("Job", |ui| {
+                    if ui.button("Do").clicked() {
+                        self.background.schedule_task(
+                            |x| {
+                                x.publish(crate::background::Progress::Percent(
+                                    0,
+                                    Some("Starting job".to_string()),
+                                ));
+
+                                std::thread::sleep(Duration::from_secs(2));
+
+                                x.publish(crate::background::Progress::Percent(
+                                    50,
+                                    Some("Half through".to_string()),
+                                ));
+
+                                std::thread::sleep(Duration::from_secs(2));
+
+                                x.publish(crate::background::Progress::Done);
+                            },
+                            ctx.clone(),
+                        );
+                    }
+                });
             });
 
             if let AppState::FileLoaded(file) = &mut self.app_state {
@@ -397,6 +425,7 @@ impl App for DependencyApp {
             self.error_text = Some(error.to_string());
         }
 
+        self.background.update(ctx);
         self.render_error_window(ctx);
 
         // Render left side first not to overlay over central panel. It MUST be kept in this order.

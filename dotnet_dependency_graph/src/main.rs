@@ -4,6 +4,7 @@ use eframe::run_native;
 use std::any::Any;
 
 mod app;
+mod background;
 mod dependency_panel;
 mod graph;
 mod layout_options;
