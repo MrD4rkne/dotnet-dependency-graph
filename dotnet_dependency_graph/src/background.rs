@@ -8,7 +8,7 @@ where
     T: Send + 'static,
 {
     promise: Promise<T>,
-    title: String,
+    title: &'static str,
 }
 
 pub(crate) enum PollResult<T>
@@ -23,7 +23,7 @@ impl<T> BackgroundWindow<T>
 where
     T: Send + 'static,
 {
-    pub(crate) fn new<F>(title: String, f: F) -> Self
+    pub(crate) fn new<F>(title: &'static str, f: F) -> Self
     where
         F: FnOnce() -> T + Send + 'static,
         T: Send + 'static,
@@ -36,11 +36,9 @@ where
         match self.promise.try_take() {
             Ok(result) => PollResult::Ready(result),
             Err(promise) => {
-                Window::new("Background work")
-                    .resizable(false)
-                    .show(ctx, |ui| {
-                        ui.vertical_centered_justified(|ui| ui.label(&self.title))
-                    });
+                Window::new(self.title).resizable(false).show(ctx, |ui| {
+                    ui.vertical_centered_justified(|ui| ui.label(self.title))
+                });
                 ctx.request_repaint_after(Duration::from_millis(50));
                 PollResult::Pending(BackgroundWindow {
                     promise,
