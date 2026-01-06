@@ -10,10 +10,9 @@ use std::path::PathBuf;
 use crate::core::Session;
 use crate::core::events;
 use crate::core::parser;
-use crate::dependency_panel::SearchOptions;
-use crate::dependency_panel::{DepPanel, DependencyPanel};
 use crate::graph::graph_widget::GraphWidget;
 use crate::ui::FpsCounter;
+use crate::ui::{DepPanel, DependencyPanel, SearchOptions};
 
 /// Handles file dialog operations.
 struct FileDialogHandler {
