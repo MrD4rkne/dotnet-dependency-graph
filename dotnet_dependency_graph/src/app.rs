@@ -6,13 +6,13 @@ use egui_file_dialog::FileDialog;
 use puffin::GlobalProfiler;
 use std::fs::File;
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
 
 use crate::dependency_panel::SearchOptions;
 use crate::dependency_panel::{DepPanel, DependencyPanel};
 use crate::graph::graph_widget::GraphWidget;
 use crate::parser;
 use crate::session::Session;
+use crate::ui::FpsCounter;
 
 /// Handles file dialog operations.
 struct FileDialogHandler {
@@ -333,35 +333,6 @@ enum AppState {
     FileLoaded(Box<Session>),
 }
 
-struct FpsCounter {
-    last_update: Instant,
-    frames_since_last: u32,
-    current_fps: f32,
-}
-
-impl FpsCounter {
-    fn new() -> Self {
-        Self {
-            last_update: Instant::now(),
-            frames_since_last: 0,
-            current_fps: 0.0,
-        }
-    }
-
-    fn update(&mut self) {
-        self.frames_since_last += 1;
-        if self.last_update.elapsed() >= Duration::from_secs(1) {
-            self.current_fps = self.frames_since_last as f32;
-            self.frames_since_last = 0;
-            self.last_update = Instant::now();
-        }
-    }
-
-    fn fps(&self) -> f32 {
-        self.current_fps
-    }
-}
-
 pub(crate) struct DependencyApp {
     app_state: AppState,
     scene_rect: eframe::egui::Rect,
@@ -381,7 +352,7 @@ impl Default for DependencyApp {
                 eframe::egui::Vec2::splat(1000.0),
             ),
             error_text: None,
-            fps_counter: FpsCounter::new(),
+            fps_counter: FpsCounter::default(),
             package_filter: String::new(),
             search_options: SearchOptions::default(),
             file_dialog_handler: FileDialogHandler::new(),
