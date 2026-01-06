@@ -4,11 +4,10 @@ use eframe::run_native;
 use std::any::Any;
 
 mod app;
+mod core;
 mod dependency_panel;
 mod graph;
 mod node;
-mod parser;
-mod session;
 mod ui;
 mod visualize;
 

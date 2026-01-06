@@ -7,11 +7,12 @@ use puffin::GlobalProfiler;
 use std::fs::File;
 use std::path::PathBuf;
 
+use crate::core::Session;
+use crate::core::events;
+use crate::core::parser;
 use crate::dependency_panel::SearchOptions;
 use crate::dependency_panel::{DepPanel, DependencyPanel};
 use crate::graph::graph_widget::GraphWidget;
-use crate::parser;
-use crate::session::Session;
 use crate::ui::FpsCounter;
 
 /// Handles file dialog operations.
@@ -182,9 +183,8 @@ impl FileDialogHandler {
                             )
                             .clicked()
                         {
-                            file.interaction_state.publish(
-                                crate::session::InteractionEvent::SelectFramework(fw.clone()),
-                            );
+                            file.interaction_state
+                                .publish(events::InteractionEvent::SelectFramework(fw.clone()));
                         }
                     }
                 });
