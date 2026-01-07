@@ -100,9 +100,9 @@ impl<'a> GraphWidget<'a> {
         interaction_state: &InteractionController,
         framework: &Framework,
     ) {
-        puffin::profile_function!();
+        profile_function!();
         for src_id in graph_data.visible_nodes.iter() {
-            puffin::profile_scope!("draw_edges_for_node");
+            profile_scope!("draw_edges_for_node");
 
             let src_data = graph_data.get_data_by_id(*src_id);
             let src_rect = src_data.rect();
@@ -112,7 +112,7 @@ impl<'a> GraphWidget<'a> {
                 .get_direct_dependencies_in_framework(*src_id, framework)
                 .expect("Node should be in the graph.");
             for edge in deps {
-                puffin::profile_scope!("per_edge");
+                profile_scope!("per_edge");
                 let dst_id = edge.to();
 
                 // Only draw edges to visible nodes
@@ -143,7 +143,7 @@ impl<'a> Widget for GraphWidget<'a> {
 
         let inner = scene.show(ui, self.view_state.scene_rect, move |ui| {
             // Draw nodes in scene coordinates.
-            puffin::profile_function!();
+            profile_function!();
 
             if let Some(framework) = interaction_state.selected_framework() {
                 Self::draw_all_edges(ui.painter(), graph_data, interaction_state, framework);
@@ -161,7 +161,7 @@ fn draw_all_nodes(
     interaction_state: &mut InteractionController,
 ) {
     for id in graph_data.visible_nodes.iter() {
-        puffin::profile_scope!("per_visible_node");
+        profile_scope!("per_visible_node");
 
         let cache = graph_data.get_data_by_id(*id);
         let dep = graph_data
@@ -194,7 +194,7 @@ fn draw_single_node(
     interaction_state: &mut InteractionController,
     highlighted: bool,
 ) {
-    puffin::profile_function!();
+    profile_function!();
     visualize::draw_node(text, ui.painter(), rect, highlighted);
     handle_node_interactions(id, rect, ui, interaction_state, text);
 }

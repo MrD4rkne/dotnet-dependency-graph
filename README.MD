@@ -90,7 +90,7 @@ Example, if i have a project called `MyApp.csproj`, after running `dotnet restor
 App uses `puffin` for profiling and `puffin_http` for exporting the data. To compile with profiling enabled, use the following command:
 
 ```bash
-cargo build --release --features puffin-server
+cargo build --release --features profiling
 ```
 
 To visualize the profiling data, run the command that was logged in the console, for example:

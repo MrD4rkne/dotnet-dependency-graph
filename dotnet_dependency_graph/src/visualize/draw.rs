@@ -71,7 +71,7 @@ pub(crate) fn draw_node(
     rect: Rect,
     highlighted: bool,
 ) {
-    puffin::profile_function!();
+    profile_function!();
     let max_text_width = rect.width() - constants::NODE_PADDING;
     let (bg_color, border_color, border_width) = if highlighted {
         (
@@ -88,7 +88,7 @@ pub(crate) fn draw_node(
     };
 
     {
-        puffin::profile_scope!("paint");
+        profile_scope!("paint");
         // Draw rectangle background
         painter.rect_filled(rect, constants::NODE_CORNER_RADIUS, bg_color);
 
@@ -109,7 +109,7 @@ pub(crate) fn draw_node(
         max_text_width,
     );
     {
-        puffin::profile_scope!("paint_text");
+        profile_scope!("paint_text");
         let galley = painter.layout_job(label_job);
 
         // Center the text in the node
@@ -119,7 +119,7 @@ pub(crate) fn draw_node(
         );
 
         {
-            puffin::profile_scope!("galley");
+            profile_scope!("galley");
             painter.galley(text_pos, galley, constants::TEXT_COLOR);
         }
     }
@@ -132,7 +132,7 @@ fn create_label(
     padding: f32,
     max_text_width: f32,
 ) -> LayoutJob {
-    puffin::profile_function!();
+    profile_function!();
     let font_id = FontId::proportional(font_size);
     let max_text_height = height - padding;
 
@@ -151,7 +151,7 @@ fn create_label(
 pub(crate) fn join_layouts(
     layouts: impl Iterator<Item = Layout<DependencyId>>,
 ) -> HashMap<DependencyId, (f32, f32)> {
-    puffin::profile_function!();
+    profile_function!();
     let mut result = HashMap::new();
     let mut offset_x = 0.0;
     for layout in layouts {
@@ -197,7 +197,7 @@ fn rect_edge_point(rect: Rect, direction: Vec2) -> Pos2 {
 
 /// Draw a single edge with arrow from source to destination
 pub(crate) fn draw_edge(painter: &Painter, src_rect: Rect, dst_rect: Rect, highlighted: bool) {
-    puffin::profile_function!();
+    profile_function!();
     let src_center = src_rect.center();
     let dst_center = dst_rect.center();
 
