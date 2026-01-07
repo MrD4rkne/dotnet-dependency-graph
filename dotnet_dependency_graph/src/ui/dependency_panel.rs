@@ -3,7 +3,6 @@ use eframe::egui::{self, Response, Ui, Widget, WidgetText};
 use regex::Regex;
 use std::collections::{BTreeMap, HashSet};
 
-use crate::core::node_cache::GraphCache;
 use crate::ui::interactions::{InteractionController, InteractionEvent};
 
 /// Options for configuring search behavior in the packages panel.
@@ -121,7 +120,7 @@ pub(crate) struct DependencyPanel<'a> {
     search_options: &'a mut SearchOptions,
     graph: &'a DependencyGraph,
     visible_nodes: &'a mut HashSet<DependencyId>,
-    cache: &'a mut GraphCache,
+    tree: &'a mut BTreeMap<String, Vec<DependencyId>>,
     interaction_state: &'a mut InteractionController,
 }
 
@@ -131,7 +130,7 @@ impl<'a> DependencyPanel<'a> {
         search_options: &'a mut SearchOptions,
         graph: &'a DependencyGraph,
         visible_nodes: &'a mut HashSet<DependencyId>,
-        cache: &'a mut GraphCache,
+        tree: &'a mut BTreeMap<String, Vec<DependencyId>>,
         interaction_state: &'a mut InteractionController,
     ) -> Self {
         Self {
@@ -139,7 +138,7 @@ impl<'a> DependencyPanel<'a> {
             search_options,
             graph,
             visible_nodes,
-            cache,
+            tree,
             interaction_state,
         }
     }
@@ -290,9 +289,8 @@ impl<'a> Widget for DependencyPanel<'a> {
             self.show_mode_selection(ui);
 
             let action = self.show_selection_buttons(ui);
-            let tree = self.cache.dependency_tree();
             let dependencies_to_show =
-                Self::compute_dependencies_to_show_from_groups(tree, &searcher);
+                Self::compute_dependencies_to_show_from_groups(self.tree, &searcher);
 
             Self::show_packages_and_update_visibility(
                 ui,

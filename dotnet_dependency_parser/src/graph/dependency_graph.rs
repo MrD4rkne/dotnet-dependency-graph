@@ -467,12 +467,12 @@ impl DependencyGraph {
     /// Run layout with a provided `Config` from `rust_sugiyama`.
     pub fn layout_with_config(
         &self,
-        vertex_size: &impl Fn(&DependencyId, &DependencyInfo) -> (f64, f64),
+        vertex_size: impl Fn(DependencyId, &DependencyInfo) -> (f64, f64),
         cfg: &rust_sugiyama::configure::Config,
     ) -> impl Iterator<Item = super::algo::Layout<DependencyId>> {
         let vertex_size_fn = |ix: NodeIndex, dep: &DependencyInfo| -> (f64, f64) {
             let id = DependencyId::new(ix);
-            vertex_size(&id, dep)
+            vertex_size(id, dep)
         };
         super::algo::layout_sugiyama_with_config(&self.graph, &vertex_size_fn, cfg)
             .into_iter()

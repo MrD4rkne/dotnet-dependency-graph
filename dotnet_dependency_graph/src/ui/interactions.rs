@@ -1,5 +1,6 @@
 use dotnet_dependency_parser::graph::{DependencyId, Framework};
-use std::collections::HashSet;
+use eframe::egui::Vec2;
+use std::collections::{HashMap, HashSet};
 
 /// Events representing user interactions. Widgets should publish these
 /// instead of mutating state directly. The controller processes events
@@ -9,6 +10,7 @@ pub(crate) enum InteractionEvent {
     Select(DependencyId),
     Highlight(DependencyId),
     SelectFramework(Framework),
+    MoveBy(DependencyId, Vec2),
 }
 
 /// Holds data about interactions on the graph.
@@ -39,7 +41,11 @@ impl InteractionController {
     /// Apply pending events to the state. Events are applied in order.
     ///
     /// Resets highlighted and pan_to_dependency.
-    pub(crate) fn process_pending(&mut self, visible_nodes: &mut HashSet<DependencyId>) {
+    pub(crate) fn process_pending(
+        &mut self,
+        visible_nodes: &mut HashSet<DependencyId>,
+        node_positions: &mut HashMap<DependencyId, (f32, f32)>,
+    ) {
         self.state.highlighted = None;
         self.state.pan_to_dependency = None;
 
@@ -51,6 +57,13 @@ impl InteractionController {
                 }
                 InteractionEvent::Highlight(opt) => self.state.highlighted = Some(opt),
                 InteractionEvent::SelectFramework(opt) => self.state.selected_framework = Some(opt),
+                InteractionEvent::MoveBy(id, delta) => {
+                    let pos = node_positions
+                        .get_mut(&id)
+                        .expect("Node that was interacted should be in the graph");
+                    pos.0 += delta.x;
+                    pos.1 += delta.y;
+                }
             }
         }
 
