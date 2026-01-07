@@ -1,16 +1,4 @@
 #[cfg(feature = "profiling")]
-macro_rules! profile_function {
-    () => {
-        ::puffin::profile_function!();
-    };
-}
-
-#[cfg(not(feature = "profiling"))]
-macro_rules! profile_function {
-    () => {};
-}
-
-#[cfg(feature = "profiling")]
 macro_rules! profile_scope {
     ($name:expr) => {
         ::puffin::profile_scope!($name);
