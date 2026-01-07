@@ -9,7 +9,6 @@ mod dependency_panel;
 mod graph;
 mod layout_options;
 mod node;
-mod session;
 mod state;
 mod ui;
 mod visualize;
