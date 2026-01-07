@@ -4,6 +4,7 @@ use regex::Regex;
 use std::collections::{BTreeMap, HashSet};
 
 use crate::ui::interactions::{InteractionController, InteractionEvent};
+use dotnet_dependency_profiling_macros::profile_function;
 
 /// Options for configuring search behavior in the packages panel.
 #[derive(Debug, Clone)]
@@ -143,8 +144,8 @@ impl<'a> DependencyPanel<'a> {
         }
     }
 
+    #[profile_function]
     fn show_search_box(&mut self, ui: &mut Ui, searcher: &Searcher) {
-        profile_function!();
         ui.horizontal(|ui| {
             ui.label("Filter:");
             let original_visuals = ui.visuals().clone();
@@ -173,11 +174,11 @@ impl<'a> DependencyPanel<'a> {
         });
     }
 
+    #[profile_function]
     fn compute_dependencies_to_show_from_groups<'g>(
         groups: &'g BTreeMap<String, Vec<DependencyId>>,
         searcher: &Searcher,
     ) -> impl Iterator<Item = (&'g String, &'g Vec<DependencyId>)> {
-        profile_function!();
         groups.iter().filter(|(name, _)| searcher.is_match(name))
     }
 
@@ -202,6 +203,7 @@ impl<'a> DependencyPanel<'a> {
         action
     }
 
+    #[profile_function]
     fn show_packages_and_update_visibility<'g>(
         ui: &mut Ui,
         graph: &DependencyGraph,
@@ -211,7 +213,6 @@ impl<'a> DependencyPanel<'a> {
         action: Option<Action>,
         interaction_state: &'g mut InteractionController,
     ) {
-        profile_function!();
         ui.separator();
 
         eframe::egui::ScrollArea::vertical().show(ui, |ui| {
@@ -279,7 +280,7 @@ fn handle_action(
 impl<'a> Widget for DependencyPanel<'a> {
     fn ui(mut self, ui: &mut Ui) -> Response {
         ui.vertical(|ui| {
-            profile_function!();
+            profile_scope!("draw_dependencyPanel");
             ui.heading("Packages");
             ui.separator();
 

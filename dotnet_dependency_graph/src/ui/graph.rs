@@ -3,6 +3,8 @@ use eframe::egui::{Painter, Rect, Response, Sense, Ui, Widget, containers::Scene
 use eframe::egui::{Pos2, Vec2};
 use std::collections::{HashMap, HashSet};
 
+use dotnet_dependency_profiling_macros::profile_function;
+
 use crate::ui::interactions::{InteractionController, InteractionEvent};
 use crate::visualize;
 
@@ -94,13 +96,13 @@ impl<'a> GraphWidget<'a> {
     }
 
     /// Draw all edges for the given framework
+    #[profile_function]
     fn draw_all_edges(
         painter: &Painter,
         graph_data: &GraphData,
         interaction_state: &InteractionController,
         framework: &Framework,
     ) {
-        profile_function!();
         for src_id in graph_data.visible_nodes.iter() {
             profile_scope!("draw_edges_for_node");
 
@@ -143,7 +145,7 @@ impl<'a> Widget for GraphWidget<'a> {
 
         let inner = scene.show(ui, self.view_state.scene_rect, move |ui| {
             // Draw nodes in scene coordinates.
-            profile_function!();
+            profile_scope!("draw_graph");
 
             if let Some(framework) = interaction_state.selected_framework() {
                 Self::draw_all_edges(ui.painter(), graph_data, interaction_state, framework);
@@ -186,6 +188,7 @@ fn draw_all_nodes(
 }
 
 /// Draw a single node and handle its dragging interaction
+#[profile_function]
 fn draw_single_node(
     id: DependencyId,
     rect: Rect,
@@ -194,7 +197,6 @@ fn draw_single_node(
     interaction_state: &mut InteractionController,
     highlighted: bool,
 ) {
-    profile_function!();
     visualize::draw_node(text, ui.painter(), rect, highlighted);
     handle_node_interactions(id, rect, ui, interaction_state, text);
 }

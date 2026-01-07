@@ -7,6 +7,7 @@ edition = "2024"
 eframe = "0.33.3"
 egui-file-dialog = "0.12.0"
 dotnet_dependency_parser = { path = "../dotnet_dependency_parser" }
+dotnet_dependency_profiling_macros = { path = "../dotnet_dependency_profiling_macros" }
 regex = "1.12.2"
 anyhow = "1.0"
 puffin = { version = "0.19.1", optional = true }
