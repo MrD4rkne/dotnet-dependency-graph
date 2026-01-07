@@ -4,8 +4,8 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::PathBuf;
 
+use super::layout::LayoutConfig;
 use crate::graph::GraphCache;
-use crate::layout_options::LayoutConfig;
 use crate::ui::interactions::InteractionController;
 use crate::visualize;
 
