@@ -337,7 +337,9 @@ impl DependencyApp {
                             .clicked()
                         {
                             file.interaction_state.publish(
-                                crate::session::InteractionEvent::SelectFramework(fw.clone()),
+                                crate::ui::interactions::InteractionEvent::SelectFramework(
+                                    fw.clone(),
+                                ),
                             );
                         }
                     }
