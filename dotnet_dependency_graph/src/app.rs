@@ -6,13 +6,13 @@ use puffin::GlobalProfiler;
 use std::path::PathBuf;
 
 use crate::core::Session;
+use crate::core::layout::LayoutConfig;
 use crate::core::parser;
 use crate::dependency_panel::SearchOptions;
 use crate::dependency_panel::{DepPanel, DependencyPanel};
 use crate::graph::graph_widget::GraphWidget;
-use crate::layout_options::LayoutConfig;
-use crate::layout_options::LayoutWindow;
 use crate::ui::FpsCounter;
+use crate::ui::LayoutWindow;
 
 /// Handles file dialog operations.
 struct FileDialogHandler {

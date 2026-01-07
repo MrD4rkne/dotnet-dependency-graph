@@ -7,7 +7,6 @@ mod app;
 mod core;
 mod dependency_panel;
 mod graph;
-mod layout_options;
 mod node;
 mod state;
 mod ui;
