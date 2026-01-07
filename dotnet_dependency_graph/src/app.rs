@@ -269,7 +269,7 @@ impl DependencyApp {
         renderer.render(ctx);
     }
 
-    #[profile_function]
+    #[cfg_attr(feature = "profiling", profile_function)]
     fn render_packages_view(&mut self, ctx: &Context) {
         let mut renderer =
             PackagesViewRenderer::new(&mut self.package_filter, &mut self.search_options);

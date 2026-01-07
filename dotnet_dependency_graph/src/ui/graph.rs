@@ -96,7 +96,7 @@ impl<'a> GraphWidget<'a> {
     }
 
     /// Draw all edges for the given framework
-    #[profile_function]
+    #[cfg_attr(feature = "profiling", profile_function)]
     fn draw_all_edges(
         painter: &Painter,
         graph_data: &GraphData,
@@ -188,7 +188,7 @@ fn draw_all_nodes(
 }
 
 /// Draw a single node and handle its dragging interaction
-#[profile_function]
+#[cfg_attr(feature = "profiling", profile_function)]
 fn draw_single_node(
     id: DependencyId,
     rect: Rect,

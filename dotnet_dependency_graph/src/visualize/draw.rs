@@ -67,7 +67,7 @@ pub(crate) fn calculate_size(dep: &DependencyInfo) -> (f32, f32) {
     calculate_dimensions_from_text(dep.name())
 }
 
-#[profile_function]
+#[cfg_attr(feature = "profiling", profile_function)]
 pub(crate) fn draw_node(
     text: &str,
     painter: &eframe::egui::Painter,
@@ -127,7 +127,7 @@ pub(crate) fn draw_node(
     }
 }
 
-#[profile_function]
+#[cfg_attr(feature = "profiling", profile_function)]
 fn create_label(
     text: &str,
     font_size: f32,
@@ -150,7 +150,7 @@ fn create_label(
     job
 }
 
-#[profile_function]
+#[cfg_attr(feature = "profiling", profile_function)]
 pub(crate) fn join_layouts(
     layouts: impl Iterator<Item = Layout<DependencyId>>,
 ) -> HashMap<DependencyId, (f32, f32)> {
@@ -198,7 +198,7 @@ fn rect_edge_point(rect: Rect, direction: Vec2) -> Pos2 {
 }
 
 /// Draw a single edge with arrow from source to destination
-#[profile_function]
+#[cfg_attr(feature = "profiling", profile_function)]
 pub(crate) fn draw_edge(painter: &Painter, src_rect: Rect, dst_rect: Rect, highlighted: bool) {
     let src_center = src_rect.center();
     let dst_center = dst_rect.center();
