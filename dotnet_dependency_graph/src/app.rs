@@ -2,7 +2,6 @@ use anyhow::Error;
 use eframe::App;
 use eframe::egui::Context;
 use egui_file_dialog::FileDialog;
-use puffin::GlobalProfiler;
 use std::path::PathBuf;
 
 use crate::core::Session;
@@ -269,7 +268,7 @@ impl DependencyApp {
     }
 
     fn render_packages_view(&mut self, ctx: &Context) {
-        puffin::profile_function!();
+        profile_function!();
         let mut renderer =
             PackagesViewRenderer::new(&mut self.package_filter, &mut self.search_options);
         renderer.render(ctx, &mut self.app_state);
@@ -342,7 +341,7 @@ impl DependencyApp {
 
 impl App for DependencyApp {
     fn update(&mut self, ctx: &Context, _: &mut eframe::Frame) {
-        GlobalProfiler::lock().new_frame();
+        profile_frame!();
 
         // Apply interaction events published in the previous frame.
         // Also, reset the per_frame state.

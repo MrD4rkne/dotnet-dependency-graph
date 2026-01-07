@@ -144,7 +144,7 @@ impl<'a> DependencyPanel<'a> {
     }
 
     fn show_search_box(&mut self, ui: &mut Ui, searcher: &Searcher) {
-        puffin::profile_function!();
+        profile_function!();
         ui.horizontal(|ui| {
             ui.label("Filter:");
             let original_visuals = ui.visuals().clone();
@@ -177,7 +177,7 @@ impl<'a> DependencyPanel<'a> {
         groups: &'g BTreeMap<String, Vec<DependencyId>>,
         searcher: &Searcher,
     ) -> impl Iterator<Item = (&'g String, &'g Vec<DependencyId>)> {
-        puffin::profile_function!();
+        profile_function!();
         groups.iter().filter(|(name, _)| searcher.is_match(name))
     }
 
@@ -211,14 +211,14 @@ impl<'a> DependencyPanel<'a> {
         action: Option<Action>,
         interaction_state: &'g mut InteractionController,
     ) {
-        puffin::profile_function!();
+        profile_function!();
         ui.separator();
 
         eframe::egui::ScrollArea::vertical().show(ui, |ui| {
             for (name, versions) in dependencies_to_show {
                 if versions.len() == 1 {
                     // Single version - show as flat checkbox
-                    puffin::profile_scope!("show_package_single");
+                    profile_scope!("show_package_single");
                     let id = versions[0];
                     show_checkbox(
                         ui,
@@ -230,13 +230,13 @@ impl<'a> DependencyPanel<'a> {
                     );
                     handle_action(visible_nodes, &id, &action);
                 } else {
-                    puffin::profile_scope!("show_package_multiple");
+                    profile_scope!("show_package_multiple");
                     // Multiple versions - show as collapsing header with nested items
                     eframe::egui::CollapsingHeader::new(rich_text_for_label(name, searcher))
                         .default_open(false)
                         .show(ui, |ui| {
                             for id in versions {
-                                puffin::profile_scope!("show_package");
+                                profile_scope!("show_package");
                                 let info = graph.get(*id).unwrap();
                                 let version_label = info.version().unwrap_or("no version");
                                 show_checkbox(
@@ -249,7 +249,7 @@ impl<'a> DependencyPanel<'a> {
                                 );
                             }
                         });
-                    puffin::profile_scope!("handle_action");
+                    profile_scope!("handle_action");
                     // Handle action here so this code will be invoked even if the header is collapsed.
                     for id in versions {
                         handle_action(visible_nodes, id, &action);
@@ -279,7 +279,7 @@ fn handle_action(
 impl<'a> Widget for DependencyPanel<'a> {
     fn ui(mut self, ui: &mut Ui) -> Response {
         ui.vertical(|ui| {
-            puffin::profile_function!();
+            profile_function!();
             ui.heading("Packages");
             ui.separator();
 
