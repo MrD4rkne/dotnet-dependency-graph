@@ -1,4 +1,4 @@
-use crate::session::Session;
+use crate::core::Session;
 use anyhow::Error;
 use dotnet_dependency_parser::graph::{DependencyId, SerializableGraph};
 use std::path::PathBuf;
