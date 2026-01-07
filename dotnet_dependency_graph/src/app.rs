@@ -4,6 +4,8 @@ use eframe::egui::Context;
 use egui_file_dialog::FileDialog;
 use std::path::PathBuf;
 
+use dotnet_dependency_profiling_macros::profile_function;
+
 use crate::core::Session;
 use crate::core::layout::LayoutConfig;
 use crate::core::parser;
@@ -267,8 +269,8 @@ impl DependencyApp {
         renderer.render(ctx);
     }
 
+    #[profile_function]
     fn render_packages_view(&mut self, ctx: &Context) {
-        profile_function!();
         let mut renderer =
             PackagesViewRenderer::new(&mut self.package_filter, &mut self.search_options);
         renderer.render(ctx, &mut self.app_state);

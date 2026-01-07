@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["dotnet_dependency_graph", "dotnet_dependency_parser"]
+members = ["dotnet_dependency_graph", "dotnet_dependency_parser", "dotnet_dependency_profiling_macros"]
 [profile.samply]
 inherits = "release"
 debug = true
