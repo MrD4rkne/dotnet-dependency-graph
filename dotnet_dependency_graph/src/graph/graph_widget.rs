@@ -5,7 +5,7 @@ use std::collections::{HashMap, HashSet};
 use crate::graph::node_cache;
 use crate::graph::node_cache::GraphCache;
 use crate::graph::node_cache::NodeData;
-use crate::session::InteractionController;
+use crate::ui::interactions::{InteractionController, InteractionEvent};
 use crate::visualize;
 
 // Grouped parameters for view state
@@ -206,11 +206,11 @@ fn handle_node_interactions(
     }
 
     if node_response.clicked() {
-        state.publish(crate::session::InteractionEvent::Select(id));
+        state.publish(InteractionEvent::Select(id));
     }
 
     if node_response.hovered() {
-        state.publish(crate::session::InteractionEvent::Highlight(id));
+        state.publish(InteractionEvent::Highlight(id));
     }
 
     node_response.on_hover_text(text);

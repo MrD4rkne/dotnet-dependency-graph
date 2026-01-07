@@ -3,7 +3,8 @@ use eframe::egui::{self, Response, Ui, Widget, WidgetText};
 use regex::Regex;
 use std::collections::{BTreeMap, HashSet};
 
-use crate::{graph::GraphCache, session::InteractionController};
+use crate::graph::GraphCache;
+use crate::ui::interactions::{InteractionController, InteractionEvent};
 
 /// Options for configuring search behavior in the packages panel.
 #[derive(Debug, Clone)]
@@ -338,7 +339,7 @@ fn show_checkbox(
 
 fn show_label_for_dependency(
     ui: &mut Ui,
-    interaction_state: &mut crate::session::InteractionController,
+    interaction_state: &mut InteractionController,
     id: DependencyId,
     label: WidgetText,
 ) {
@@ -352,11 +353,11 @@ fn show_label_for_dependency(
         }
 
         if label.clicked() {
-            interaction_state.publish(crate::session::InteractionEvent::Select(id));
+            interaction_state.publish(InteractionEvent::Select(id));
         }
 
         if label.hovered() {
-            interaction_state.publish(crate::session::InteractionEvent::Highlight(id));
+            interaction_state.publish(InteractionEvent::Highlight(id));
         }
     });
 }
@@ -383,13 +384,13 @@ fn rich_text_for_label(label: &str, searcher: &Searcher) -> eframe::egui::Widget
 
 pub(crate) struct DepPanel<'a> {
     graph: &'a DependencyGraph,
-    interaction_state: &'a mut crate::session::InteractionController,
+    interaction_state: &'a mut InteractionController,
 }
 
 impl<'a> DepPanel<'a> {
     pub(crate) fn new(
         graph: &'a DependencyGraph,
-        interaction_state: &'a mut crate::session::InteractionController,
+        interaction_state: &'a mut InteractionController,
     ) -> Self {
         Self {
             graph,
