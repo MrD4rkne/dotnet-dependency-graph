@@ -40,6 +40,8 @@ impl Session {
         config: LayoutConfig,
     ) -> Result<(), DependencyGraphError> {
         self.graph.merge(graph)?;
+        self.node_sizes = compute_sizes(&self.graph);
+        self.tree_by_name = group_packages_by_name(&self.graph);
         self.recalculate_layout(config);
         Ok(())
     }
