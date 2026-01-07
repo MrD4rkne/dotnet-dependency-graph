@@ -8,7 +8,6 @@ mod core;
 mod dependency_panel;
 mod graph;
 mod node;
-mod state;
 mod ui;
 mod visualize;
 

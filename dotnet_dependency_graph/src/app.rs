@@ -51,10 +51,10 @@ impl FileDialogHandler {
                 self.handle_load(app_state, path, config)?;
             }
             (FileMode::Save, AppState::FileLoaded(session)) => {
-                crate::state::save_state(session, path)?;
+                crate::core::state::save_state(session, path)?;
             }
             (FileMode::Load, _) => {
-                *app_state = AppState::FileLoaded(Box::new(crate::state::load_state(path)?));
+                *app_state = AppState::FileLoaded(Box::new(crate::core::state::load_state(path)?));
             }
             _ => {}
         }
