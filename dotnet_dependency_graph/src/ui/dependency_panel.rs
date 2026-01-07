@@ -144,7 +144,7 @@ impl<'a> DependencyPanel<'a> {
         }
     }
 
-    #[profile_function]
+    #[cfg_attr(feature = "profiling", profile_function)]
     fn show_search_box(&mut self, ui: &mut Ui, searcher: &Searcher) {
         ui.horizontal(|ui| {
             ui.label("Filter:");
@@ -174,7 +174,7 @@ impl<'a> DependencyPanel<'a> {
         });
     }
 
-    #[profile_function]
+    #[cfg_attr(feature = "profiling", profile_function)]
     fn compute_dependencies_to_show_from_groups<'g>(
         groups: &'g BTreeMap<String, Vec<DependencyId>>,
         searcher: &Searcher,
@@ -203,7 +203,7 @@ impl<'a> DependencyPanel<'a> {
         action
     }
 
-    #[profile_function]
+    #[cfg_attr(feature = "profiling", profile_function)]
     fn show_packages_and_update_visibility<'g>(
         ui: &mut Ui,
         graph: &DependencyGraph,
