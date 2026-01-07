@@ -3,7 +3,7 @@ use eframe::egui::{self, Response, Ui, Widget, WidgetText};
 use regex::Regex;
 use std::collections::{BTreeMap, HashSet};
 
-use crate::graph::GraphCache;
+use crate::core::node_cache::GraphCache;
 use crate::ui::interactions::{InteractionController, InteractionEvent};
 
 /// Options for configuring search behavior in the packages panel.

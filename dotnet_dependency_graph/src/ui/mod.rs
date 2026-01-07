@@ -7,3 +7,5 @@ pub(crate) use fps_counter::FpsCounter;
 pub(crate) use layout_options::LayoutWindow;
 
 pub(crate) use dependency_panel::{DepPanel, DependencyPanel, SearchOptions};
+
+pub(crate) mod graph;

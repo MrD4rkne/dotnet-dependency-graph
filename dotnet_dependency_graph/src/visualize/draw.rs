@@ -1,9 +1,10 @@
-use crate::graph::NodeData;
 use dotnet_dependency_parser::graph::{DependencyId, DependencyInfo, Layout};
 use eframe::egui::TextFormat;
 use eframe::egui::text::LayoutJob;
 use eframe::egui::{FontId, Painter, Pos2, Rect, Stroke, Vec2};
 use std::collections::HashMap;
+
+use crate::core::node_cache::NodeData;
 
 mod constants {
     use eframe::egui::Color32;

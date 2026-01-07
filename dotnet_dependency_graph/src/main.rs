@@ -5,8 +5,6 @@ use std::any::Any;
 
 mod app;
 mod core;
-mod graph;
-mod node;
 mod ui;
 mod visualize;
 

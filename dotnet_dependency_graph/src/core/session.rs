@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 
 use super::layout::LayoutConfig;
-use crate::graph::GraphCache;
+use crate::core::node_cache::GraphCache;
 use crate::ui::interactions::InteractionController;
 use crate::visualize;
 
