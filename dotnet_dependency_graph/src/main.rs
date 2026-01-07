@@ -11,6 +11,7 @@ mod node;
 mod parser;
 mod session;
 mod state;
+mod ui;
 mod visualize;
 
 use crate::app::DependencyApp;
