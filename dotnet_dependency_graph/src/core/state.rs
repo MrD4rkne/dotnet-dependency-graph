@@ -9,16 +9,12 @@ pub(crate) fn save_state(session: &Session, path: PathBuf) -> Result<(), Error> 
         dotnet_dependency_parser::graph::DependencyId,
         (bool, (f32, f32)),
     > = session
-        .cache
-        .node_cache()
+        .node_positions
         .iter()
         .map(|(id, cache)| {
             (
                 *id,
-                (
-                    session.visible_nodes.contains(id),
-                    (cache.position().x, cache.position().y),
-                ),
+                (session.visible_nodes.contains(id), (cache.0, cache.1)),
             )
         })
         .collect();
@@ -54,5 +50,9 @@ pub(crate) fn load_state(path: PathBuf) -> Result<Session, Error> {
         node_positions.insert(id, (x, y));
     }
 
-    Ok(Session::new(path, graph, node_positions, visible_nodes))
+    Ok(Session::load_precomputed(
+        graph,
+        node_positions,
+        visible_nodes,
+    ))
 }

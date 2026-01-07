@@ -4,8 +4,6 @@ use eframe::egui::text::LayoutJob;
 use eframe::egui::{FontId, Painter, Pos2, Rect, Stroke, Vec2};
 use std::collections::HashMap;
 
-use crate::core::node_cache::NodeData;
-
 mod constants {
     use eframe::egui::Color32;
 
@@ -63,19 +61,18 @@ fn get_lines_count_with_max_length(text: &str) -> (usize, usize) {
         })
 }
 
-pub(crate) fn calculate_size(_id: &DependencyId, dep: &DependencyInfo) -> (f64, f64) {
-    let (width, height) = calculate_dimensions_from_text(dep.name());
-    (width as f64, height as f64)
+pub(crate) fn calculate_size(dep: &DependencyInfo) -> (f32, f32) {
+    calculate_dimensions_from_text(dep.name())
 }
 
 pub(crate) fn draw_node(
     text: &str,
     painter: &eframe::egui::Painter,
-    cache: &mut NodeData,
+    rect: Rect,
     highlighted: bool,
 ) {
     puffin::profile_function!();
-    let max_text_width = cache.width() - constants::NODE_PADDING;
+    let max_text_width = rect.width() - constants::NODE_PADDING;
     let (bg_color, border_color, border_width) = if highlighted {
         (
             constants::HIGHLIGHTED_NODE_BACKGROUND,
@@ -93,11 +90,11 @@ pub(crate) fn draw_node(
     {
         puffin::profile_scope!("paint");
         // Draw rectangle background
-        painter.rect_filled(cache.rect(), constants::NODE_CORNER_RADIUS, bg_color);
+        painter.rect_filled(rect, constants::NODE_CORNER_RADIUS, bg_color);
 
         // Draw rectangle border
         painter.rect_stroke(
-            cache.rect(),
+            rect,
             constants::NODE_CORNER_RADIUS,
             Stroke::new(border_width, border_color),
             eframe::egui::epaint::StrokeKind::Middle,
@@ -107,7 +104,7 @@ pub(crate) fn draw_node(
     let label_job = create_label(
         text,
         constants::FONT_SIZE,
-        cache.height(),
+        rect.height(),
         constants::NODE_PADDING,
         max_text_width,
     );
@@ -117,8 +114,8 @@ pub(crate) fn draw_node(
 
         // Center the text in the node
         let text_pos = Pos2::new(
-            cache.rect().center().x - galley.size().x / 2.0,
-            cache.rect().center().y - galley.size().y / 2.0,
+            rect.center().x - galley.size().x / 2.0,
+            rect.center().y - galley.size().y / 2.0,
         );
 
         {

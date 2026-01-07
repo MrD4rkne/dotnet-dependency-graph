@@ -82,10 +82,7 @@ impl FileDialogHandler {
                     return Err(anyhow::anyhow!("Failed to merge: {}", e));
                 }
             }
-            _ => {
-                *app_state =
-                    AppState::FileLoaded(Box::new(Session::load_from(path, new_graph, config)))
-            }
+            _ => *app_state = AppState::FileLoaded(Box::new(Session::load_from(new_graph, config))),
         };
 
         Ok(())
@@ -133,19 +130,15 @@ impl<'a> CentralPanelRenderer<'a> {
     fn render(&mut self, ctx: &Context, app_state: &mut AppState) {
         eframe::egui::CentralPanel::default().show(ctx, |ui| {
             if let AppState::FileLoaded(file) = app_state {
-                ui.label(format!(
-                    "File: {}",
-                    file.path.file_name().unwrap_or_default().to_string_lossy()
-                ));
-
                 ui.add(GraphWidget::new(
                     crate::ui::graph::ViewState::new(self.scene_rect),
                     &mut file.interaction_state,
                     crate::ui::graph::GraphData::new(
                         &file.graph,
                         &file.visible_nodes,
+                        &file.node_positions,
+                        &file.node_sizes
                     ),
-                    &mut file.cache,
                 ));
 
                 // Show controls
@@ -212,7 +205,7 @@ impl<'a> PackagesViewRenderer<'a> {
                         self.search_options,
                         &file.graph,
                         &mut file.visible_nodes,
-                        &mut file.cache,
+                        &mut file.tree_by_name,
                         &mut file.interaction_state,
                     ));
                 });
@@ -228,7 +221,6 @@ impl<'a> PackagesViewRenderer<'a> {
 }
 
 /// Represents the current state of the application.
-#[derive(Debug)]
 enum AppState {
     /// No file is currently loaded.
     NoFile,
@@ -356,7 +348,7 @@ impl App for DependencyApp {
         // Also, reset the per_frame state.
         if let AppState::FileLoaded(file) = &mut self.app_state {
             file.interaction_state
-                .process_pending(&mut file.visible_nodes);
+                .process_pending(&mut file.visible_nodes, &mut file.node_positions);
         }
 
         self.fps_counter.update();
