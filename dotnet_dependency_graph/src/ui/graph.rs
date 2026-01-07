@@ -2,9 +2,7 @@ use dotnet_dependency_parser::graph::{DependencyGraph, DependencyId, Framework};
 use eframe::egui::{Painter, Rect, Response, Sense, Ui, Widget, containers::Scene};
 use std::collections::{HashMap, HashSet};
 
-use crate::graph::node_cache;
-use crate::graph::node_cache::GraphCache;
-use crate::graph::node_cache::NodeData;
+use crate::core::node_cache::{GraphCache, NodeData};
 use crate::ui::interactions::{InteractionController, InteractionEvent};
 use crate::visualize;
 
@@ -107,7 +105,7 @@ impl<'a> Widget for GraphWidget<'a> {
 fn draw_all_nodes(
     ui: &mut Ui,
     graph_data: &GraphData,
-    node_cache: &mut node_cache::GraphCache,
+    node_cache: &mut GraphCache,
     interaction_state: &mut InteractionController,
 ) {
     for id in graph_data.visible_nodes.iter() {

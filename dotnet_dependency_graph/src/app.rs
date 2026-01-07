@@ -8,9 +8,9 @@ use std::path::PathBuf;
 use crate::core::Session;
 use crate::core::layout::LayoutConfig;
 use crate::core::parser;
-use crate::graph::graph_widget::GraphWidget;
 use crate::ui::FpsCounter;
 use crate::ui::LayoutWindow;
+use crate::ui::graph::GraphWidget;
 use crate::ui::{DepPanel, DependencyPanel, SearchOptions};
 
 /// Handles file dialog operations.
@@ -139,9 +139,9 @@ impl<'a> CentralPanelRenderer<'a> {
                 ));
 
                 ui.add(GraphWidget::new(
-                    crate::graph::graph_widget::ViewState::new(self.scene_rect),
+                    crate::ui::graph::ViewState::new(self.scene_rect),
                     &mut file.interaction_state,
-                    crate::graph::graph_widget::GraphData::new(
+                    crate::ui::graph::GraphData::new(
                         &file.graph,
                         &file.visible_nodes,
                     ),

@@ -1,4 +1,4 @@
-use crate::node;
+use super::node;
 use crate::visualize;
 use dotnet_dependency_parser::graph::{DependencyGraph, DependencyId};
 use eframe::egui::{Pos2, Rect, Vec2};
