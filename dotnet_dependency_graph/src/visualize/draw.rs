@@ -4,6 +4,8 @@ use eframe::egui::text::LayoutJob;
 use eframe::egui::{FontId, Painter, Pos2, Rect, Stroke, Vec2};
 use std::collections::HashMap;
 
+use dotnet_dependency_profiling_macros::profile_function;
+
 mod constants {
     use eframe::egui::Color32;
 
@@ -65,13 +67,13 @@ pub(crate) fn calculate_size(dep: &DependencyInfo) -> (f32, f32) {
     calculate_dimensions_from_text(dep.name())
 }
 
+#[profile_function]
 pub(crate) fn draw_node(
     text: &str,
     painter: &eframe::egui::Painter,
     rect: Rect,
     highlighted: bool,
 ) {
-    profile_function!();
     let max_text_width = rect.width() - constants::NODE_PADDING;
     let (bg_color, border_color, border_width) = if highlighted {
         (
@@ -125,6 +127,7 @@ pub(crate) fn draw_node(
     }
 }
 
+#[profile_function]
 fn create_label(
     text: &str,
     font_size: f32,
@@ -132,7 +135,6 @@ fn create_label(
     padding: f32,
     max_text_width: f32,
 ) -> LayoutJob {
-    profile_function!();
     let font_id = FontId::proportional(font_size);
     let max_text_height = height - padding;
 
@@ -148,10 +150,10 @@ fn create_label(
     job
 }
 
+#[profile_function]
 pub(crate) fn join_layouts(
     layouts: impl Iterator<Item = Layout<DependencyId>>,
 ) -> HashMap<DependencyId, (f32, f32)> {
-    profile_function!();
     let mut result = HashMap::new();
     let mut offset_x = 0.0;
     for layout in layouts {
@@ -196,8 +198,8 @@ fn rect_edge_point(rect: Rect, direction: Vec2) -> Pos2 {
 }
 
 /// Draw a single edge with arrow from source to destination
+#[profile_function]
 pub(crate) fn draw_edge(painter: &Painter, src_rect: Rect, dst_rect: Rect, highlighted: bool) {
-    profile_function!();
     let src_center = src_rect.center();
     let dst_center = dst_rect.center();
 
