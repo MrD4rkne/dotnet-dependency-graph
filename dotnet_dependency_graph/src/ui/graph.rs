@@ -3,8 +3,6 @@ use eframe::egui::{Painter, Rect, Response, Sense, Ui, Widget, containers::Scene
 use eframe::egui::{Pos2, Vec2};
 use std::collections::{HashMap, HashSet};
 
-use dotnet_dependency_profiling_macros::profile_function;
-
 use crate::ui::interactions::{InteractionController, InteractionEvent};
 use crate::visualize;
 
@@ -96,7 +94,10 @@ impl<'a> GraphWidget<'a> {
     }
 
     /// Draw all edges for the given framework
-    #[cfg_attr(feature = "profiling", profile_function)]
+    #[cfg_attr(
+        feature = "profiling",
+        dotnet_dependency_profiling_macros::profile_function
+    )]
     fn draw_all_edges(
         painter: &Painter,
         graph_data: &GraphData,
@@ -188,7 +189,10 @@ fn draw_all_nodes(
 }
 
 /// Draw a single node and handle its dragging interaction
-#[cfg_attr(feature = "profiling", profile_function)]
+#[cfg_attr(
+    feature = "profiling",
+    dotnet_dependency_profiling_macros::profile_function
+)]
 fn draw_single_node(
     id: DependencyId,
     rect: Rect,

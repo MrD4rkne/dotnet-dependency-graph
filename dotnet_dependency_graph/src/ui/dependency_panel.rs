@@ -4,7 +4,6 @@ use regex::Regex;
 use std::collections::{BTreeMap, HashSet};
 
 use crate::ui::interactions::{InteractionController, InteractionEvent};
-use dotnet_dependency_profiling_macros::profile_function;
 
 /// Options for configuring search behavior in the packages panel.
 #[derive(Debug, Clone)]
@@ -144,7 +143,10 @@ impl<'a> DependencyPanel<'a> {
         }
     }
 
-    #[cfg_attr(feature = "profiling", profile_function)]
+    #[cfg_attr(
+        feature = "profiling",
+        dotnet_dependency_profiling_macros::profile_function
+    )]
     fn show_search_box(&mut self, ui: &mut Ui, searcher: &Searcher) {
         ui.horizontal(|ui| {
             ui.label("Filter:");
@@ -174,7 +176,10 @@ impl<'a> DependencyPanel<'a> {
         });
     }
 
-    #[cfg_attr(feature = "profiling", profile_function)]
+    #[cfg_attr(
+        feature = "profiling",
+        dotnet_dependency_profiling_macros::profile_function
+    )]
     fn compute_dependencies_to_show_from_groups<'g>(
         groups: &'g BTreeMap<String, Vec<DependencyId>>,
         searcher: &Searcher,
@@ -203,7 +208,10 @@ impl<'a> DependencyPanel<'a> {
         action
     }
 
-    #[cfg_attr(feature = "profiling", profile_function)]
+    #[cfg_attr(
+        feature = "profiling",
+        dotnet_dependency_profiling_macros::profile_function
+    )]
     fn show_packages_and_update_visibility<'g>(
         ui: &mut Ui,
         graph: &DependencyGraph,
