@@ -269,7 +269,7 @@ impl DependencyApp {
 
     #[cfg_attr(
         feature = "profiling",
-        dotnet_dependency_profiling_macros::dotnet_dependency_profiling_macros::profile_function
+        dotnet_dependency_profiling_macros::profile_function
     )]
     fn render_packages_view(&mut self, ctx: &Context) {
         let mut renderer =
