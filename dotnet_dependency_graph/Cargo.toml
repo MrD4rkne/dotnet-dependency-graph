@@ -8,7 +8,7 @@ eframe = "0.33.3"
 egui-file-dialog = "0.12.0"
 dotnet_dependency_parser = { path = "../dotnet_dependency_parser" }
 dotnet_dependency_profiling_macros = { path = "../dotnet_dependency_profiling_macros" }
-regex = "1.12.2"
+regex = "1.12.3"
 anyhow = "1.0"
 puffin = { workspace = true, optional = true }
 puffin_http = { workspace = true, optional = true }
