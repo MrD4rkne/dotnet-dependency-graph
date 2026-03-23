@@ -174,9 +174,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.100"
+version = "1.0.102"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
+checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
 name = "arboard"
@@ -827,7 +827,7 @@ dependencies = [
  "dotnet_dependency_profiling_macros",
  "eframe",
  "egui-file-dialog",
- "puffin",
+ "puffin 0.20.0",
  "puffin_http",
  "regex",
  "serde_json",
@@ -1629,6 +1629,15 @@ name = "itertools"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
 dependencies = [
  "either",
 ]
@@ -2489,11 +2498,24 @@ dependencies = [
  "bincode",
  "byteorder",
  "cfg-if",
- "itertools",
+ "itertools 0.10.5",
  "lz4_flex",
  "once_cell",
  "parking_lot",
  "serde",
+]
+
+[[package]]
+name = "puffin"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "84b514d95a258be801fde8a1ff1c974f4a4841d9750f5d1d6690fc07a5ad4049"
+dependencies = [
+ "anyhow",
+ "byteorder",
+ "cfg-if",
+ "itertools 0.14.0",
+ "parking_lot",
 ]
 
 [[package]]
@@ -2506,7 +2528,7 @@ dependencies = [
  "crossbeam-channel",
  "log",
  "parking_lot",
- "puffin",
+ "puffin 0.19.1",
 ]
 
 [[package]]
