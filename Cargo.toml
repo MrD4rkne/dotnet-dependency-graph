@@ -5,5 +5,5 @@ members = ["dotnet_dependency_graph", "dotnet_dependency_parser", "dotnet_depend
 [workspace.dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-puffin = "0.19.1"
+puffin = "0.20.0"
 puffin_http = "0.16.1"
